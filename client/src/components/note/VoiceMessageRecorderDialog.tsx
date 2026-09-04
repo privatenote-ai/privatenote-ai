@@ -554,20 +554,24 @@ export function VoiceMessageRecorderDialog({
 
   const modeLocked = phase !== "idle" || isStarting;
   const showLiveVideo = recordMode === "video" && phase !== "preview";
+  const statusLabel =
+    phase === "recording"
+      ? (t.recordMessageRecordingStatus ?? "Recording")
+      : phase === "preview"
+        ? (t.recordMessagePreviewStatus ?? "Preview")
+        : (t.recordMessageReadyStatus ?? "Ready");
   const switchLabel =
     facing === "environment"
       ? (t.takePhotoSwitchToFront ?? "Switch to front camera")
       : (t.takePhotoSwitchToBack ?? "Switch to back camera");
   const dialogShellClass =
-    "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+5.5rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:p-6 sm:pb-6";
-  const videoDialogClass =
-    "sm:h-[min(92vh,56rem)] sm:max-h-[92vh] sm:max-w-2xl sm:overflow-hidden";
+    recordMode === "video"
+      ? "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.5rem))] sm:max-h-[min(92vh,56rem)] sm:h-[min(92vh,56rem)] sm:w-full sm:max-w-2xl sm:overflow-hidden sm:p-6 sm:pb-6"
+      : "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+5.5rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-md sm:p-6 sm:pb-6";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
-        className={`${dialogShellClass} ${recordMode === "video" ? videoDialogClass : "sm:max-w-md"}`}
-      >
+      <DialogContent className={dialogShellClass}>
         <DialogHeader className="shrink-0">
           <DialogTitle>{t.recordMessageTitle ?? "Record a message"}</DialogTitle>
           <DialogDescription className={recordMode === "video" ? "line-clamp-2 sm:line-clamp-none" : undefined}>
@@ -619,13 +623,12 @@ export function VoiceMessageRecorderDialog({
         <div
           className={`flex w-full flex-col items-center ${
             recordMode === "video"
-              ? "min-h-0 flex-1 gap-3 py-0 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:overflow-hidden sm:pb-0"
+              ? "mt-2 min-h-0 flex-1 gap-3 sm:mt-0 sm:overflow-hidden"
               : "gap-5 py-1"
           }`}
         >
           {showLiveVideo ? (
-            <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-            <div className="relative h-[min(48svh,22rem)] w-auto max-w-full aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-full sm:max-h-full">
+            <div className="relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full shrink-0 aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-full sm:max-h-full sm:min-h-0 sm:flex-1">
               <video
                 ref={videoRef}
                 className={`h-full w-full object-cover${facing === "user" ? " -scale-x-100" : ""}`}
@@ -651,7 +654,22 @@ export function VoiceMessageRecorderDialog({
                   {t.recordMessageRecordingStatus ?? "Recording"}
                 </span>
               ) : null}
-            </div>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/35 to-transparent px-3 pb-3 pt-8 text-center">
+                <p
+                  className="text-lg font-semibold leading-none tracking-tight tabular-nums text-white sm:text-xl"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  <span>{formatRecordingDuration(elapsedSeconds)}</span>
+                  <span className="mx-1.5 text-sm font-medium text-white/55">/</span>
+                  <span className="text-sm font-medium tabular-nums text-white/70">
+                    {formatRecordingDuration(durationCapSeconds)}
+                  </span>
+                </p>
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.14em] text-white/80">
+                  {statusLabel}
+                </p>
+              </div>
             </div>
           ) : recordMode === "audio" ? (
             <div
@@ -675,28 +693,26 @@ export function VoiceMessageRecorderDialog({
             </div>
           ) : null}
 
-          <div className="flex shrink-0 flex-col items-center gap-1.5">
-            <p
-              className={`text-xl font-semibold leading-none tracking-tight tabular-nums text-gray-900 dark:text-gray-50 sm:text-[2rem]`}
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <span>{formatRecordingDuration(elapsedSeconds)}</span>
-              <span className="mx-1.5 text-lg font-medium text-gray-300 dark:text-gray-600">/</span>
-              <span className="text-lg font-medium tabular-nums text-gray-400 dark:text-gray-500">
-                {formatRecordingDuration(durationCapSeconds)}
-              </span>
-            </p>
-            <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
-              {phase === "recording"
-                ? (t.recordMessageRecordingStatus ?? "Recording")
-                : phase === "preview"
-                  ? (t.recordMessagePreviewStatus ?? "Preview")
-                  : (t.recordMessageReadyStatus ?? "Ready")}
-            </p>
-          </div>
+          {recordMode === "audio" ? (
+            <div className="flex shrink-0 flex-col items-center gap-1.5">
+              <p
+                className="text-xl font-semibold leading-none tracking-tight tabular-nums text-gray-900 dark:text-gray-50 sm:text-[2rem]"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                <span>{formatRecordingDuration(elapsedSeconds)}</span>
+                <span className="mx-1.5 text-lg font-medium text-gray-300 dark:text-gray-600">/</span>
+                <span className="text-lg font-medium tabular-nums text-gray-400 dark:text-gray-500">
+                  {formatRecordingDuration(durationCapSeconds)}
+                </span>
+              </p>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
+                {statusLabel}
+              </p>
+            </div>
+          ) : null}
 
-          {phase === "recording" || phase === "preview" ? (
+          {recordMode === "audio" && (phase === "recording" || phase === "preview") ? (
             <div
               className="h-1.5 w-full max-w-[14rem] overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
               aria-hidden
@@ -716,16 +732,26 @@ export function VoiceMessageRecorderDialog({
 
           {phase === "preview" && previewUrl ? (
             previewIsVideo ? (
-              <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-              <video
-                controls
-                playsInline
-                src={previewUrl}
-                className="mx-auto h-[min(48svh,22rem)] w-auto max-w-full rounded-lg object-contain sm:h-full sm:max-h-full"
-                preload="metadata"
-              >
-                {t.recordMessagePreviewUnsupported ?? "Your browser cannot preview this recording."}
-              </video>
+              <div className="relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full shrink-0 aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-full sm:max-h-full sm:min-h-0 sm:flex-1">
+                <video
+                  controls
+                  playsInline
+                  src={previewUrl}
+                  className="h-full w-full object-contain"
+                  preload="metadata"
+                >
+                  {t.recordMessagePreviewUnsupported ?? "Your browser cannot preview this recording."}
+                </video>
+                <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/55 to-transparent px-3 pb-6 pt-3 text-center">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/85">
+                    {statusLabel}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums text-white">
+                    {formatRecordingDuration(elapsedSeconds)}
+                    <span className="mx-1 text-white/55">/</span>
+                    {formatRecordingDuration(durationCapSeconds)}
+                  </p>
+                </div>
               </div>
             ) : (
               <audio controls src={previewUrl} className="w-full" preload="metadata">
@@ -741,7 +767,13 @@ export function VoiceMessageRecorderDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="sticky bottom-0 z-10 mt-2 shrink-0 gap-2 bg-background pt-3 pb-[env(safe-area-inset-bottom)] sm:static sm:mt-0 sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2 sm:pb-0">
+        <DialogFooter
+          className={
+            recordMode === "video"
+              ? "z-10 mt-auto flex-wrap gap-2 bg-background pt-5 sm:static sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2"
+              : "sticky bottom-0 z-10 mt-2 shrink-0 gap-2 bg-background pt-3 pb-[env(safe-area-inset-bottom)] sm:static sm:mt-0 sm:justify-center sm:space-x-0 sm:gap-2 sm:pt-2 sm:pb-0"
+          }
+        >
           {phase === "idle" ? (
             <Button type="button" onClick={() => void startRecording()} disabled={isStarting}>
               {recordMode === "video" ? (
