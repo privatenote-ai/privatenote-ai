@@ -23,6 +23,7 @@ import {
   BRANDING_BANNER_MAX_BYTES,
   BRANDING_BANNER_RECOMMENDED_PX,
   BRANDING_BANNER_SIZE_LABEL,
+  BRANDING_CARD_BANNER_MAX_BYTES,
   BRANDING_CARD_BANNER_RECOMMENDED_PX,
   BRANDING_CARD_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
@@ -894,10 +895,10 @@ export default function AccountBranding() {
   };
 
   const uploadCardBanner = async (file: File) => {
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_LOGO_MAX_BYTES) {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_CARD_BANNER_MAX_BYTES) {
       toast({
         title: "Unsupported banner",
-        description: `Use a PNG, JPEG, or WebP image under ${Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB. About ${BRANDING_CARD_BANNER_SIZE_LABEL}.`,
+        description: `Use a PNG, JPEG, or WebP image under ${Math.round(BRANDING_CARD_BANNER_MAX_BYTES / (1024 * 1024))} MB. About ${BRANDING_CARD_BANNER_SIZE_LABEL}.`,
         variant: "destructive",
       });
       return;
@@ -1348,7 +1349,7 @@ export default function AccountBranding() {
                       ) : null}
                     </div>
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      Wide lockup, about {BRANDING_CARD_BANNER_SIZE_LABEL}. Names and trust message stay on the card.
+                      Wide lockup, about {BRANDING_CARD_BANNER_SIZE_LABEL}; maximum {Math.round(BRANDING_CARD_BANNER_MAX_BYTES / (1024 * 1024))} MB. Names and trust message stay on the card.
                     </p>
                   </div>
                 </div>

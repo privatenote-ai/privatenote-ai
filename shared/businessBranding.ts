@@ -38,6 +38,8 @@ export const BRANDING_BANNER_SIZE_LABEL =
   `${BRANDING_BANNER_RECOMMENDED_PX.width}×${BRANDING_BANNER_RECOMMENDED_PX.height}` as const;
 /** Wide lockup on the reveal card (not the full-page photograph). */
 export const BRANDING_CARD_BANNER_RECOMMENDED_PX = { width: 1200, height: 400 } as const;
+/** A 1200×400 lockup needs more headroom than the square logo mark, especially as PNG. */
+export const BRANDING_CARD_BANNER_MAX_BYTES = 3 * 1024 * 1024;
 export const BRANDING_CARD_BANNER_SIZE_LABEL =
   `${BRANDING_CARD_BANNER_RECOMMENDED_PX.width}×${BRANDING_CARD_BANNER_RECOMMENDED_PX.height}` as const;
 
@@ -1206,19 +1208,22 @@ export function brandingLogoIsSolo(branding: BrandingCardMarkSource | undefined)
 }
 
 /**
- * Reveal-card logo size. A square mark next to a name stays ~64px. A wide
- * banner lockup, or a logo with no names, uses a larger mark so it can read.
+ * Reveal-card logo size. A square mark next to a name stays ~64px. A logo with
+ * no names reads larger, and a wide banner lockup larger still on desktop.
  */
 export function brandingRevealLogoClassName(
   branding: BrandingCardMarkSource | undefined,
   options?: { preview?: boolean },
 ): string {
-  const large = brandingLogoIsSolo(branding) || brandingCardMarkIsBanner(branding);
+  const banner = brandingCardMarkIsBanner(branding);
+  const large = brandingLogoIsSolo(branding) || banner;
   if (options?.preview) {
     return large
       ? "mx-auto max-h-8 w-auto max-w-[7rem] object-contain"
       : "mx-auto max-h-6 w-auto max-w-16 object-contain";
   }
+  // A 3:1 lockup reads poorly at logo height, so it gets extra room on desktop only.
+  if (banner) return "mx-auto max-h-16 w-auto max-w-full object-contain sm:max-h-32";
   return large
     ? "mx-auto max-h-16 w-auto max-w-full object-contain sm:max-h-20"
     : "mx-auto max-h-12 w-auto max-w-full object-contain sm:max-h-14";

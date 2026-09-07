@@ -27,7 +27,7 @@ import {
   type StripePortalFlow,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
-import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, parseOpenedNoteBrandingSettings, stringifyOpenedNoteBrandingSettings, openedSettingsFromAccountColumns, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, publicBrandingAssetPath, type BrandingPortalLayout, type OpenedNoteBrandingSettings } from "@shared/businessBranding";
+import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, parseOpenedNoteBrandingSettings, stringifyOpenedNoteBrandingSettings, openedSettingsFromAccountColumns, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, BRANDING_CARD_BANNER_MAX_BYTES, publicBrandingAssetPath, type BrandingPortalLayout, type OpenedNoteBrandingSettings } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -103,7 +103,7 @@ const BUSINESS_BANNER = {
 const BUSINESS_CARD_BANNER = {
   OBJECT_PREFIX: "account-branding/card-banner/",
   PUBLIC_PATH_PREFIX: "/api/auth/branding/card-banner/",
-  MAX_BYTES: BRANDING_LOGO_MAX_BYTES,
+  MAX_BYTES: BRANDING_CARD_BANNER_MAX_BYTES,
 } as const;
 const BUSINESS_OPENED_BANNER = {
   OBJECT_PREFIX: "account-branding/opened-banner/",
