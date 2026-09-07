@@ -23,6 +23,7 @@ import {
   BRANDING_BANNER_MAX_BYTES,
   BRANDING_BANNER_RECOMMENDED_PX,
   BRANDING_BANNER_SIZE_LABEL,
+  BRANDING_CARD_BANNER_RECOMMENDED_PX,
   BRANDING_CARD_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
@@ -1191,15 +1192,11 @@ export default function AccountBranding() {
                       id: "logo" as const,
                       label: "Logo",
                       hint: "Square mark. Optional name, role, and company sit with it.",
-                      imageUrl: businessLogoUrl,
-                      emptyLabel: "No logo yet",
                     },
                     {
                       id: "banner" as const,
                       label: "Banner",
                       hint: "Wider lockup. Name, role, company, and trust message still show.",
-                      imageUrl: portalLayout.cardBannerUrl,
-                      emptyLabel: "No banner yet",
                     },
                   ]).map((choice) => (
                     <button
@@ -1207,31 +1204,19 @@ export default function AccountBranding() {
                       type="button"
                       aria-pressed={portalLayout.cardImage === choice.id}
                       onClick={() => setPortalLayout((prev) => ({ ...prev, cardImage: choice.id }))}
-                      className={`rounded-lg border px-3 py-2 text-left ${
+                      className={`rounded-lg border px-3 py-3 text-left ${
                         portalLayout.cardImage === choice.id
                           ? "border-primary bg-primary/5 text-primary"
                           : "border-gray-200 dark:border-gray-700"
                       }`}
                     >
-                      <div
-                        className={`mb-2 flex items-center justify-center overflow-hidden rounded-md bg-white p-1.5 dark:bg-gray-950 ${
-                          choice.id === "banner" ? "h-14 w-full" : "mx-auto h-14 w-14"
-                        }`}
-                      >
-                        {choice.imageUrl ? (
-                          <img
-                            src={choice.imageUrl}
-                            alt=""
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        ) : (
-                          <span className="text-[11px] font-normal text-gray-400">{choice.emptyLabel}</span>
-                        )}
-                      </div>
                       <span className="block text-sm font-medium">{choice.label}</span>
                       <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
                         {choice.hint}
                       </span>
+                      {portalLayout.cardImage === choice.id ? (
+                        <span className="mt-2 block text-[11px] font-medium">Selected</span>
+                      ) : null}
                     </button>
                   ))}
                 </div>
@@ -1275,11 +1260,16 @@ export default function AccountBranding() {
                     if (file) void uploadOpenedBanner(file);
                   }}
                 />
-                {portalLayout.cardImage === "logo" ? (
-                  <>
-                    <Label className="mb-2 block text-sm">Logo</Label>
+                <div className="space-y-5">
+                  <div>
+                    <Label className="mb-2 block text-sm">
+                      Logo
+                      {businessLogoUrl ? (
+                        <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">Loaded</span>
+                      ) : null}
+                    </Label>
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
+                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
                         {businessLogoUrl ? (
                           <img src={businessLogoUrl} alt="Current reveal logo" className="max-h-full max-w-full object-contain" />
                         ) : (
@@ -1310,18 +1300,32 @@ export default function AccountBranding() {
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                       Square mark. PNG, JPEG, or WebP; maximum {Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB. Recommended {BRANDING_LOGO_RECOMMENDED_PX.width}×{BRANDING_LOGO_RECOMMENDED_PX.height}.
                     </p>
-                  </>
-                ) : (
-                  <>
-                    <Label className="mb-2 block text-sm">Banner image</Label>
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-sm">
+                      Banner image
+                      {portalLayout.cardBannerUrl ? (
+                        <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">Loaded</span>
+                      ) : null}
+                    </Label>
+                    <div
+                      className="mb-3 flex w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700"
+                      style={{ aspectRatio: `${BRANDING_CARD_BANNER_RECOMMENDED_PX.width} / ${BRANDING_CARD_BANNER_RECOMMENDED_PX.height}` }}
+                    >
+                      {portalLayout.cardBannerUrl ? (
+                        <img
+                          src={portalLayout.cardBannerUrl}
+                          alt="Current reveal banner"
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-gray-400">
+                          <ImageIcon className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+                          <span className="text-xs">No banner yet</span>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
-                        {portalLayout.cardBannerUrl ? (
-                          <img src={portalLayout.cardBannerUrl} alt="Current reveal banner" className="max-h-full max-w-full object-contain" />
-                        ) : (
-                          <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                        )}
-                      </div>
                       <Button
                         type="button"
                         variant="outline"
@@ -1346,8 +1350,8 @@ export default function AccountBranding() {
                     <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                       Wide lockup, about {BRANDING_CARD_BANNER_SIZE_LABEL}. Names and trust message stay on the card.
                     </p>
-                  </>
-                )}
+                  </div>
+                </div>
               </div>
 
               <div className="border-t border-violet-100 pt-6 dark:border-violet-900/40">
