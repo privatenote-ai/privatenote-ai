@@ -24,6 +24,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Palette,
   Copy,
   CreditCard,
 } from "lucide-react";
@@ -497,6 +498,31 @@ export default function AccountOverview() {
           )}
         </section>
 
+        {/* ── Branding ──────────────────────────────────────────────────── */}
+        <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between gap-4 border-b border-gray-200 bg-gray-50/60 px-5 py-4 dark:border-gray-800 dark:bg-gray-900/40">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                {tx("authNavBranding", "Branding")}
+              </p>
+            </div>
+            <Link href="/account/branding">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline underline-offset-2">
+                {tx("authOpen", "Open")} <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </Link>
+          </div>
+          <div className="px-5 py-4">
+            <p className="text-sm text-gray-900 dark:text-white">
+              {summary?.businessDisplayName?.trim() || tx("authNone", "None")}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {tx("authPrefsBrandingLinkHint", "Logo, colours, and the page recipients see.")}
+            </p>
+          </div>
+        </section>
+
         {/* ── Preferences quick-look ─────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
@@ -526,17 +552,6 @@ export default function AccountOverview() {
                 </span>
               )}
             </div>
-            <Link
-              href="/account/branding"
-              className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/40"
-            >
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {tx("authNavBranding", "Branding")}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                {tx("authOpen", "Open")} <ChevronRight className="h-3.5 w-3.5" />
-              </span>
-            </Link>
             <Link
               href="/account/activity"
               className="flex items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/40"

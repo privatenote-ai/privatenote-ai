@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -14,6 +14,7 @@ import {
   Upload,
   Trash2,
   Unlock,
+  Lock,
   Crown,
 } from "lucide-react";
 import {
@@ -35,6 +36,8 @@ import {
   brandingPositionFromMobileLane,
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
+  brandingCardPercentFromPosition,
+  brandingCardPositionFromPercent,
   contrastingTextOn,
   DEFAULT_BRANDING_PORTAL_LAYOUT,
   DEFAULT_OPENED_NOTE_BRANDING,
@@ -145,19 +148,62 @@ function ColorField({
     </div>
   );
 }
+const PREVIEW_DESKTOP = { width: 1280, height: 800 };
+const PREVIEW_PHONE = { width: 390, height: 844 };
+
+function ScaledViewport({
+  width,
+  height,
+  children,
+}: {
+  width: number;
+  height: number;
+  children: ReactNode;
+}) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const update = () => {
+      const next = el.clientWidth / width;
+      setScale(Number.isFinite(next) && next > 0 ? Math.min(1, next) : 1);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [width]);
+
+  return (
+    <div
+      ref={outerRef}
+      className="flex w-full justify-center"
+      style={{ height: height * scale }}
+    >
+      <div style={{ width: width * scale, height: height * scale }}>
+        <div
+          className="origin-top-left"
+          style={{ width, height, transform: `scale(${scale})` }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const BrandingPreview: React.FC<{
   branding: RevealBranding;
   viewport: "desktop" | "mobile";
-}> = ({ branding, viewport }) => {
-  const compact = brandingUsesPortalSurface(branding);
+  onCardPlace?: (x: number, y: number) => void;
+}> = ({ branding, viewport, onCardPlace }) => {
+  const usesCard = brandingUsesPortalSurface(branding);
   const buttonStyle = brandingCtaStyle(branding);
   const markUrl = brandingCardMarkUrl(branding);
   const logo = markUrl ? (
-    <img
-      src={markUrl}
-      alt=""
-      className={brandingRevealLogoClassName(branding, { preview: true })}
-    />
+    <img src={markUrl} alt="" className={brandingRevealLogoClassName(branding)} />
   ) : null;
   const sender = branding.senderName?.trim();
   const company = branding.companyName?.trim();
@@ -168,6 +214,18 @@ const BrandingPreview: React.FC<{
       : company
         ? `Shared by ${company}`
         : null;
+  const action = (
+    <div className="flex w-full justify-center">
+      <button
+        type="button"
+        className="inline-flex w-full max-w-sm items-center justify-center rounded-md bg-primary px-5 py-3 text-base font-semibold text-white"
+        style={buttonStyle}
+      >
+        <Unlock className="mr-2 h-4 w-4" />
+        Reveal Note
+      </button>
+    </div>
+  );
 
   return (
     <RecipientPortal
@@ -181,35 +239,144 @@ const BrandingPreview: React.FC<{
         revealSecuredByPrivateNote: "Secured by PrivateNote",
         language: "Language",
       }}
-      surface={compact ? "card" : "plain"}
+      surface={usesCard ? "card" : "plain"}
+      onCardPlace={onCardPlace}
     >
-      <RevealHandoffStack
-        compact={compact}
-        branding={branding}
-        brandingLine={brandingLine}
-        logo={logo}
-        title={compact ? undefined : "Reveal Private Note"}
-        action={
-          <button
-            type="button"
-            className="inline-flex w-full max-w-xs items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold"
-            style={buttonStyle}
-          >
-            <Unlock className="mr-2 h-4 w-4" />
-            Reveal note
-          </button>
-        }
-        footnote={compact ? "Deleted after opening" : undefined}
-      />
+      {usesCard ? (
+        <RevealHandoffStack
+          compact
+          branding={branding}
+          brandingLine={brandingLine}
+          logo={logo}
+          action={action}
+          footnote="Deleted after opening"
+        />
+      ) : (
+        <section className="mx-auto w-full max-w-5xl">
+          <section className="relative isolate px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8">
+            <RevealHandoffStack
+              branding={branding}
+              brandingLine={brandingLine}
+              logo={logo}
+              title={
+                <>
+                  Reveal <span className="text-primary">Private Note</span>
+                </>
+              }
+              subtitle="For your privacy, this note is deleted after it's opened."
+              action={action}
+              footnote="Open only when you're ready — this cannot be undone."
+            />
+          </section>
+        </section>
+      )}
     </RecipientPortal>
   );
 };
+
+function PreviewDeviceFrame({
+  viewport,
+  onViewportChange,
+  hint,
+  children,
+  showViewportToggle = true,
+  label = "Recipient preview",
+}: {
+  viewport: "desktop" | "mobile";
+  onViewportChange: (viewport: "desktop" | "mobile") => void;
+  hint?: string;
+  children: ReactNode;
+  showViewportToggle?: boolean;
+  label?: string;
+}) {
+  const phoneOuterWidth = PREVIEW_PHONE.width + 32;
+  const phoneOuterHeight = PREVIEW_PHONE.height + 32;
+
+  return (
+    <div className="space-y-3">
+      {showViewportToggle ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
+            {([
+              { id: "desktop" as const, label: "Desktop", Icon: Monitor },
+              { id: "mobile" as const, label: "Phone", Icon: Smartphone },
+            ]).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onViewportChange(option.id)}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                  viewport === option.id
+                    ? "bg-primary/10 text-primary"
+                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
+                }`}
+              >
+                <option.Icon className="h-3.5 w-3.5" aria-hidden />
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm font-medium text-gray-900 dark:text-white">{label}</p>
+      )}
+      {viewport === "desktop" ? (
+        <ScaledViewport width={PREVIEW_DESKTOP.width} height={PREVIEW_DESKTOP.height + 44}>
+          <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-neutral-300 bg-neutral-200 shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
+            <div className="flex h-11 shrink-0 items-center gap-3 border-b border-neutral-300 bg-neutral-100 px-3 dark:border-neutral-700 dark:bg-neutral-900">
+              <span className="flex gap-1.5" aria-hidden>
+                <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+                <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+                <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+              </span>
+              <div className="flex min-w-0 flex-1 items-center justify-center">
+                <div className="flex h-7 w-full max-w-xl items-center gap-2 rounded-md bg-white px-3 text-[13px] text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-400">
+                  <Lock className="h-3 w-3 shrink-0 text-emerald-600" aria-hidden />
+                  <span className="truncate">privatenote.ai/n/k7w9…</span>
+                </div>
+              </div>
+              <span className="w-14" aria-hidden />
+            </div>
+            <div className="min-h-0 flex-1">{children}</div>
+          </div>
+        </ScaledViewport>
+      ) : (
+        <ScaledViewport width={phoneOuterWidth} height={phoneOuterHeight}>
+          <div
+            className="rounded-[2.75rem] border-[12px] border-neutral-900 bg-neutral-900 p-1 shadow-2xl"
+            style={{ width: phoneOuterWidth, height: phoneOuterHeight }}
+          >
+            <div className="relative flex h-full w-full flex-col overflow-hidden rounded-[2rem] bg-black">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-11 bg-gradient-to-b from-black/55 to-transparent">
+                <div className="flex h-full items-center justify-between px-6 text-[12px] font-semibold text-white">
+                  <span>9:41</span>
+                  <span className="absolute left-1/2 top-1.5 h-6 w-24 -translate-x-1/2 rounded-full bg-black" aria-hidden />
+                  <span className="tracking-tight">••••</span>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 pt-11">{children}</div>
+              <div className="relative z-20 flex shrink-0 flex-col items-center gap-2 bg-black/40 px-4 pb-2 pt-1 backdrop-blur-md">
+                <div className="flex h-11 w-full items-center justify-center rounded-2xl bg-white/15 text-[13px] text-white">
+                  <Lock className="mr-1.5 h-3 w-3 text-white/80" aria-hidden />
+                  privatenote.ai
+                </div>
+                <span className="mb-0.5 h-1 w-28 rounded-full bg-white/80" aria-hidden />
+              </div>
+            </div>
+          </div>
+        </ScaledViewport>
+      )}
+      {hint ? <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p> : null}
+    </div>
+  );
+}
 
 const OpenedNoteBrandingPreview: React.FC<{
   branding: RevealBranding | undefined;
   viewport: "desktop" | "mobile";
 }> = ({ branding, viewport }) => {
-  const compact = brandingUsesPortalSurface(branding);
+  const usesPortal = brandingUsesPortalSurface(branding);
   const sender = branding?.senderName?.trim();
   const company = branding?.companyName?.trim();
   const brandingLine = sender && company
@@ -233,31 +400,35 @@ const OpenedNoteBrandingPreview: React.FC<{
         revealSecuredByPrivateNote: "Secured by PrivateNote",
         language: "Language",
       }}
-      surface={compact ? "wide" : "plain"}
+      surface={usesPortal ? "wide" : "plain"}
     >
-      <div className="text-center">
-        {markUrl || brandingLine || branding?.trustMessage ? (
-          <div className="mb-4 flex flex-col items-center gap-1.5">
-            {markUrl ? (
-              <img src={markUrl} alt="" className="max-h-8 max-w-28 object-contain" />
-            ) : null}
-            {brandingLine ? (
-              <p className="m-0 text-xs font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
-            ) : null}
-            {branding?.trustMessage ? (
-              <p className="m-0 max-w-xs text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                {branding.trustMessage}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-        <p className="m-0 text-[10px] font-medium text-amber-800 dark:text-amber-200">
-          This note will be deleted after you leave…
-        </p>
-        <div className="mx-auto mt-4 max-w-xs rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+      <section className="mx-auto w-full max-w-3xl">
+        <div className="mb-8 text-center">
+          <h1 className="page-title text-primary">Private Note</h1>
+          <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
+            <span aria-hidden>⚠️</span>
+            This note will be deleted after you leave
+          </p>
+          {markUrl || brandingLine || branding?.trustMessage ? (
+            <div className="mt-6 flex flex-col items-center gap-1.5">
+              {markUrl ? (
+                <img src={markUrl} alt="" className="max-h-10 max-w-36 object-contain" />
+              ) : null}
+              {brandingLine ? (
+                <p className="m-0 text-sm font-medium text-gray-700">{brandingLine}</p>
+              ) : null}
+              {branding?.trustMessage ? (
+                <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600">
+                  {branding.trustMessage}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-2xl border border-gray-200/90 bg-[rgb(252,251,248)] px-6 py-8 text-left text-base leading-relaxed text-gray-900 shadow-sm">
           Secret content
         </div>
-      </div>
+      </section>
     </RecipientPortal>
   );
 };
@@ -337,13 +508,16 @@ const CARD_POSITION_CELLS: Array<{ id: BrandingCardPosition; label: string }> = 
 
 function CardPositionPad({
   label,
-  value,
+  x,
+  y,
   onChange,
 }: {
   label: string;
-  value: BrandingCardPosition;
-  onChange: (id: BrandingCardPosition) => void;
+  x: number;
+  y: number;
+  onChange: (x: number, y: number) => void;
 }) {
+  const selected = brandingCardPositionFromPercent(x, y);
   return (
     <div>
       <Label className="mb-2 block text-sm">{label}</Label>
@@ -353,18 +527,21 @@ function CardPositionPad({
         aria-label={label}
       >
         {CARD_POSITION_CELLS.map((cell) => {
-          const selected = value === cell.id;
+          const active = selected === cell.id;
           return (
             <button
               key={cell.id}
               type="button"
               role="radio"
-              aria-checked={selected}
+              aria-checked={active}
               aria-label={cell.label}
               title={cell.label}
-              onClick={() => onChange(cell.id)}
+              onClick={() => {
+                const next = brandingCardPercentFromPosition(cell.id);
+                onChange(next.x, next.y);
+              }}
               className={`h-7 rounded-md ${
-                selected
+                active
                   ? "bg-primary shadow-sm"
                   : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
               }`}
@@ -790,7 +967,7 @@ export default function AccountBranding() {
 
   if (authLoading || (user && prefsLoading)) {
     return (
-      <AccountSettingsShell>
+      <AccountSettingsShell wide>
         <div className="animate-pulse space-y-4">
           <div className="h-6 w-36 rounded bg-gray-200 dark:bg-gray-800" />
           <div className="h-28 rounded-xl bg-gray-100 dark:bg-gray-800/60" />
@@ -802,7 +979,7 @@ export default function AccountBranding() {
 
   if (!user) {
     return (
-      <AccountSettingsShell>
+      <AccountSettingsShell wide>
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
@@ -823,7 +1000,7 @@ export default function AccountBranding() {
   }
 
   return (
-    <AccountSettingsShell>
+    <AccountSettingsShell wide>
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -1050,28 +1227,6 @@ export default function AccountBranding() {
                   eyebrow="Page"
                   title="Reveal page"
                   description="Default is a centered card on PrivateNote. Custom is a photograph you pan and scale."
-                  actions={
-                    <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
-                      {([
-                        { id: "desktop" as const, label: "Desktop", Icon: Monitor },
-                        { id: "mobile" as const, label: "Mobile", Icon: Smartphone },
-                      ]).map((option) => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setBrandingPreviewViewport(option.id)}
-                          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
-                            brandingPreviewViewport === option.id
-                              ? "bg-primary/10 text-primary"
-                              : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
-                          }`}
-                        >
-                          <option.Icon className="h-3.5 w-3.5" aria-hidden />
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  }
                 />
               </div>
 
@@ -1332,23 +1487,35 @@ export default function AccountBranding() {
                       <div className="mb-3">
                         <Label className="text-sm">Reveal card</Label>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          Move the card inside a padded frame — not to the screen edge. Phones use top, center, or bottom.
+                          Drag the card in the preview, or snap it with the grid. It stays inset from the edges.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-8">
                         <CardPositionPad
                           label="Desktop"
-                          value={portalLayout.cardPosition}
-                          onChange={(cardPosition) => {
-                            setPortalLayout((prev) => ({ ...prev, cardPosition }));
+                          x={portalLayout.cardX}
+                          y={portalLayout.cardY}
+                          onChange={(cardX, cardY) => {
+                            setPortalLayout((prev) => ({
+                              ...prev,
+                              cardX,
+                              cardY,
+                              cardPosition: brandingCardPositionFromPercent(cardX, cardY),
+                            }));
                             setBrandingPreviewViewport("desktop");
                           }}
                         />
                         <MobileLanePad
-                          label="Mobile"
+                          label="Phone"
                           value={portalLayout.cardPositionMobile}
                           onChange={(cardPositionMobile) => {
-                            setPortalLayout((prev) => ({ ...prev, cardPositionMobile }));
+                            const next = brandingCardPercentFromPosition(cardPositionMobile);
+                            setPortalLayout((prev) => ({
+                              ...prev,
+                              cardPositionMobile,
+                              cardXMobile: next.x,
+                              cardYMobile: next.y,
+                            }));
                             setBrandingPreviewViewport("mobile");
                           }}
                         />
@@ -1360,9 +1527,38 @@ export default function AccountBranding() {
                 ) : null}
               </div>
 
-              <div>
+              <PreviewDeviceFrame
+                viewport={brandingPreviewViewport}
+                onViewportChange={setBrandingPreviewViewport}
+                hint={
+                  brandingPageMode(businessBackgroundStyle) === "custom" && businessBannerUrl
+                    ? "Drag the white card to place it. The grid snaps to edges and corners."
+                    : "This is the page recipients see before they reveal the note."
+                }
+              >
                 <BrandingPreview
                   viewport={brandingPreviewViewport}
+                  onCardPlace={
+                    brandingPageMode(businessBackgroundStyle) === "custom"
+                      ? (x, y) => {
+                          if (brandingPreviewViewport === "mobile") {
+                            setPortalLayout((prev) => ({
+                              ...prev,
+                              cardXMobile: x,
+                              cardYMobile: y,
+                              cardPositionMobile: brandingCardPositionFromPercent(x, y),
+                            }));
+                            return;
+                          }
+                          setPortalLayout((prev) => ({
+                            ...prev,
+                            cardX: x,
+                            cardY: y,
+                            cardPosition: brandingCardPositionFromPercent(x, y),
+                          }));
+                        }
+                      : undefined
+                  }
                   branding={{
                     companyName: businessDisplayName || undefined,
                     senderName: businessSenderName || undefined,
@@ -1377,7 +1573,7 @@ export default function AccountBranding() {
                     ...portalLayout,
                   }}
                 />
-              </div>
+              </PreviewDeviceFrame>
 
               <div className="space-y-5 border-t border-violet-100 pt-6 dark:border-violet-900/40">
                 <BrandingPageHeading
@@ -1414,24 +1610,31 @@ export default function AccountBranding() {
                 </div>
 
                 {openedNoteBranding.show ? (
-                  <OpenedNoteBrandingPreview
+                  <PreviewDeviceFrame
                     viewport={brandingPreviewViewport}
-                    branding={applyOpenedNoteBranding({
-                      companyName: businessDisplayName || undefined,
-                      senderName: businessSenderName || undefined,
-                      senderRole: businessSenderRole || undefined,
-                      trustMessage: businessTrustMessage || undefined,
-                      logoUrl: businessLogoUrl ?? undefined,
-                      bannerUrl: businessBannerUrl ?? undefined,
-                      accentColor: businessAccentColor,
-                      backgroundColor: businessBackgroundColor,
-                      textColor: businessTextColor,
-                      backgroundStyle: businessBackgroundStyle,
-                      ...portalLayout,
-                      showBrandingAfterReveal: true,
-                      openedBackground: "same",
-                    })}
-                  />
+                    onViewportChange={setBrandingPreviewViewport}
+                    showViewportToggle={false}
+                    label="After the note is opened"
+                  >
+                    <OpenedNoteBrandingPreview
+                      viewport={brandingPreviewViewport}
+                      branding={applyOpenedNoteBranding({
+                        companyName: businessDisplayName || undefined,
+                        senderName: businessSenderName || undefined,
+                        senderRole: businessSenderRole || undefined,
+                        trustMessage: businessTrustMessage || undefined,
+                        logoUrl: businessLogoUrl ?? undefined,
+                        bannerUrl: businessBannerUrl ?? undefined,
+                        accentColor: businessAccentColor,
+                        backgroundColor: businessBackgroundColor,
+                        textColor: businessTextColor,
+                        backgroundStyle: businessBackgroundStyle,
+                        ...portalLayout,
+                        showBrandingAfterReveal: true,
+                        openedBackground: "same",
+                      })}
+                    />
+                  </PreviewDeviceFrame>
                 ) : null}
               </div>
 

@@ -88,6 +88,14 @@ export type BrandingPortalLayout = {
   focalY: number;
   /** Cover-crop zoom for the Custom photograph. 100 is unscaled. */
   backgroundZoom: number;
+  /**
+   * Free placement inside the inset frame. 0,0 is top-left; 100,100 is bottom-right.
+   * Older notes omit these and follow `cardPosition`.
+   */
+  cardX: number;
+  cardY: number;
+  cardXMobile: number;
+  cardYMobile: number;
 };
 
 /** Light overlay is ~16% so photography stays visible behind an opaque card. */
@@ -107,6 +115,10 @@ export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
   focalX: 50,
   focalY: 50,
   backgroundZoom: BRANDING_BACKGROUND_ZOOM_DEFAULT,
+  cardX: 50,
+  cardY: 50,
+  cardXMobile: 50,
+  cardYMobile: 50,
 };
 
 /** Persisted shape. `null` means "not configured". */
@@ -124,6 +136,10 @@ export type BusinessBranding = {
   backgroundStyle?: BrandingBackgroundStyle;
   cardPosition?: BrandingCardPosition | null;
   cardPositionMobile?: BrandingCardPosition | null;
+  cardX?: number | null;
+  cardY?: number | null;
+  cardXMobile?: number | null;
+  cardYMobile?: number | null;
   cardImage?: BrandingCardImage | null;
   backgroundFit?: BrandingBackgroundFit | null;
   overlay?: BrandingOverlay | null;
@@ -175,6 +191,10 @@ export type RevealBranding = {
   backgroundStyle?: BrandingBackgroundStyle;
   cardPosition?: BrandingCardPosition;
   cardPositionMobile?: BrandingCardPosition;
+  cardX?: number;
+  cardY?: number;
+  cardXMobile?: number;
+  cardYMobile?: number;
   cardImage?: BrandingCardImage;
   backgroundFit?: BrandingBackgroundFit;
   overlay?: BrandingOverlay;
@@ -231,6 +251,10 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   focalX: DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
   focalY: DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
   backgroundZoom: DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundZoom,
+  cardX: DEFAULT_BRANDING_PORTAL_LAYOUT.cardX,
+  cardY: DEFAULT_BRANDING_PORTAL_LAYOUT.cardY,
+  cardXMobile: DEFAULT_BRANDING_PORTAL_LAYOUT.cardXMobile,
+  cardYMobile: DEFAULT_BRANDING_PORTAL_LAYOUT.cardYMobile,
   showBrandingAfterReveal: false,
   openedBackground: "same",
   openedShowLogo: true,
@@ -632,6 +656,39 @@ export function brandingCardAxis(position: BrandingCardPosition): BrandingCardAx
   }
 }
 
+export function brandingCardPercentFromPosition(position: BrandingCardPosition): {
+  x: number;
+  y: number;
+} {
+  const { x, y } = brandingCardAxis(position);
+  return {
+    x: x === "left" ? 0 : x === "right" ? 100 : 50,
+    y: y === "top" ? 0 : y === "bottom" ? 100 : 50,
+  };
+}
+
+/** Nearest 3×3 snap for a free 0–100 placement. */
+export function brandingCardPositionFromPercent(x: number, y: number): BrandingCardPosition {
+  const col = x <= 33 ? "left" : x >= 67 ? "right" : "center";
+  const row = y <= 33 ? "top" : y >= 67 ? "bottom" : "middle";
+  if (row === "top") return col === "left" ? "top-left" : col === "right" ? "top-right" : "top";
+  if (row === "bottom") return col === "left" ? "bottom-left" : col === "right" ? "bottom-right" : "bottom";
+  return col === "left" ? "left" : col === "right" ? "right" : "center";
+}
+
+export function brandingCardPlacePercent(
+  layout: Pick<
+    BrandingPortalLayout,
+    "cardPosition" | "cardPositionMobile" | "cardX" | "cardY" | "cardXMobile" | "cardYMobile"
+  >,
+  viewport: "desktop" | "mobile",
+): { x: number; y: number } {
+  if (viewport === "mobile") {
+    return { x: layout.cardXMobile, y: layout.cardYMobile };
+  }
+  return { x: layout.cardX, y: layout.cardY };
+}
+
 function parseBackgroundFit(
   raw: unknown,
 ): { ok: true; value: BrandingBackgroundFit } | { ok: false } {
@@ -732,12 +789,24 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
       message: `Image scale must be ${BRANDING_BACKGROUND_ZOOM_MIN}–${BRANDING_BACKGROUND_ZOOM_MAX}`,
     };
   }
+  const desktopPosition =
+    desktop.kind === "value" ? desktop.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition;
+  const mobilePosition =
+    mobile.kind === "value" ? mobile.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPositionMobile;
+  const desktopPlace = brandingCardPercentFromPosition(desktopPosition);
+  const mobilePlace = brandingCardPercentFromPosition(mobilePosition);
+  const cardX = parseFocalPercent(body.cardX, desktopPlace.x);
+  const cardY = parseFocalPercent(body.cardY, desktopPlace.y);
+  const cardXMobile = parseFocalPercent(body.cardXMobile, mobilePlace.x);
+  const cardYMobile = parseFocalPercent(body.cardYMobile, mobilePlace.y);
+  if (!cardX.ok || !cardY.ok || !cardXMobile.ok || !cardYMobile.ok) {
+    return { ok: false, code: "invalid_image_position", message: "Card position must be 0–100" };
+  }
   return {
     ok: true,
     layout: {
-      cardPosition: desktop.kind === "value" ? desktop.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPosition,
-      cardPositionMobile:
-        mobile.kind === "value" ? mobile.value : DEFAULT_BRANDING_PORTAL_LAYOUT.cardPositionMobile,
+      cardPosition: desktopPosition,
+      cardPositionMobile: mobilePosition,
       cardImage: cardImage.value,
       backgroundFit: backgroundFit.value,
       overlay: overlay.value,
@@ -745,6 +814,10 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
       focalY: focalY.value,
       backgroundZoom: backgroundZoom.value,
       cardBannerUrl: parseLayoutCardBannerUrl(body.cardBannerUrl),
+      cardX: cardX.value,
+      cardY: cardY.value,
+      cardXMobile: cardXMobile.value,
+      cardYMobile: cardYMobile.value,
     },
   };
 }
@@ -762,6 +835,14 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
   const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
   const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
   const backgroundZoom = parseBackgroundZoom(body.backgroundZoom);
+  const desktopPlace = brandingCardPercentFromPosition(desktop);
+  const mobilePlace = brandingCardPercentFromPosition(
+    mobileToken.kind === "value" ? mobileToken.value : desktop,
+  );
+  const cardX = parseFocalPercent(body.cardX, desktopPlace.x);
+  const cardY = parseFocalPercent(body.cardY, desktopPlace.y);
+  const cardXMobile = parseFocalPercent(body.cardXMobile, mobilePlace.x);
+  const cardYMobile = parseFocalPercent(body.cardYMobile, mobilePlace.y);
   return {
     cardPosition: desktop,
     cardPositionMobile: mobileToken.kind === "value" ? mobileToken.value : desktop,
@@ -772,6 +853,10 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
     focalY: focalY.ok ? focalY.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
     backgroundZoom: backgroundZoom.ok ? backgroundZoom.value : DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundZoom,
     cardBannerUrl: parseLayoutCardBannerUrl(body.cardBannerUrl),
+    cardX: cardX.ok ? cardX.value : desktopPlace.x,
+    cardY: cardY.ok ? cardY.value : desktopPlace.y,
+    cardXMobile: cardXMobile.ok ? cardXMobile.value : mobilePlace.x,
+    cardYMobile: cardYMobile.ok ? cardYMobile.value : mobilePlace.y,
   };
 }
 
@@ -788,6 +873,10 @@ export function brandingPortalLayout(
         | "focalY"
         | "backgroundZoom"
         | "cardBannerUrl"
+        | "cardX"
+        | "cardY"
+        | "cardXMobile"
+        | "cardYMobile"
       >
     | undefined,
 ): BrandingPortalLayout {
@@ -801,6 +890,10 @@ export function brandingPortalLayout(
     focalY: branding?.focalY,
     backgroundZoom: branding?.backgroundZoom,
     cardBannerUrl: branding?.cardBannerUrl,
+    cardX: branding?.cardX,
+    cardY: branding?.cardY,
+    cardXMobile: branding?.cardXMobile,
+    cardYMobile: branding?.cardYMobile,
   });
 }
 
@@ -1199,6 +1292,10 @@ export function parseBusinessBrandingInput(
       focalX: layout.layout.focalX,
       focalY: layout.layout.focalY,
       backgroundZoom: layout.layout.backgroundZoom,
+      cardX: layout.layout.cardX,
+      cardY: layout.layout.cardY,
+      cardXMobile: layout.layout.cardXMobile,
+      cardYMobile: layout.layout.cardYMobile,
       showBrandingAfterReveal: opened.settings.show,
       openedBackground: opened.settings.background,
       openedShowLogo: opened.settings.showLogo,
@@ -1238,8 +1335,14 @@ export function toRevealBranding(
     focalX: branding.focalX ?? undefined,
     focalY: branding.focalY ?? undefined,
     backgroundZoom: branding.backgroundZoom ?? undefined,
+    cardX: branding.cardX ?? undefined,
+    cardY: branding.cardY ?? undefined,
+    cardXMobile: branding.cardXMobile ?? undefined,
+    cardYMobile: branding.cardYMobile ?? undefined,
   });
   const defaults = DEFAULT_BRANDING_PORTAL_LAYOUT;
+  const desktopPlace = brandingCardPercentFromPosition(layout.cardPosition);
+  const mobilePlace = brandingCardPercentFromPosition(layout.cardPositionMobile);
   return {
     ...(branding.companyName ? { companyName: branding.companyName } : {}),
     ...(branding.senderName ? { senderName: branding.senderName } : {}),
@@ -1264,6 +1367,10 @@ export function toRevealBranding(
     ...(layout.focalX !== defaults.focalX ? { focalX: layout.focalX } : {}),
     ...(layout.focalY !== defaults.focalY ? { focalY: layout.focalY } : {}),
     ...(layout.backgroundZoom !== defaults.backgroundZoom ? { backgroundZoom: layout.backgroundZoom } : {}),
+    ...(layout.cardX !== desktopPlace.x ? { cardX: layout.cardX } : {}),
+    ...(layout.cardY !== desktopPlace.y ? { cardY: layout.cardY } : {}),
+    ...(layout.cardXMobile !== mobilePlace.x ? { cardXMobile: layout.cardXMobile } : {}),
+    ...(layout.cardYMobile !== mobilePlace.y ? { cardYMobile: layout.cardYMobile } : {}),
     ...(branding.showBrandingAfterReveal === true ? { showBrandingAfterReveal: true } : {}),
     ...(branding.showBrandingAfterReveal === true &&
     branding.openedBackground &&
@@ -1331,6 +1438,10 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     focalX: layout.focalX,
     focalY: layout.focalY,
     backgroundZoom: layout.backgroundZoom,
+    cardX: layout.cardX,
+    cardY: layout.cardY,
+    cardXMobile: layout.cardXMobile,
+    cardYMobile: layout.cardYMobile,
     showBrandingAfterReveal: openedSettings.show,
     openedBackground: openedSettings.background,
     openedShowLogo: openedSettings.showLogo,

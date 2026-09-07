@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { Check, ChevronDown, Languages, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
@@ -11,6 +11,8 @@ import {
   brandingShowsBanner,
   brandingUsesPortalSurface,
   brandingCardAxis,
+  brandingCardPlacePercent,
+  BRANDING_CARD_INSET_PX,
   type BrandingCardPosition,
   type RevealBranding,
 } from "@shared/businessBranding";
@@ -38,6 +40,8 @@ type RecipientPortalProps = {
   /** Scaled-down live preview in account settings. */
   preview?: boolean;
   previewViewport?: "desktop" | "mobile";
+  /** Preview only: free-place the reveal card by dragging. */
+  onCardPlace?: (x: number, y: number) => void;
 };
 
 function resolveSurface(
@@ -86,6 +90,10 @@ function cardPlacementClassName(
   return `${axisClass(mobile, "base")} px-6 py-10 ${axisClass(desktop, "sm")} ${gutter} ${stack}`;
 }
 
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 export function RecipientPortal({
   branding,
   children,
@@ -95,6 +103,7 @@ export function RecipientPortal({
   surface,
   preview = false,
   previewViewport = "desktop",
+  onCardPlace,
 }: RecipientPortalProps) {
   const page = brandingPageBackground(branding);
   const layout = brandingPortalLayout(branding);
@@ -107,29 +116,85 @@ export function RecipientPortal({
     LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
   const languageControl = Boolean(onLanguageChange) && !preview;
   const placementMode = preview ? previewViewport : "live";
+  const [liveNarrow, setLiveNarrow] = useState(false);
+  useEffect(() => {
+    if (preview) return;
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setLiveNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [preview]);
+  const placeViewport: "desktop" | "mobile" = preview
+    ? previewViewport
+    : liveNarrow
+      ? "mobile"
+      : "desktop";
   /** Opened note (`wide`) stays centered; Default is always centered; Custom follows sender placement. */
   const honorSenderPlacement = resolvedSurface === "card" && brandingShowsBanner(branding);
+  const freePlace = honorSenderPlacement;
   const cardPlacement = cardPlacementClassName(
     honorSenderPlacement ? layout.cardPosition : "center",
     honorSenderPlacement ? layout.cardPositionMobile : "center",
     placementMode,
   );
+  const place = brandingCardPlacePercent(layout, placeViewport);
   const wideCard = brandingLogoIsSolo(branding) || brandingCardMarkIsBanner(branding);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ grabX: number; grabY: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const canDrag = Boolean(preview && freePlace && onCardPlace);
+
+  const moveCard = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!onCardPlace || !dragRef.current || !stageRef.current || !cardRef.current) return;
+      const stage = stageRef.current.getBoundingClientRect();
+      const card = cardRef.current.getBoundingClientRect();
+      const availW = Math.max(1, stage.width - card.width);
+      const availH = Math.max(1, stage.height - card.height);
+      const left = clientX - dragRef.current.grabX - stage.left;
+      const top = clientY - dragRef.current.grabY - stage.top;
+      onCardPlace(clampPercent((left / availW) * 100), clampPercent((top / availH) * 100));
+    },
+    [onCardPlace],
+  );
+
+  const onCardPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!canDrag || !cardRef.current) return;
+    if ((event.target as HTMLElement).closest("button, a, input, textarea, select")) return;
+    const card = cardRef.current.getBoundingClientRect();
+    dragRef.current = { grabX: event.clientX - card.left, grabY: event.clientY - card.top };
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const onCardPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    moveCard(event.clientX, event.clientY);
+  };
+
+  const endDrag = (event: PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setDragging(false);
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* already released */
+    }
+  };
 
   const chromeText = lightChrome
     ? "text-white"
     : "text-primary dark:text-blue-300";
-  const chromeMuted = lightChrome
-    ? "text-white/80 hover:text-white"
-    : "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white";
   const footerMuted = lightChrome
     ? "text-white/80"
     : "text-gray-600/80 dark:text-gray-300/75";
 
   const shellClass = preview
-    ? previewViewport === "mobile"
-      ? "relative mx-auto flex min-h-[34rem] w-[20rem] flex-col overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700"
-      : "relative flex min-h-[28rem] w-full flex-col overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700"
+    ? "relative flex h-full w-full min-h-0 flex-col overflow-hidden bg-white dark:bg-gray-950"
     : "relative flex min-h-[100dvh] w-full flex-col";
 
   return (
@@ -184,8 +249,8 @@ export function RecipientPortal({
           tabIndex={preview ? -1 : undefined}
           onClick={preview ? (event) => event.preventDefault() : undefined}
         >
-          <Logo size={preview ? 22 : 28} className="shrink-0" />
-          <span className={`font-bold tracking-tight ${preview ? "text-base" : "text-lg sm:text-xl"}`}>
+          <Logo size={28} className="shrink-0" />
+          <span className="text-lg font-bold tracking-tight sm:text-xl">
             privateNote
             <span className="ml-0.5 align-super text-[0.65em] font-semibold">.ai</span>
           </span>
@@ -219,7 +284,13 @@ export function RecipientPortal({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${chromeMuted}`}>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-none ${
+              lightChrome
+                ? "border-white/25 bg-white/10 text-white"
+                : "border-gray-200 bg-white/80 text-gray-800 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
+            }`}
+          >
             <Languages className="h-3.5 w-3.5 opacity-80" aria-hidden />
             {languageLabel}
             <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden />
@@ -228,35 +299,69 @@ export function RecipientPortal({
       </header>
 
       <div
-        className={`relative z-10 flex flex-1 flex-col ${
-          useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"
+        className={`relative z-10 min-h-0 flex-1 ${
+          freePlace
+            ? ""
+            : `flex flex-col ${useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"}`
         }`}
       >
         {useCard ? (
-          <div
-            className={`w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
-              resolvedSurface === "wide"
-                ? "max-w-3xl p-5 sm:p-6"
-                : preview && previewViewport === "desktop"
-                  ? wideCard
-                    ? "max-w-[18rem] p-3.5"
-                    : "max-w-[13rem] p-3.5"
+          freePlace ? (
+            <div
+              ref={stageRef}
+              className="absolute"
+              style={{
+                top: placeViewport === "mobile" ? 24 : BRANDING_CARD_INSET_PX,
+                right: placeViewport === "mobile" ? 24 : BRANDING_CARD_INSET_PX,
+                bottom: placeViewport === "mobile" ? 24 : BRANDING_CARD_INSET_PX,
+                left: placeViewport === "mobile" ? 24 : BRANDING_CARD_INSET_PX,
+              }}
+            >
+              <div
+                ref={cardRef}
+                onPointerDown={onCardPointerDown}
+                onPointerMove={onCardPointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                className={`rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
+                  wideCard
+                    ? "w-[min(100%,36rem)] p-5 sm:p-7"
+                    : "w-[min(100%,24rem)] p-5 sm:p-6"
+                } ${canDrag ? "touch-none select-none" : ""} ${
+                  dragging ? "cursor-grabbing" : canDrag ? "cursor-grab" : ""
+                }`}
+                style={{
+                  position: "absolute",
+                  left: `${place.x}%`,
+                  top: `${place.y}%`,
+                  transform: `translate(-${place.x}%, -${place.y}%)`,
+                }}
+              >
+                {children}
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
+                resolvedSurface === "wide"
+                  ? "max-w-3xl p-5 sm:p-6"
                   : wideCard
                     ? "max-w-md p-5 sm:max-w-xl sm:p-7"
                     : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
-            }`}
-          >
-            {children}
-          </div>
+              }`}
+            >
+              {children}
+            </div>
+          )
         ) : (
           <div className="w-full max-w-6xl">{children}</div>
         )}
       </div>
 
       <footer
-        className={`relative z-20 px-4 py-4 text-center sm:px-6 ${footerMuted} ${
-          preview ? "text-[10px]" : "text-xs sm:text-sm"
-        } ${page.kind === "image" ? "bg-gradient-to-t from-black/50 to-transparent" : ""}`}
+        className={`relative z-20 px-4 py-4 text-center text-xs sm:px-6 sm:text-sm ${footerMuted} ${
+          page.kind === "image" ? "bg-gradient-to-t from-black/50 to-transparent" : ""
+        }`}
       >
         <p className="m-0 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
           <Lock className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />

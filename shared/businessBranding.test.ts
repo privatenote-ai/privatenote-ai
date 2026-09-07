@@ -9,6 +9,8 @@ import {
   BRANDING_LOGO_URL_MAX,
   brandingBannerStyle,
   brandingCardAxis,
+  brandingCardPercentFromPosition,
+  brandingCardPositionFromPercent,
   brandingCardMarkUrl,
   brandingCtaStyle,
   brandingHeroStyle,
@@ -92,6 +94,10 @@ describe("parseBusinessBrandingInput", () => {
       focalX: 50,
       focalY: 50,
       backgroundZoom: 100,
+      cardX: 50,
+      cardY: 50,
+      cardXMobile: 50,
+      cardYMobile: 50,
       showBrandingAfterReveal: false,
       openedBackground: "same",
       openedShowLogo: true,
@@ -493,6 +499,14 @@ describe("branding portal layout", () => {
     assert.deepEqual(brandingCardAxis("top-left"), { x: "left", y: "top" });
     assert.deepEqual(brandingCardAxis("bottom-right"), { x: "right", y: "bottom" });
     assert.deepEqual(brandingCardAxis("left"), { x: "left", y: "middle" });
+    assert.deepEqual(brandingCardPercentFromPosition("top-left"), { x: 0, y: 0 });
+    assert.deepEqual(brandingCardPercentFromPosition("center"), { x: 50, y: 50 });
+    assert.equal(brandingCardPositionFromPercent(12, 8), "top-left");
+    assert.equal(brandingCardPositionFromPercent(50, 50), "center");
+    assert.equal(brandingCardPositionFromPercent(90, 80), "bottom-right");
+    assert.equal(brandingPortalLayout(undefined).cardX, 50);
+    assert.equal(brandingPortalLayout({ cardPosition: "left" }).cardX, 0);
+    assert.equal(brandingPortalLayout({ cardPosition: "left", cardX: 22 }).cardX, 22);
   });
 
   it("omits default layout from the note snapshot and keeps non-defaults", () => {
@@ -519,6 +533,18 @@ describe("branding portal layout", () => {
     assert.equal(custom?.cardPosition, "left");
     assert.equal(custom?.overlay, "dark");
     assert.equal(custom?.focalY, 18);
+    assert.equal("cardX" in (custom ?? {}), false);
+
+    const freePlace = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      cardX: 22,
+      cardY: 70,
+    });
+    assert.equal(freePlace?.cardX, 22);
+    assert.equal(freePlace?.cardY, 70);
     assert.equal("backgroundFit" in (custom ?? {}), false);
     assert.equal("cardPositionMobile" in (custom ?? {}), false);
     assert.equal("cardImage" in (custom ?? {}), false);

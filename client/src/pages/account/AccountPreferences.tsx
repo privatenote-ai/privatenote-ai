@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -18,8 +17,6 @@ import {
   SlidersHorizontal,
   Crown,
   Mic,
-  ImageIcon,
-  ChevronRight,
 } from "lucide-react";
 import {
   readLocalHostedAiAllowed,
@@ -559,28 +556,6 @@ export default function AccountPreferences() {
               />
             </div>
           </div>
-        </section>
-
-        <section className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
-          <Link
-            href="/account/branding"
-            className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/40"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-violet-600" aria-hidden />
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {t.authNavBranding || "Branding"}
-                </p>
-              </div>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                {t.authPrefsBrandingLinkHint || "Logo, colours, and the page recipients see."}
-              </p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-              {t.authOpen || "Open"} <ChevronRight className="h-3.5 w-3.5" />
-            </span>
-          </Link>
         </section>
 
         {/* ── Saved note defaults ───────────────────────────────────────── */}
