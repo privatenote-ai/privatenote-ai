@@ -55,6 +55,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   brandingCtaStyle,
   brandingCardMarkUrl,
+  brandingChromeUsesLightText,
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   applyOpenedNoteBranding,
@@ -1777,10 +1778,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const brandingLine = getBrandingLine(openedBranding, t);
   const accentStyle = brandingCtaStyle(openedBranding);
   const openedPortalSurface = brandingUsesPortalSurface(openedBranding);
+  const openedChromeIsLight = brandingChromeUsesLightText(openedBranding ?? activeRevealBranding);
 
   // Regular note content view (either after password decryption or for non-password notes)
   return wrapRecipient(
-    <section className={`w-full mx-auto ${viewerOpen ? "max-w-6xl" : openedPortalSurface ? "" : "max-w-3xl"}`}>
+    <section className={`w-full mx-auto ${viewerOpen ? "max-w-6xl" : "max-w-3xl"}`}>
       <section className={openedPortalSurface ? "relative isolate pb-2 text-center" : NOTE_VIEW_HERO_SECTION}>
         <div className={`text-center ${viewerOpen ? "mb-4" : openedPortalSurface ? "mb-5" : "mb-8 sm:mb-10"}`}>
           {viewerOpen || openedPortalSurface ? null : <h1 className="page-title text-primary">{t.privateNote}</h1>}
@@ -2106,7 +2108,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           <button
             type="button"
             onClick={handleCreateNew}
-            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium border border-primary/25 text-primary/80 rounded-md transition-colors hover:bg-primary/6 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 min-w-[170px]"
+            className={`inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 min-w-[170px] ${
+              openedChromeIsLight
+                ? "border border-white/70 text-white hover:bg-white/10 focus-visible:ring-white/70"
+                : "border border-primary/25 text-primary/80 hover:bg-primary/6 hover:text-primary focus-visible:ring-primary/60"
+            }`}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             {t.createNewNote}

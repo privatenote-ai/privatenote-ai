@@ -358,13 +358,11 @@ export function RecipientPortal({
             </div>
           ) : openedCentered ? (
             <div
-              className={`flex w-full items-center justify-center px-6 py-24 sm:px-12 ${
+              className={`flex w-full justify-center px-4 py-20 sm:px-8 ${
                 preview ? "min-h-full" : "min-h-[100dvh]"
               }`}
             >
-              <div className="mx-auto w-full max-w-3xl rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 sm:p-6 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl">
-                {children}
-              </div>
+              <div className="w-full max-w-3xl">{children}</div>
             </div>
           ) : (
             <div
@@ -374,7 +372,7 @@ export function RecipientPortal({
             </div>
           )
         ) : (
-          <div className="w-full max-w-6xl">{children}</div>
+          <div className="mx-auto w-full max-w-3xl self-center">{children}</div>
         )}
       </div>
 
