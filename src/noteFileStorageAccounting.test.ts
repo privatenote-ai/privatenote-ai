@@ -237,6 +237,17 @@ class FakeD1Database {
       const row = this.usage.get(String(args[0]));
       return row ? { used_bytes: row.used_bytes } : null;
     }
+    if (
+      q.startsWith("SELECT COUNT(*) AS transfer_count FROM account_file_storage_reservations") &&
+      q.includes("date(created_at) = date('now')")
+    ) {
+      const userId = String(args[0]);
+      const today = new Date().toISOString().slice(0, 10);
+      const transfer_count = [...this.reservations.values()].filter(
+        (row) => row.user_id === userId && row.created_at.slice(0, 10) === today,
+      ).length;
+      return { transfer_count };
+    }
     throw new Error(`Unhandled D1 first SQL: ${q}`);
   }
 
@@ -409,6 +420,55 @@ describe("note file storage accounting", () => {
       assert.equal(blocked.status, 413);
       assert.equal(blocked.body.limitBytes, FREE_STORAGE_LIMIT);
     }
+  });
+
+  it("blocks free accounts after 10 file transfers in a day", async () => {
+    const db = new FakeD1Database();
+    const env = makeEnv(db);
+    const limit = 10;
+
+    for (let i = 0; i < limit; i += 1) {
+      const noteId = `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
+      const result = await reserveAccountFileStorageBytes(
+        env,
+        USER_ID,
+        noteId,
+        100,
+        FREE_STORAGE_LIMIT,
+        { maxTransfersPerDay: limit },
+      );
+      assert.deepEqual(result, { ok: true });
+    }
+
+    const blocked = await reserveAccountFileStorageBytes(
+      env,
+      USER_ID,
+      NOTE_ID_2,
+      100,
+      FREE_STORAGE_LIMIT,
+      { maxTransfersPerDay: limit },
+    );
+    assert.equal(blocked.ok, false);
+    if (!blocked.ok) {
+      assert.equal(blocked.status, 429);
+      assert.equal(blocked.body.error, "attachment_transfer_daily_limit");
+      assert.equal(blocked.body.limit, limit);
+      assert.equal(blocked.body.used, limit);
+    }
+
+    // Retries for an existing note do not consume another transfer slot.
+    const firstNoteId = `00000000-0000-4000-8000-${String(0).padStart(12, "0")}`;
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(
+        env,
+        USER_ID,
+        firstNoteId,
+        100,
+        FREE_STORAGE_LIMIT,
+        { maxTransfersPerDay: limit },
+      ),
+      { ok: true },
+    );
   });
 
   it("reserves Premium encrypted bytes atomically and blocks over the 20 GB account cap", async () => {

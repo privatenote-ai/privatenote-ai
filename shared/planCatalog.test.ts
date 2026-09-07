@@ -68,6 +68,9 @@ describe("planCatalog", () => {
     assert.equal(free.activePayloadBufferBytes, 250 * 1024 * 1024);
     assert.equal(starter.activePayloadBufferBytes, 5 * 1024 * 1024 * 1024);
     assert.equal(business.activePayloadBufferBytes, 50 * 1024 * 1024 * 1024);
+    assert.equal(free.maxAttachmentTransfersPerDay, 10);
+    assert.equal(starter.maxAttachmentTransfersPerDay, null);
+    assert.equal(business.maxAttachmentTransfersPerDay, null);
     assert.equal(free.maxFileAccessWindowSeconds, 15 * 60);
     assert.equal(starter.maxFileAccessWindowSeconds, 30 * 60);
     assert.equal(business.maxFileAccessWindowSeconds, 60 * 60);

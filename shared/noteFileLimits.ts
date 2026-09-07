@@ -54,6 +54,19 @@ export function noteFileTotalStorageBytesForAccount(
   return planFeaturesFor(accountTypeOrIsPremium).activePayloadBufferBytes;
 }
 
+/**
+ * Daily file/photo/audio/recording transfer cap for an account type.
+ * `null` means unlimited.
+ */
+export function noteFileTransfersPerDayForAccount(
+  accountTypeOrIsPremium: string | boolean | null | undefined,
+): number | null {
+  if (typeof accountTypeOrIsPremium === "boolean") {
+    return accountTypeOrIsPremium ? null : 10;
+  }
+  return planFeaturesFor(accountTypeOrIsPremium).maxAttachmentTransfersPerDay;
+}
+
 export function formatNoteFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024 * 1024) {
     const gb = bytes / (1024 * 1024 * 1024);

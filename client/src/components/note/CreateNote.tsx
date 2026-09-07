@@ -1972,6 +1972,36 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   ? { name: error.name, message: error.message }
                   : String(error),
           });
+          if (error instanceof ApiRequestError) {
+            try {
+              const parsed = JSON.parse(error.bodyText) as {
+                error?: string;
+                message?: string;
+                limit?: number;
+              };
+              if (parsed.error === "attachment_transfer_daily_limit") {
+                const limit =
+                  typeof parsed.limit === "number" && Number.isFinite(parsed.limit)
+                    ? parsed.limit
+                    : 10;
+                throw new Error(
+                  parsed.message?.trim() ||
+                    `Free accounts can start ${limit} file, photo, audio, or recording transfers per day. Upgrade for higher limits.`,
+                );
+              }
+              if (parsed.error === "account_file_storage_quota_exceeded") {
+                throw new Error(
+                  parsed.message?.trim() ||
+                    "Encrypted file storage limit reached. Delete older transfers or upgrade your plan.",
+                );
+              }
+              if (typeof parsed.message === "string" && parsed.message.trim()) {
+                throw new Error(parsed.message.trim());
+              }
+            } catch (parsedError) {
+              if (parsedError instanceof Error && parsedError !== error) throw parsedError;
+            }
+          }
           const message = error instanceof Error ? error.message : "";
           throw new Error(
             message && message !== "Load failed"

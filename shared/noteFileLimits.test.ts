@@ -10,6 +10,7 @@ import {
   formatNoteFileSize,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
+  noteFileTransfersPerDayForAccount,
   resolveFileSizeUpgradePlan,
 } from "./noteFileLimits.ts";
 
@@ -42,6 +43,14 @@ describe("noteFileLimits", () => {
       NOTE_FILE_BUSINESS_TOTAL_STORAGE_BYTES,
     );
     assert.equal(formatNoteFileSize(NOTE_FILE_BUSINESS_TOTAL_STORAGE_BYTES), "50 GB");
+  });
+
+  it("limits free accounts to 10 attachment transfers per day", () => {
+    assert.equal(noteFileTransfersPerDayForAccount("free"), 10);
+    assert.equal(noteFileTransfersPerDayForAccount(false), 10);
+    assert.equal(noteFileTransfersPerDayForAccount("personal_premium"), null);
+    assert.equal(noteFileTransfersPerDayForAccount("business_premium"), null);
+    assert.equal(noteFileTransfersPerDayForAccount(true), null);
   });
 
   it("resolves Free→Starter and Starter→Business upgrade targets for oversized files", () => {

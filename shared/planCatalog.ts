@@ -16,6 +16,11 @@ export type PlanFeatureFlags = {
   attachmentMaxBytes: number;
   /** Active encrypted payload still live (unread / not burned). */
   activePayloadBufferBytes: number;
+  /**
+   * Max file/photo/audio/recording transfers that may start per UTC day.
+   * `null` means unlimited (paid plans).
+   */
+  maxAttachmentTransfersPerDay: number | null;
   /** Max attachment download window after reveal. */
   maxFileAccessWindowSeconds: number;
   /** Longest exact note-expiry preset the plan may submit. */
@@ -83,6 +88,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       hostedAiMonthly: 3,
       attachmentMaxBytes: 25 * MB,
       activePayloadBufferBytes: 250 * MB,
+      maxAttachmentTransfersPerDay: 10,
       maxFileAccessWindowSeconds: 15 * 60,
       maxExpirySeconds: 3 * DAY,
       allowedReadCounts: [1],
@@ -117,6 +123,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       hostedAiMonthly: 50,
       attachmentMaxBytes: 250 * MB,
       activePayloadBufferBytes: 5 * GB,
+      maxAttachmentTransfersPerDay: null,
       maxFileAccessWindowSeconds: 30 * 60,
       maxExpirySeconds: 15 * DAY,
       allowedReadCounts: [1, 2, 3],
@@ -151,6 +158,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       hostedAiMonthly: 300,
       attachmentMaxBytes: 1 * GB,
       activePayloadBufferBytes: 50 * GB,
+      maxAttachmentTransfersPerDay: null,
       maxFileAccessWindowSeconds: 60 * 60,
       maxExpirySeconds: 30 * DAY,
       allowedReadCounts: [1, 2, 3, 5],
