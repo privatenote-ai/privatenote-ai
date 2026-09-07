@@ -991,10 +991,6 @@ export default function AccountBranding() {
                       type="button"
                       onClick={() => {
                         if (choice.id === "custom") {
-                          if (!businessBannerUrl) {
-                            bannerInputRef.current?.click();
-                            return;
-                          }
                           setBusinessBackgroundStyle("banner");
                           return;
                         }
@@ -1115,7 +1111,9 @@ export default function AccountBranding() {
                 {brandingPageMode(businessBackgroundStyle) === "custom" ? (
                   <>
                     <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                      One photograph. Click to set the focal point, then scale. The reveal card stays inset from the edges.
+                      {businessBannerUrl
+                        ? "One photograph. Click to set the focal point, then scale. The reveal card stays inset from the edges."
+                        : "Upload one landscape photograph to use behind the reveal card."}
                     </p>
                 <div
                   className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-slate-950 dark:border-gray-700"
@@ -1197,9 +1195,11 @@ export default function AccountBranding() {
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Recommended {BRANDING_BANNER_SIZE_LABEL} (16:9). Maximum{" "}
                   {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.
-                  Click the photo to set the focal point. Recipients cannot move the image.
+                  {businessBannerUrl
+                    ? " Click the photo to set the focal point. Recipients cannot move the image."
+                    : ""}
                 </p>
-                {businessBackgroundStyle === "banner" ? (
+                {businessBannerUrl ? (
                   <div className="mt-4 space-y-4">
                     <div>
                       <Label htmlFor="business-background-zoom" className="mb-2 block text-sm">
