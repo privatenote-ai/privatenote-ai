@@ -146,15 +146,15 @@ export function RecipientPortal({
   const previewRevealCard = preview && resolvedSurface === "card";
   const revealCardSize = previewRevealCard
     ? wideCard
-      ? "w-[min(100%,18rem)] p-4"
-      : "w-[min(100%,15rem)] p-3.5"
+      ? "w-[min(100%,20rem)] p-4"
+      : "w-[min(100%,18rem)] p-4"
     : wideCard
       ? "w-[min(100%,36rem)] p-5 sm:p-7"
       : "w-[min(100%,24rem)] p-5 sm:p-6";
   const centeredRevealCardSize = previewRevealCard
     ? wideCard
-      ? "max-w-[18rem] p-4"
-      : "max-w-[15rem] p-3.5"
+      ? "max-w-[20rem] p-4"
+      : "max-w-[18rem] p-4"
     : wideCard
       ? "max-w-md p-5 sm:max-w-xl sm:p-7"
       : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6";
@@ -322,7 +322,7 @@ export function RecipientPortal({
             ? ""
             : openedCentered
               ? "overflow-y-auto"
-              : `flex flex-col ${useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"}`
+              : `flex min-h-0 flex-col overflow-y-auto ${useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"}`
         }`}
       >
         {useCard ? (
@@ -368,7 +368,7 @@ export function RecipientPortal({
             </div>
           ) : (
             <div
-              className={`mx-auto w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${centeredRevealCardSize}`}
+              className={`mx-auto w-full shrink-0 rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${centeredRevealCardSize}`}
             >
               {children}
             </div>
@@ -455,15 +455,17 @@ export function RevealHandoffStack({
       ) : null}
 
       {hasIdentity || branding?.trustMessage ? (
-        <div className={compact ? `${title ? "mt-4" : ""} space-y-0.5` : "mt-8 space-y-1 sm:mt-10"}>
+        <div className={compact ? `${title ? "mt-3" : ""} space-y-1` : "mt-8 space-y-1 sm:mt-10"}>
           {sender ? (
-            <p className="m-0 text-base font-semibold text-gray-900">{sender}</p>
+            <p className={`m-0 font-semibold text-gray-900 ${compact ? "text-sm" : "text-base"}`}>
+              {sender}
+            </p>
           ) : brandingLine ? (
             <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
           ) : null}
-          {meta ? <p className="m-0 text-sm text-gray-500">{meta}</p> : null}
+          {meta ? <p className="m-0 text-xs text-gray-500 sm:text-sm">{meta}</p> : null}
           {branding?.trustMessage ? (
-            <p className={`m-0 mx-auto max-w-sm text-sm leading-relaxed text-gray-600 ${compact ? "mt-2" : "mt-3"}`}>
+            <p className={`m-0 mx-auto max-w-xs text-sm leading-relaxed text-gray-600 ${compact ? "mt-1.5" : "mt-3"}`}>
               {branding.trustMessage}
             </p>
           ) : null}
