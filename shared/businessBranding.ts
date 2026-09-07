@@ -20,6 +20,7 @@ export const BRANDING_LOGO_URL_MAX = 512;
 export const BRANDING_LOGO_PUBLIC_PATH_PREFIX = "/api/auth/branding/logo/";
 export const BRANDING_BANNER_PUBLIC_PATH_PREFIX = "/api/auth/branding/banner/";
 export const BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX = "/api/auth/branding/card-banner/";
+export const BRANDING_OPENED_BANNER_PUBLIC_PATH_PREFIX = "/api/auth/branding/opened-banner/";
 const BRANDING_HOSTED_ASSET_FILE = /^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/;
 
 /** Soft recommendations for Business upload UI (enforced limits are byte size + type). */
@@ -152,6 +153,10 @@ export type BusinessBranding = {
   openedShowSenderName?: boolean | null;
   openedShowCompanyName?: boolean | null;
   openedShowTrustMessage?: boolean | null;
+  openedBannerUrl?: string | null;
+  openedAccentColor?: string | null;
+  openedTextColor?: string | null;
+  openedBackgroundColor?: string | null;
 };
 
 export const OPENED_NOTE_BACKGROUNDS = ["same", "neutral", "gradient", "banner"] as const;
@@ -165,6 +170,11 @@ export type OpenedNoteBrandingSettings = {
   showSenderName: boolean;
   showCompanyName: boolean;
   showTrustMessage: boolean;
+  /** Dedicated after-open photograph. When background is `banner` and this is empty, the reveal photo is reused. */
+  bannerUrl?: string | null;
+  backgroundColor?: string | null;
+  accentColor?: string | null;
+  textColor?: string | null;
 };
 
 export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
@@ -174,6 +184,10 @@ export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
   showSenderName: true,
   showCompanyName: true,
   showTrustMessage: true,
+  bannerUrl: null,
+  backgroundColor: null,
+  accentColor: null,
+  textColor: null,
 };
 
 /** Wire shape sent to the reveal page; empty fields are omitted entirely. */
@@ -207,6 +221,10 @@ export type RevealBranding = {
   openedShowSenderName?: boolean;
   openedShowCompanyName?: boolean;
   openedShowTrustMessage?: boolean;
+  openedBannerUrl?: string;
+  openedAccentColor?: string;
+  openedTextColor?: string;
+  openedBackgroundColor?: string;
   /** Legacy alias still accepted when reading stored notes. */
   sharerName?: string;
 };
@@ -261,6 +279,10 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   openedShowSenderName: true,
   openedShowCompanyName: true,
   openedShowTrustMessage: true,
+  openedBannerUrl: null,
+  openedAccentColor: null,
+  openedTextColor: null,
+  openedBackgroundColor: null,
 };
 
 /** True when the opened-note view should keep sender branding (opt-in). */
@@ -306,6 +328,10 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
   const background = OPENED_NOTE_BACKGROUNDS.includes(backgroundRaw as OpenedNoteBackground)
     ? (backgroundRaw as OpenedNoteBackground)
     : "same";
+  const bannerUrl = parseBrandingBannerUrl(record.bannerUrl ?? record.openedBannerUrl);
+  const backgroundColor = parseBrandingHexColor(record.backgroundColor ?? record.openedBackgroundColor);
+  const accentColor = parseBrandingHexColor(record.accentColor ?? record.openedAccentColor);
+  const textColor = parseBrandingHexColor(record.textColor ?? record.openedTextColor);
   return {
     show: record.show === true,
     background,
@@ -313,6 +339,10 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
     showSenderName: record.showSenderName !== false,
     showCompanyName: record.showCompanyName !== false,
     showTrustMessage: record.showTrustMessage !== false,
+    bannerUrl: bannerUrl.ok ? bannerUrl.value : null,
+    backgroundColor: backgroundColor.ok ? backgroundColor.value : null,
+    accentColor: accentColor.ok ? accentColor.value : null,
+    textColor: textColor.ok ? textColor.value : null,
   };
 }
 
@@ -326,6 +356,10 @@ export function stringifyOpenedNoteBrandingSettings(
     showSenderName: settings.showSenderName !== false,
     showCompanyName: settings.showCompanyName !== false,
     showTrustMessage: settings.showTrustMessage !== false,
+    ...(settings.bannerUrl ? { bannerUrl: settings.bannerUrl } : {}),
+    ...(settings.backgroundColor ? { backgroundColor: settings.backgroundColor } : {}),
+    ...(settings.accentColor ? { accentColor: settings.accentColor } : {}),
+    ...(settings.textColor ? { textColor: settings.textColor } : {}),
   });
 }
 
@@ -338,6 +372,10 @@ export function openedSettingsFromBranding(
     | "openedShowSenderName"
     | "openedShowCompanyName"
     | "openedShowTrustMessage"
+    | "openedBannerUrl"
+    | "openedAccentColor"
+    | "openedTextColor"
+    | "openedBackgroundColor"
   > | null | undefined,
 ): OpenedNoteBrandingSettings {
   return parseOpenedNoteBrandingSettings({
@@ -347,6 +385,10 @@ export function openedSettingsFromBranding(
     showSenderName: branding?.openedShowSenderName !== false,
     showCompanyName: branding?.openedShowCompanyName !== false,
     showTrustMessage: branding?.openedShowTrustMessage !== false,
+    bannerUrl: branding?.openedBannerUrl,
+    accentColor: branding?.openedAccentColor,
+    textColor: branding?.openedTextColor,
+    backgroundColor: branding?.openedBackgroundColor,
   });
 }
 
@@ -365,6 +407,10 @@ export function applyOpenedNoteBranding(
   delete next.openedShowSenderName;
   delete next.openedShowCompanyName;
   delete next.openedShowTrustMessage;
+  delete next.openedBannerUrl;
+  delete next.openedAccentColor;
+  delete next.openedTextColor;
+  delete next.openedBackgroundColor;
 
   if (gate.openedShowLogo === false) {
     delete next.logoUrl;
@@ -378,16 +424,21 @@ export function applyOpenedNoteBranding(
   }
   if (gate.openedShowCompanyName === false) delete next.companyName;
   if (gate.openedShowTrustMessage === false) delete next.trustMessage;
+  if (gate.openedAccentColor) next.accentColor = gate.openedAccentColor;
+  if (gate.openedTextColor) next.textColor = gate.openedTextColor;
 
   const background = gate.openedBackground ?? "same";
   if (background === "neutral") {
     delete next.backgroundStyle;
     delete next.bannerUrl;
+    if (gate.openedBackgroundColor) next.backgroundColor = gate.openedBackgroundColor;
   } else if (background === "gradient") {
     next.backgroundStyle = "gradient";
     delete next.bannerUrl;
-  } else if (background === "banner" && next.bannerUrl) {
-    next.backgroundStyle = "banner";
+    if (gate.openedBackgroundColor) next.backgroundColor = gate.openedBackgroundColor;
+  } else if (background === "banner") {
+    if (gate.openedBannerUrl) next.bannerUrl = gate.openedBannerUrl;
+    if (next.bannerUrl) next.backgroundStyle = "banner";
   }
   return next;
 }
@@ -454,20 +505,24 @@ function parseName(
  */
 export function publicBrandingAssetPath(
   objectKey: string | null | undefined,
-  kind: "logo" | "banner" | "cardBanner",
+  kind: "logo" | "banner" | "cardBanner" | "openedBanner",
 ): string | null {
   const prefix =
     kind === "logo"
       ? "account-branding/"
       : kind === "banner"
         ? "account-branding/banner/"
-        : "account-branding/card-banner/";
+        : kind === "cardBanner"
+          ? "account-branding/card-banner/"
+          : "account-branding/opened-banner/";
   const publicPrefix =
     kind === "logo"
       ? BRANDING_LOGO_PUBLIC_PATH_PREFIX
       : kind === "banner"
         ? BRANDING_BANNER_PUBLIC_PATH_PREFIX
-        : BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX;
+        : kind === "cardBanner"
+          ? BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX
+          : BRANDING_OPENED_BANNER_PUBLIC_PATH_PREFIX;
   if (!objectKey?.startsWith(prefix)) return null;
   const fileName = objectKey.slice(prefix.length);
   if (!BRANDING_HOSTED_ASSET_FILE.test(fileName)) return null;
@@ -479,6 +534,7 @@ function hostedBrandingPublicPath(pathname: string): string | null | undefined {
     BRANDING_LOGO_PUBLIC_PATH_PREFIX,
     BRANDING_BANNER_PUBLIC_PATH_PREFIX,
     BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX,
+    BRANDING_OPENED_BANNER_PUBLIC_PATH_PREFIX,
   ] as const;
   for (const prefix of prefixes) {
     if (!pathname.startsWith(prefix)) continue;
@@ -578,6 +634,10 @@ function parseOpenedFields(
       showSenderName: showSenderName.value,
       showCompanyName: showCompanyName.value,
       showTrustMessage: showTrustMessage.value,
+      bannerUrl: body.openedBannerUrl,
+      accentColor: body.openedAccentColor,
+      textColor: body.openedTextColor,
+      backgroundColor: body.openedBackgroundColor,
     }),
   };
 }
@@ -1302,6 +1362,10 @@ export function parseBusinessBrandingInput(
       openedShowSenderName: opened.settings.showSenderName,
       openedShowCompanyName: opened.settings.showCompanyName,
       openedShowTrustMessage: opened.settings.showTrustMessage,
+      openedBannerUrl: opened.settings.bannerUrl,
+      openedAccentColor: opened.settings.accentColor,
+      openedTextColor: opened.settings.textColor,
+      openedBackgroundColor: opened.settings.backgroundColor,
     },
   };
 }
@@ -1389,6 +1453,18 @@ export function toRevealBranding(
     ...(branding.showBrandingAfterReveal === true && branding.openedShowTrustMessage === false
       ? { openedShowTrustMessage: false }
       : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedBannerUrl
+      ? { openedBannerUrl: branding.openedBannerUrl }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedAccentColor
+      ? { openedAccentColor: branding.openedAccentColor }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedTextColor
+      ? { openedTextColor: branding.openedTextColor }
+      : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedBackgroundColor
+      ? { openedBackgroundColor: branding.openedBackgroundColor }
+      : {}),
   };
 }
 
@@ -1448,5 +1524,9 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     openedShowSenderName: openedSettings.showSenderName,
     openedShowCompanyName: openedSettings.showCompanyName,
     openedShowTrustMessage: openedSettings.showTrustMessage,
+    openedBannerUrl: openedSettings.bannerUrl,
+    openedAccentColor: openedSettings.accentColor,
+    openedTextColor: openedSettings.textColor,
+    openedBackgroundColor: openedSettings.backgroundColor,
   });
 }

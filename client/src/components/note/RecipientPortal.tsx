@@ -133,6 +133,9 @@ export function RecipientPortal({
   /** Opened note (`wide`) stays centered; Default is always centered; Custom follows sender placement. */
   const honorSenderPlacement = resolvedSurface === "card" && brandingShowsBanner(branding);
   const freePlace = honorSenderPlacement;
+  /** Opened note sheet is centered on the full page, not in the leftover strip between chrome. */
+  const openedCentered = resolvedSurface === "wide";
+  const overlayChrome = openedCentered;
   const cardPlacement = cardPlacementClassName(
     honorSenderPlacement ? layout.cardPosition : "center",
     honorSenderPlacement ? layout.cardPositionMobile : "center",
@@ -238,7 +241,7 @@ export function RecipientPortal({
       ) : null}
 
       <header
-        className={`relative z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-6 ${
+        className={`${overlayChrome ? "absolute inset-x-0 top-0" : "relative"} z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-6 ${
           page.kind === "image" ? "bg-gradient-to-b from-black/55 to-transparent" : ""
         }`}
       >
@@ -302,7 +305,9 @@ export function RecipientPortal({
         className={`relative z-10 min-h-0 flex-1 ${
           freePlace
             ? ""
-            : `flex flex-col ${useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"}`
+            : openedCentered
+              ? "overflow-y-auto"
+              : `flex flex-col ${useCard ? cardPlacement : "px-4 pt-4 sm:px-6 sm:pt-6"}`
         }`}
       >
         {useCard ? (
@@ -340,14 +345,22 @@ export function RecipientPortal({
                 {children}
               </div>
             </div>
+          ) : openedCentered ? (
+            <div
+              className={`flex w-full items-center justify-center px-6 py-24 sm:px-12 ${
+                preview ? "min-h-full" : "min-h-[100dvh]"
+              }`}
+            >
+              <div className="mx-auto w-full max-w-3xl rounded-2xl bg-white p-5 shadow-xl ring-1 ring-black/5 sm:p-6 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl">
+                {children}
+              </div>
+            </div>
           ) : (
             <div
-              className={`w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
-                resolvedSurface === "wide"
-                  ? "max-w-3xl p-5 sm:p-6"
-                  : wideCard
-                    ? "max-w-md p-5 sm:max-w-xl sm:p-7"
-                    : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
+              className={`mx-auto w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
+                wideCard
+                  ? "max-w-md p-5 sm:max-w-xl sm:p-7"
+                  : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
               }`}
             >
               {children}
@@ -359,7 +372,7 @@ export function RecipientPortal({
       </div>
 
       <footer
-        className={`relative z-20 px-4 py-4 text-center text-xs sm:px-6 sm:text-sm ${footerMuted} ${
+        className={`${overlayChrome ? "absolute inset-x-0 bottom-0" : "relative"} z-20 px-4 py-4 text-center text-xs sm:px-6 sm:text-sm ${footerMuted} ${
           page.kind === "image" ? "bg-gradient-to-t from-black/50 to-transparent" : ""
         }`}
       >

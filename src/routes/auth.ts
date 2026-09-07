@@ -105,6 +105,11 @@ const BUSINESS_CARD_BANNER = {
   PUBLIC_PATH_PREFIX: "/api/auth/branding/card-banner/",
   MAX_BYTES: BRANDING_LOGO_MAX_BYTES,
 } as const;
+const BUSINESS_OPENED_BANNER = {
+  OBJECT_PREFIX: "account-branding/opened-banner/",
+  PUBLIC_PATH_PREFIX: "/api/auth/branding/opened-banner/",
+  MAX_BYTES: BRANDING_BANNER_MAX_BYTES,
+} as const;
 
 const getAllowedOrigin = getAllowedOriginFromRequest;
 
@@ -1660,12 +1665,12 @@ function businessBannerPublicUrl(
   return publicBrandingAssetPath(objectKey, "banner");
 }
 
-function businessCardBannerPublicUrl(
+function businessOpenedBannerPublicUrl(
   request: Request,
   objectKey: string | null | undefined,
 ): string | null {
   void request;
-  return publicBrandingAssetPath(objectKey, "cardBanner");
+  return publicBrandingAssetPath(objectKey, "openedBanner");
 }
 
 async function sha256Base64Url(input: string): Promise<string> {
@@ -3374,6 +3379,24 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     return null;
   }
 
+  if (pathname.startsWith(BUSINESS_OPENED_BANNER.PUBLIC_PATH_PREFIX) && method === "GET") {
+    if (!env.NOTE_FILES_R2) return new Response("Not found", { status: 404 });
+    const fileName = pathname.slice(BUSINESS_OPENED_BANNER.PUBLIC_PATH_PREFIX.length);
+    if (!/^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/.test(fileName)) {
+      return new Response("Not found", { status: 404 });
+    }
+    const object = await env.NOTE_FILES_R2.get(`${BUSINESS_OPENED_BANNER.OBJECT_PREFIX}${fileName}`);
+    if (!object) return new Response("Not found", { status: 404 });
+    const headers = new Headers({
+      "Content-Type": object.httpMetadata?.contentType ??
+        (fileName.endsWith(".png") ? "image/png" : fileName.endsWith(".webp") ? "image/webp" : "image/jpeg"),
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "X-Content-Type-Options": "nosniff",
+      "Cross-Origin-Resource-Policy": "cross-origin",
+    });
+    return new Response(object.body as unknown as BodyInit, { status: 200, headers });
+  }
+
   if (pathname.startsWith(BUSINESS_CARD_BANNER.PUBLIC_PATH_PREFIX) && method === "GET") {
     if (!env.NOTE_FILES_R2) return new Response("Not found", { status: 404 });
     const fileName = pathname.slice(BUSINESS_CARD_BANNER.PUBLIC_PATH_PREFIX.length);
@@ -5056,6 +5079,38 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     });
     return jsonResponse(
       { ok: true, cardBannerUrl: businessCardBannerPublicUrl(request, objectKey) },
+      200,
+      request,
+    );
+  }
+
+  if (pathname === "/api/auth/account/branding/opened-banner" && method === "PUT") {
+    if (!env.AUTH_DB) return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session) return jsonResponse({ message: "Unauthorized" }, 401, request);
+    const entitlements = await getAccountEntitlements(env, session.id);
+    if (!entitlements.capabilities.revealBranding) {
+      return jsonResponse({ error: "premium_plus_required" }, 403, request);
+    }
+    if (!env.NOTE_FILES_R2) return jsonResponse({ message: "Branding storage is not configured" }, 503, request);
+    const payload = await request.arrayBuffer();
+    if (payload.byteLength === 0 || payload.byteLength > BUSINESS_OPENED_BANNER.MAX_BYTES) {
+      return jsonResponse({
+        error: payload.byteLength ? "banner_too_large" : "banner_required",
+        maxBytes: BUSINESS_OPENED_BANNER.MAX_BYTES,
+      }, payload.byteLength ? 413 : 400, request);
+    }
+    const detectedType = detectBusinessLogoType(new Uint8Array(payload));
+    if (!detectedType) {
+      return jsonResponse({ error: "invalid_banner_type", message: "Use a PNG, JPEG, or WebP image." }, 400, request);
+    }
+    const objectKey = `${BUSINESS_OPENED_BANNER.OBJECT_PREFIX}${randomId(20)}.${detectedType.extension}`;
+    await env.NOTE_FILES_R2.put(objectKey, payload, {
+      httpMetadata: { contentType: detectedType.contentType, cacheControl: "public, max-age=31536000, immutable" },
+      customMetadata: { purpose: "account-branding-opened-banner" },
+    });
+    return jsonResponse(
+      { ok: true, bannerUrl: businessOpenedBannerPublicUrl(request, objectKey) },
       200,
       request,
     );

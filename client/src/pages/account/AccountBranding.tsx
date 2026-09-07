@@ -15,6 +15,7 @@ import {
   Trash2,
   Unlock,
   Lock,
+  Copy,
   Crown,
 } from "lucide-react";
 import {
@@ -387,6 +388,7 @@ const OpenedNoteBrandingPreview: React.FC<{
         ? `Shared by ${company}`
         : null;
   const markUrl = brandingCardMarkUrl(branding);
+  const buttonStyle = brandingCtaStyle(branding);
 
   return (
     <RecipientPortal
@@ -402,33 +404,46 @@ const OpenedNoteBrandingPreview: React.FC<{
       }}
       surface={usesPortal ? "wide" : "plain"}
     >
-      <section className="mx-auto w-full max-w-3xl">
-        <div className="mb-8 text-center">
-          <h1 className="page-title text-primary">Private Note</h1>
-          <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
-            <span aria-hidden>⚠️</span>
-            This note will be deleted after you leave
-          </p>
-          {markUrl || brandingLine || branding?.trustMessage ? (
-            <div className="mt-6 flex flex-col items-center gap-1.5">
-              {markUrl ? (
-                <img src={markUrl} alt="" className="max-h-10 max-w-36 object-contain" />
-              ) : null}
-              {brandingLine ? (
-                <p className="m-0 text-sm font-medium text-gray-700">{brandingLine}</p>
-              ) : null}
-              {branding?.trustMessage ? (
-                <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600">
-                  {branding.trustMessage}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <div className="rounded-2xl border border-gray-200/90 bg-[rgb(252,251,248)] px-6 py-8 text-left text-base leading-relaxed text-gray-900 shadow-sm">
+      <div className="text-center">
+        <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
+          <span aria-hidden>⚠️</span>
+          This note will be deleted after you leave
+        </p>
+        {markUrl || brandingLine || branding?.trustMessage ? (
+          <div className="mt-5 flex flex-col items-center gap-1.5">
+            {markUrl ? (
+              <img src={markUrl} alt="" className="max-h-10 max-w-36 object-contain" />
+            ) : null}
+            {brandingLine ? (
+              <p className="m-0 text-sm font-medium text-gray-700">{brandingLine}</p>
+            ) : null}
+            {branding?.trustMessage ? (
+              <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600">
+                {branding.trustMessage}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="mt-5 rounded-2xl border border-gray-200/90 bg-[rgb(252,251,248)] px-6 py-8 text-left text-base leading-relaxed text-gray-900 shadow-sm">
           Secret content
         </div>
-      </section>
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <button
+            type="button"
+            className="inline-flex min-w-[170px] items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white"
+            style={buttonStyle}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Copy Note
+          </button>
+          <button
+            type="button"
+            className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-primary/25 px-5 py-2.5 text-sm font-medium text-primary/80"
+          >
+            Create new note
+          </button>
+        </div>
+      </div>
     </RecipientPortal>
   );
 };
@@ -645,6 +660,9 @@ export default function AccountBranding() {
     useState<"desktop" | "mobile">("desktop");
   const [openedNoteBranding, setOpenedNoteBranding] =
     useState<OpenedNoteBrandingSettings>({ ...DEFAULT_OPENED_NOTE_BRANDING });
+  const [openedAccentDraft, setOpenedAccentDraft] = useState(DEFAULT_BRAND_COLOR);
+  const [openedTextDraft, setOpenedTextDraft] = useState("#ffffff");
+  const [openedPageColorDraft, setOpenedPageColorDraft] = useState("#e2e8f0");
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -657,8 +675,10 @@ export default function AccountBranding() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const cardBannerInputRef = useRef<HTMLInputElement>(null);
+  const openedBannerInputRef = useRef<HTMLInputElement>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [uploadingCardBanner, setUploadingCardBanner] = useState(false);
+  const [uploadingOpenedBanner, setUploadingOpenedBanner] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -699,7 +719,16 @@ export default function AccountBranding() {
             ? parseStoredPortalLayoutJson(data.businessPortalLayout)
             : brandingPortalLayout(data.businessPortalLayout ?? undefined),
         );
-        setOpenedNoteBranding(parseOpenedNoteBrandingSettings(data.businessOpenedBranding));
+        const parsedOpened = parseOpenedNoteBrandingSettings(data.businessOpenedBranding);
+        setOpenedNoteBranding(parsedOpened);
+        setOpenedAccentDraft(hexColorForInput(parsedOpened.accentColor, accent));
+        setOpenedTextDraft(hexColorForInput(parsedOpened.textColor, text));
+        setOpenedPageColorDraft(
+          hexColorForInput(
+            parsedOpened.backgroundColor,
+            brandingIsPrivateNoteCanvas(background) ? "#e2e8f0" : background,
+          ),
+        );
       }
     } catch {
       /* non-critical */
@@ -894,6 +923,39 @@ export default function AccountBranding() {
 
   const removeCardBanner = () => {
     setPortalLayout((prev) => ({ ...prev, cardBannerUrl: null }));
+  };
+
+  const uploadOpenedBanner = async (file: File) => {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_BANNER_MAX_BYTES) {
+      toast({
+        title: "Unsupported photograph",
+        description: `Use a PNG, JPEG, or WebP image, ${BRANDING_BANNER_SIZE_LABEL} px, under ${Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setUploadingOpenedBanner(true);
+    try {
+      const response = await apiUploadRequest<{ bannerUrl: string }>(
+        "/api/auth/account/branding/opened-banner",
+        file,
+      );
+      setOpenedNoteBranding((prev) => ({
+        ...prev,
+        background: "banner",
+        bannerUrl: response.bannerUrl,
+      }));
+      toast({ title: "Opened-note photograph uploaded" });
+    } catch (error) {
+      toast({
+        title: "Could not upload photograph",
+        description: describeApiPreferenceError(error),
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingOpenedBanner(false);
+      if (openedBannerInputRef.current) openedBannerInputRef.current.value = "";
+    }
   };
 
   const uploadBusinessLogo = async (file: File) => {
@@ -1145,6 +1207,16 @@ export default function AccountBranding() {
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (file) void uploadBusinessBanner(file);
+                  }}
+                />
+                <input
+                  ref={openedBannerInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadOpenedBanner(file);
                   }}
                 />
                 {portalLayout.cardImage === "logo" ? (
@@ -1579,7 +1651,7 @@ export default function AccountBranding() {
                 <BrandingPageHeading
                   eyebrow="Page"
                   title="After the note is opened"
-                  description="Off by default so screenshots stay unbranded. When on, the opened note inherits this page."
+                  description="Off by default so screenshots stay unbranded. When on, the message stays centered — you can change the page behind it."
                 />
                 <div className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-950/30">
                   <div className="flex items-start justify-between gap-4">
@@ -1599,10 +1671,10 @@ export default function AccountBranding() {
                       id="business-show-branding-after-reveal"
                       checked={openedNoteBranding.show}
                       onCheckedChange={(checked) =>
-                        setOpenedNoteBranding({
-                          ...DEFAULT_OPENED_NOTE_BRANDING,
+                        setOpenedNoteBranding((prev) => ({
+                          ...prev,
                           show: checked,
-                        })
+                        }))
                       }
                       aria-label="Show branding after the note is opened"
                     />
@@ -1610,31 +1682,171 @@ export default function AccountBranding() {
                 </div>
 
                 {openedNoteBranding.show ? (
-                  <PreviewDeviceFrame
-                    viewport={brandingPreviewViewport}
-                    onViewportChange={setBrandingPreviewViewport}
-                    showViewportToggle={false}
-                    label="After the note is opened"
-                  >
-                    <OpenedNoteBrandingPreview
+                  <>
+                    <div>
+                      <Label className="mb-2 block text-sm">Opened page</Label>
+                      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        {([
+                          { id: "same" as const, label: "Same as reveal", hint: "Keep the page behind the note" },
+                          { id: "neutral" as const, label: "Color", hint: "Solid page colour" },
+                          { id: "banner" as const, label: "Photograph", hint: "New background image" },
+                        ]).map((choice) => (
+                          <button
+                            key={choice.id}
+                            type="button"
+                            onClick={() =>
+                              setOpenedNoteBranding((prev) => ({
+                                ...prev,
+                                background: choice.id,
+                                ...(choice.id === "neutral" && !prev.backgroundColor
+                                  ? {
+                                      backgroundColor: brandingIsPrivateNoteCanvas(businessBackgroundColor)
+                                        ? "#e2e8f0"
+                                        : businessBackgroundColor,
+                                    }
+                                  : {}),
+                              }))
+                            }
+                            className={`rounded-lg border px-3 py-2 text-left ${
+                              openedNoteBranding.background === choice.id
+                                ? "border-primary bg-primary/5 text-primary"
+                                : "border-gray-200 dark:border-gray-700"
+                            }`}
+                          >
+                            <span className="block text-sm font-medium">{choice.label}</span>
+                            <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                              {choice.hint}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      {openedNoteBranding.background === "neutral" ? (
+                        <ColorField
+                          id="opened-page-color"
+                          label="Page color"
+                          value={openedNoteBranding.backgroundColor || "#e2e8f0"}
+                          draft={openedPageColorDraft}
+                          onValue={(next) => {
+                            setOpenedNoteBranding((prev) => ({ ...prev, backgroundColor: next }));
+                            setOpenedPageColorDraft(next);
+                          }}
+                          onDraft={setOpenedPageColorDraft}
+                        />
+                      ) : null}
+                      {openedNoteBranding.background === "banner" ? (
+                        <div className="space-y-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            The opened message stays centered. This photograph is only the page behind it.
+                          </p>
+                          <div
+                            className="overflow-hidden rounded-lg border border-dashed border-gray-300 bg-slate-950 dark:border-gray-700"
+                            style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
+                          >
+                            {openedNoteBranding.bannerUrl || businessBannerUrl ? (
+                              <img
+                                src={openedNoteBranding.bannerUrl || businessBannerUrl || ""}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-xs text-white/60">
+                                No photograph yet
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={uploadingOpenedBanner}
+                              onClick={() => openedBannerInputRef.current?.click()}
+                            >
+                              <Upload className="mr-2 h-4 w-4" />
+                              {uploadingOpenedBanner
+                                ? "Uploading…"
+                                : openedNoteBranding.bannerUrl
+                                  ? "Replace photograph"
+                                  : "Upload photograph"}
+                            </Button>
+                            {openedNoteBranding.bannerUrl ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() =>
+                                  setOpenedNoteBranding((prev) => ({ ...prev, bannerUrl: null }))
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remove
+                              </Button>
+                            ) : businessBannerUrl ? (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Using the reveal photograph until you upload a new one.
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <ColorField
+                        id="opened-accent-color"
+                        label="Copy Note button"
+                        value={openedNoteBranding.accentColor || businessAccentColor}
+                        draft={openedAccentDraft}
+                        onValue={(next) => {
+                          setOpenedNoteBranding((prev) => ({ ...prev, accentColor: next }));
+                          setOpenedAccentDraft(next);
+                        }}
+                        onDraft={setOpenedAccentDraft}
+                      />
+                      <ColorField
+                        id="opened-text-color"
+                        label="Button text"
+                        value={openedNoteBranding.textColor || businessTextColor}
+                        draft={openedTextDraft}
+                        onValue={(next) => {
+                          setOpenedNoteBranding((prev) => ({ ...prev, textColor: next }));
+                          setOpenedTextDraft(next);
+                        }}
+                        onDraft={setOpenedTextDraft}
+                      />
+                    </div>
+                    <PreviewDeviceFrame
                       viewport={brandingPreviewViewport}
-                      branding={applyOpenedNoteBranding({
-                        companyName: businessDisplayName || undefined,
-                        senderName: businessSenderName || undefined,
-                        senderRole: businessSenderRole || undefined,
-                        trustMessage: businessTrustMessage || undefined,
-                        logoUrl: businessLogoUrl ?? undefined,
-                        bannerUrl: businessBannerUrl ?? undefined,
-                        accentColor: businessAccentColor,
-                        backgroundColor: businessBackgroundColor,
-                        textColor: businessTextColor,
-                        backgroundStyle: businessBackgroundStyle,
-                        ...portalLayout,
-                        showBrandingAfterReveal: true,
-                        openedBackground: "same",
-                      })}
-                    />
-                  </PreviewDeviceFrame>
+                      onViewportChange={setBrandingPreviewViewport}
+                      showViewportToggle={false}
+                      label="After the note is opened"
+                      hint="The message sheet stays in the centre of the page."
+                    >
+                      <OpenedNoteBrandingPreview
+                        viewport={brandingPreviewViewport}
+                        branding={applyOpenedNoteBranding({
+                          companyName: businessDisplayName || undefined,
+                          senderName: businessSenderName || undefined,
+                          senderRole: businessSenderRole || undefined,
+                          trustMessage: businessTrustMessage || undefined,
+                          logoUrl: businessLogoUrl ?? undefined,
+                          bannerUrl: businessBannerUrl ?? undefined,
+                          accentColor: businessAccentColor,
+                          backgroundColor: businessBackgroundColor,
+                          textColor: businessTextColor,
+                          backgroundStyle: businessBackgroundStyle,
+                          ...portalLayout,
+                          showBrandingAfterReveal: true,
+                          openedBackground: openedNoteBranding.background,
+                          openedBannerUrl: openedNoteBranding.bannerUrl || undefined,
+                          openedAccentColor: openedNoteBranding.accentColor || undefined,
+                          openedTextColor: openedNoteBranding.textColor || undefined,
+                          openedBackgroundColor: openedNoteBranding.backgroundColor || undefined,
+                          openedShowLogo: openedNoteBranding.showLogo,
+                          openedShowSenderName: openedNoteBranding.showSenderName,
+                          openedShowCompanyName: openedNoteBranding.showCompanyName,
+                          openedShowTrustMessage: openedNoteBranding.showTrustMessage,
+                        })}
+                      />
+                    </PreviewDeviceFrame>
+                  </>
                 ) : null}
               </div>
 

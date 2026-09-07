@@ -31,6 +31,7 @@ import {
   toRevealBranding,
   applyOpenedNoteBranding,
   parseOpenedNoteBrandingSettings,
+  stringifyOpenedNoteBrandingSettings,
   DEFAULT_OPENED_NOTE_BRANDING,
   brandingPageMode,
   brandingBackgroundStyleForPage,
@@ -104,6 +105,10 @@ describe("parseBusinessBrandingInput", () => {
       openedShowSenderName: true,
       openedShowCompanyName: true,
       openedShowTrustMessage: true,
+      openedBannerUrl: null,
+      openedAccentColor: null,
+      openedTextColor: null,
+      openedBackgroundColor: null,
     });
   });
 
@@ -664,6 +669,85 @@ describe("opened-note branding", () => {
     assert.equal(opened?.cardImage, undefined);
     assert.equal(opened?.bannerUrl, "https://acme.example/banner.jpg");
     assert.equal(opened?.backgroundStyle, "banner");
+  });
+
+  it("can use a dedicated opened photograph and Copy Note colour", () => {
+    const opened = applyOpenedNoteBranding({
+      bannerUrl: "https://acme.example/reveal.jpg",
+      backgroundStyle: "banner",
+      accentColor: "#2563eb",
+      textColor: "#ffffff",
+      showBrandingAfterReveal: true,
+      openedBackground: "banner",
+      openedBannerUrl: "https://acme.example/opened.jpg",
+      openedAccentColor: "#111827",
+      openedTextColor: "#f8fafc",
+    });
+    assert.equal(opened?.bannerUrl, "https://acme.example/opened.jpg");
+    assert.equal(opened?.backgroundStyle, "banner");
+    assert.equal(opened?.accentColor, "#111827");
+    assert.equal(opened?.textColor, "#f8fafc");
+    assert.equal(opened?.openedBannerUrl, undefined);
+    assert.equal(opened?.openedAccentColor, undefined);
+  });
+
+  it("can switch the opened page to a solid colour without moving the message", () => {
+    const opened = applyOpenedNoteBranding({
+      bannerUrl: "https://acme.example/reveal.jpg",
+      backgroundStyle: "banner",
+      accentColor: "#2563eb",
+      showBrandingAfterReveal: true,
+      openedBackground: "neutral",
+      openedBackgroundColor: "#0f172a",
+    });
+    assert.equal(opened?.bannerUrl, undefined);
+    assert.equal(opened?.backgroundStyle, undefined);
+    assert.equal(opened?.backgroundColor, "#0f172a");
+  });
+
+  it("round-trips opened photograph and Copy Note colours through storage JSON", () => {
+    const stored = stringifyOpenedNoteBrandingSettings({
+      show: true,
+      background: "banner",
+      showLogo: true,
+      showSenderName: true,
+      showCompanyName: true,
+      showTrustMessage: true,
+      bannerUrl: "https://acme.example/opened.jpg",
+      backgroundColor: null,
+      accentColor: "#111827",
+      textColor: "#f8fafc",
+    });
+    const parsed = parseOpenedNoteBrandingSettings(stored);
+    assert.equal(parsed.show, true);
+    assert.equal(parsed.background, "banner");
+    assert.equal(parsed.bannerUrl, "https://acme.example/opened.jpg");
+    assert.equal(parsed.accentColor, "#111827");
+    assert.equal(parsed.textColor, "#f8fafc");
+    assert.equal(parsed.backgroundColor, null);
+  });
+
+  it("does not copy reveal colours into opened settings on a stored snapshot", () => {
+    const snapshotted = parseStoredRevealBranding({
+      companyName: "Acme",
+      accentColor: "#2563eb",
+      textColor: "#ffffff",
+      bannerUrl: "https://acme.example/reveal.jpg",
+      backgroundStyle: "banner",
+      showBrandingAfterReveal: true,
+      openedBackground: "banner",
+      openedBannerUrl: "https://acme.example/opened.jpg",
+      openedAccentColor: "#111827",
+      openedTextColor: "#f8fafc",
+    });
+    assert.equal(snapshotted?.accentColor, "#2563eb");
+    assert.equal(snapshotted?.openedAccentColor, "#111827");
+    assert.equal(snapshotted?.openedTextColor, "#f8fafc");
+    assert.equal(snapshotted?.openedBannerUrl, "https://acme.example/opened.jpg");
+    assert.equal(snapshotted?.openedBackground, "banner");
+    const opened = applyOpenedNoteBranding(snapshotted);
+    assert.equal(opened?.bannerUrl, "https://acme.example/opened.jpg");
+    assert.equal(opened?.accentColor, "#111827");
   });
 });
 

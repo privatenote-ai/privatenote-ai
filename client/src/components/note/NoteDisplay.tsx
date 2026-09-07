@@ -1780,11 +1780,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   // Regular note content view (either after password decryption or for non-password notes)
   return wrapRecipient(
-    <section className={`w-full mx-auto ${viewerOpen ? "max-w-6xl" : "max-w-3xl"}`}>
-      <section className={NOTE_VIEW_HERO_SECTION}>
-        <div className={`text-center ${viewerOpen ? "mb-4" : "mb-8 sm:mb-10"}`}>
-          {viewerOpen ? null : <h1 className="page-title text-primary">{t.privateNote}</h1>}
-          <p className={`m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100 ${viewerOpen ? "" : "mt-4"}`}>
+    <section className={`w-full mx-auto ${viewerOpen ? "max-w-6xl" : openedPortalSurface ? "" : "max-w-3xl"}`}>
+      <section className={openedPortalSurface ? "relative isolate pb-2 text-center" : NOTE_VIEW_HERO_SECTION}>
+        <div className={`text-center ${viewerOpen ? "mb-4" : openedPortalSurface ? "mb-5" : "mb-8 sm:mb-10"}`}>
+          {viewerOpen || openedPortalSurface ? null : <h1 className="page-title text-primary">{t.privateNote}</h1>}
+          <p className={`m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100 ${viewerOpen || openedPortalSurface ? "" : "mt-4"}`}>
             <span aria-hidden>⚠️</span>
             {t.noteDeletedWarning}
           </p>

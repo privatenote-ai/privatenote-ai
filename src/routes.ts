@@ -961,6 +961,10 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       openedShowSenderName: opened.showSenderName,
       openedShowCompanyName: opened.showCompanyName,
       openedShowTrustMessage: opened.showTrustMessage,
+      openedBannerUrl: opened.bannerUrl,
+      openedAccentColor: opened.accentColor,
+      openedTextColor: opened.textColor,
+      openedBackgroundColor: opened.backgroundColor,
     });
   } catch (error) {
     console.warn("[BRANDING] Could not resolve account branding:", error);
