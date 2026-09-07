@@ -40,6 +40,15 @@ export const BRANDING_CARD_BANNER_SIZE_LABEL =
   `${BRANDING_CARD_BANNER_RECOMMENDED_PX.width}×${BRANDING_CARD_BANNER_RECOMMENDED_PX.height}` as const;
 
 export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
+/** UI page mode. `banner` is Custom; `neutral` / `gradient` are Default. */
+export type BrandingPageMode = "default" | "custom";
+export const BRANDING_MOBILE_LANES = ["top", "center", "bottom"] as const;
+export type BrandingMobileLane = (typeof BRANDING_MOBILE_LANES)[number];
+export const BRANDING_BACKGROUND_ZOOM_MIN = 100;
+export const BRANDING_BACKGROUND_ZOOM_MAX = 200;
+export const BRANDING_BACKGROUND_ZOOM_DEFAULT = 100;
+/** Reveal card stays inside this inset so it cannot sit on the glass edge. */
+export const BRANDING_CARD_INSET_PX = 48;
 export const BRANDING_CARD_POSITIONS = [
   "top-left",
   "top",
@@ -74,6 +83,8 @@ export type BrandingPortalLayout = {
   overlay: BrandingOverlay;
   focalX: number;
   focalY: number;
+  /** Cover-crop zoom for the Custom photograph. 100 is unscaled. */
+  backgroundZoom: number;
 };
 
 /** Light overlay is ~16% so photography stays visible behind an opaque card. */
@@ -91,6 +102,7 @@ export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
   overlay: "light",
   focalX: 50,
   focalY: 50,
+  backgroundZoom: BRANDING_BACKGROUND_ZOOM_DEFAULT,
 };
 
 /** Persisted shape. `null` means "not configured". */
@@ -112,6 +124,7 @@ export type BusinessBranding = {
   overlay?: BrandingOverlay | null;
   focalX?: number | null;
   focalY?: number | null;
+  backgroundZoom?: number | null;
   showBrandingAfterReveal?: boolean | null;
   openedBackground?: OpenedNoteBackground | null;
   openedShowLogo?: boolean | null;
@@ -161,6 +174,7 @@ export type RevealBranding = {
   overlay?: BrandingOverlay;
   focalX?: number;
   focalY?: number;
+  backgroundZoom?: number;
   showBrandingAfterReveal?: boolean;
   openedBackground?: OpenedNoteBackground;
   openedShowLogo?: boolean;
@@ -209,6 +223,7 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   overlay: DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
   focalX: DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
   focalY: DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
+  backgroundZoom: DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundZoom,
   showBrandingAfterReveal: false,
   openedBackground: "same",
   openedShowLogo: true,
@@ -223,6 +238,7 @@ export function brandingShowsAfterReveal(
 ): boolean {
   return branding?.showBrandingAfterReveal === true;
 }
+
 
 /** Prefer the JSON column; fall back to the legacy 0/1 flag for existing accounts. */
 export function openedSettingsFromAccountColumns(
@@ -361,6 +377,7 @@ export type BrandingErrorCode =
   | "invalid_background_fit"
   | "invalid_overlay"
   | "invalid_image_position"
+  | "invalid_background_zoom"
   | "invalid_opened_note_branding";
 
 export type BusinessBrandingParseResult =
@@ -538,6 +555,37 @@ function parseCardPositionToken(
     : { kind: "invalid" };
 }
 
+export function brandingPageMode(
+  style: BrandingBackgroundStyle | null | undefined,
+): BrandingPageMode {
+  return style === "banner" ? "custom" : "default";
+}
+
+export function brandingBackgroundStyleForPage(
+  mode: BrandingPageMode,
+  gradient: boolean,
+): BrandingBackgroundStyle {
+  if (mode === "custom") return "banner";
+  return gradient ? "gradient" : "neutral";
+}
+
+export function brandingMobileLane(position: BrandingCardPosition): BrandingMobileLane {
+  const { y } = brandingCardAxis(position);
+  return y === "middle" ? "center" : y;
+}
+
+export function brandingPositionFromMobileLane(lane: BrandingMobileLane): BrandingCardPosition {
+  return lane;
+}
+
+/** `#ffffff` or unset means the PrivateNote canvas, not a painted page. */
+export function brandingIsPrivateNoteCanvas(
+  backgroundColor: string | null | undefined,
+): boolean {
+  if (!backgroundColor) return true;
+  return backgroundColor.toLowerCase() === "#ffffff";
+}
+
 export function brandingCardAxis(position: BrandingCardPosition): BrandingCardAxis {
   switch (position) {
     case "top-left":
@@ -605,6 +653,19 @@ function parseFocalPercent(
   return { ok: true, value: Number(trimmed) };
 }
 
+function parseBackgroundZoom(
+  raw: unknown,
+): { ok: true; value: number } | { ok: false } {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: BRANDING_BACKGROUND_ZOOM_DEFAULT };
+  }
+  const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : NaN;
+  if (!Number.isInteger(value) || value < BRANDING_BACKGROUND_ZOOM_MIN || value > BRANDING_BACKGROUND_ZOOM_MAX) {
+    return { ok: false };
+  }
+  return { ok: true, value };
+}
+
 function parsePortalLayoutFields(body: Record<string, unknown>): {
   ok: true;
   layout: BrandingPortalLayout;
@@ -634,6 +695,14 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
   if (!focalX.ok || !focalY.ok) {
     return { ok: false, code: "invalid_image_position", message: "Image position must be 0–100" };
   }
+  const backgroundZoom = parseBackgroundZoom(body.backgroundZoom);
+  if (!backgroundZoom.ok) {
+    return {
+      ok: false,
+      code: "invalid_background_zoom",
+      message: `Image scale must be ${BRANDING_BACKGROUND_ZOOM_MIN}–${BRANDING_BACKGROUND_ZOOM_MAX}`,
+    };
+  }
   return {
     ok: true,
     layout: {
@@ -645,6 +714,7 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
       overlay: overlay.value,
       focalX: focalX.value,
       focalY: focalY.value,
+      backgroundZoom: backgroundZoom.value,
     },
   };
 }
@@ -661,6 +731,7 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
   const cardImage = parseCardImage(body.cardImage);
   const focalX = parseFocalPercent(body.focalX, DEFAULT_BRANDING_PORTAL_LAYOUT.focalX);
   const focalY = parseFocalPercent(body.focalY, DEFAULT_BRANDING_PORTAL_LAYOUT.focalY);
+  const backgroundZoom = parseBackgroundZoom(body.backgroundZoom);
   return {
     cardPosition: desktop,
     cardPositionMobile: mobileToken.kind === "value" ? mobileToken.value : desktop,
@@ -669,6 +740,7 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
     overlay: overlay.ok ? overlay.value : DEFAULT_BRANDING_PORTAL_LAYOUT.overlay,
     focalX: focalX.ok ? focalX.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
     focalY: focalY.ok ? focalY.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
+    backgroundZoom: backgroundZoom.ok ? backgroundZoom.value : DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundZoom,
   };
 }
 
@@ -683,6 +755,7 @@ export function brandingPortalLayout(
         | "overlay"
         | "focalX"
         | "focalY"
+        | "backgroundZoom"
       >
     | undefined,
 ): BrandingPortalLayout {
@@ -694,6 +767,7 @@ export function brandingPortalLayout(
     overlay: branding?.overlay,
     focalX: branding?.focalX,
     focalY: branding?.focalY,
+    backgroundZoom: branding?.backgroundZoom,
   });
 }
 
@@ -816,15 +890,16 @@ export function brandingBannerStyle(
 ): BrandingHeroStyle | undefined {
   if (!brandingShowsBanner(branding) || !branding?.bannerUrl) return undefined;
   const layout = brandingPortalLayout(branding);
+  const zoomed = layout.backgroundZoom !== BRANDING_BACKGROUND_ZOOM_DEFAULT;
   return {
     backgroundImage: `url(${branding.bannerUrl})`,
-    backgroundSize: layout.backgroundFit === "fit" ? "contain" : "cover",
+    backgroundSize: layout.backgroundFit === "fit" && !zoomed ? "contain" : "cover",
     backgroundPosition: `${layout.focalX}% ${layout.focalY}%`,
   };
 }
 
 function gradientWashColor(branding: RevealBranding): string {
-  if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
+  if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
     return branding.backgroundColor;
   }
   return brandingRelativeLuminance(branding.accentColor ?? "#2563eb") > 0.45
@@ -852,22 +927,25 @@ export function brandingPageBackground(
   if (brandingShowsBanner(branding) && branding.bannerUrl) {
     return { kind: "image", url: branding.bannerUrl };
   }
-  if (branding.backgroundStyle === "gradient" && branding.accentColor) {
+  const gradientSource =
+    branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)
+      ? branding.backgroundColor
+      : branding.accentColor;
+  if (branding.backgroundStyle === "gradient" && gradientSource) {
     return {
       kind: "gradient",
-      background: brandGradientBackground(branding.accentColor, gradientWashColor(branding)),
+      background: brandGradientBackground(gradientSource, gradientWashColor(branding)),
     };
   }
-  if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
+  if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
     return { kind: "color", backgroundColor: branding.backgroundColor };
   }
   return { kind: "none" };
 }
 
-/** True when the reveal UI must sit on its own card over a brand surface. */
+/** True when branding is present: Default and Custom both use a reveal card. */
 export function brandingUsesPortalSurface(branding: RevealBranding | undefined): boolean {
-  const page = brandingPageBackground(branding);
-  return page.kind !== "none";
+  return Boolean(branding);
 }
 
 type BrandingCardMarkSource = Pick<
@@ -882,35 +960,34 @@ export function brandingCardMarkUrl(
   return branding?.logoUrl;
 }
 
-/** True when the reveal card shows a wide lockup instead of a logo and names. */
+/** True when the reveal card shows a wide lockup instead of a square mark. */
 export function brandingCardMarkIsBanner(
   branding: BrandingCardMarkSource | undefined,
 ): boolean {
-  return branding?.cardImage === "banner" && Boolean(branding.logoUrl);
+  return branding?.cardImage === "banner" && Boolean(brandingCardMarkUrl(branding));
 }
 
 /** Logo is the only sender identity — no name or company to sit beside it. */
 export function brandingLogoIsSolo(branding: BrandingCardMarkSource | undefined): boolean {
   if (!brandingCardMarkUrl(branding)) return false;
-  if (brandingCardMarkIsBanner(branding)) return true;
   return !branding?.senderName?.trim() && !branding?.companyName?.trim();
 }
 
 /**
- * Reveal-card logo size. A mark next to a name stays ~64px. A logo-only banner
- * uses a wider card and up to ~208px tall so a firm lockup can actually read.
+ * Reveal-card logo size. A square mark next to a name stays ~64px. A wide
+ * banner lockup, or a logo with no names, uses a larger mark so it can read.
  */
 export function brandingRevealLogoClassName(
   branding: BrandingCardMarkSource | undefined,
   options?: { preview?: boolean },
 ): string {
-  const solo = brandingLogoIsSolo(branding);
+  const large = brandingLogoIsSolo(branding) || brandingCardMarkIsBanner(branding);
   if (options?.preview) {
-    return solo
+    return large
       ? "mx-auto max-h-24 w-auto max-w-full object-contain"
       : "max-h-7 max-w-24 object-contain";
   }
-  return solo
+  return large
     ? "mx-auto max-h-44 w-auto max-w-full object-contain sm:max-h-52"
     : "max-h-14 w-auto object-contain sm:max-h-16";
 }
@@ -928,7 +1005,7 @@ export function brandingHeroStyle(
       background: brandGradientBackground(branding.accentColor, gradientWashColor(branding)),
     };
   }
-  if (branding.backgroundColor && brandingRelativeLuminance(branding.backgroundColor) < 0.94) {
+  if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
     return { backgroundColor: branding.backgroundColor };
   }
   return undefined;
@@ -1084,6 +1161,7 @@ export function parseBusinessBrandingInput(
       overlay: layout.layout.overlay,
       focalX: layout.layout.focalX,
       focalY: layout.layout.focalY,
+      backgroundZoom: layout.layout.backgroundZoom,
       showBrandingAfterReveal: opened.settings.show,
       openedBackground: opened.settings.background,
       openedShowLogo: opened.settings.showLogo,
@@ -1121,6 +1199,7 @@ export function toRevealBranding(
     overlay: branding.overlay ?? undefined,
     focalX: branding.focalX ?? undefined,
     focalY: branding.focalY ?? undefined,
+    backgroundZoom: branding.backgroundZoom ?? undefined,
   });
   const defaults = DEFAULT_BRANDING_PORTAL_LAYOUT;
   return {
@@ -1145,6 +1224,7 @@ export function toRevealBranding(
     ...(layout.overlay !== defaults.overlay ? { overlay: layout.overlay } : {}),
     ...(layout.focalX !== defaults.focalX ? { focalX: layout.focalX } : {}),
     ...(layout.focalY !== defaults.focalY ? { focalY: layout.focalY } : {}),
+    ...(layout.backgroundZoom !== defaults.backgroundZoom ? { backgroundZoom: layout.backgroundZoom } : {}),
     ...(branding.showBrandingAfterReveal === true ? { showBrandingAfterReveal: true } : {}),
     ...(branding.showBrandingAfterReveal === true &&
     branding.openedBackground &&
@@ -1210,6 +1290,7 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     overlay: layout.overlay,
     focalX: layout.focalX,
     focalY: layout.focalY,
+    backgroundZoom: layout.backgroundZoom,
     showBrandingAfterReveal: openedSettings.show,
     openedBackground: openedSettings.background,
     openedShowLogo: openedSettings.showLogo,

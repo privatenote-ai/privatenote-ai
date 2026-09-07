@@ -286,7 +286,7 @@ const featureCards = [
   {
     icon: Building2,
     title: "Recipient branding",
-    text: "Business adds company profile, logo, and accent on reveal pages.",
+    text: "Business adds company profile, logo, colours, and a Default or Custom reveal page.",
   },
 ];
 

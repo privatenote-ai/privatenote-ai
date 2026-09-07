@@ -30,6 +30,10 @@ import {
   applyOpenedNoteBranding,
   parseOpenedNoteBrandingSettings,
   DEFAULT_OPENED_NOTE_BRANDING,
+  brandingPageMode,
+  brandingBackgroundStyleForPage,
+  brandingMobileLane,
+  brandingIsPrivateNoteCanvas,
 } from "./businessBranding";
 
 const allowed = { revealBrandingAllowed: true };
@@ -86,6 +90,7 @@ describe("parseBusinessBrandingInput", () => {
       overlay: "light",
       focalX: 50,
       focalY: 50,
+      backgroundZoom: 100,
       showBrandingAfterReveal: false,
       openedBackground: "same",
       openedShowLogo: true,
@@ -162,6 +167,13 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(result.ok === true && result.branding.overlay, "medium");
     assert.equal(result.ok === true && result.branding.focalX, 20);
     assert.equal(result.ok === true && result.branding.focalY, 80);
+    const zoomed = parseBusinessBrandingInput(
+      { backgroundZoom: 140, accentColor: "#2563eb" },
+      allowed,
+    );
+    assert.equal(zoomed.ok === true && zoomed.branding.backgroundZoom, 140);
+    const badZoom = parseBusinessBrandingInput({ backgroundZoom: 40 }, allowed);
+    assert.equal(badZoom.ok === false && badZoom.code, "invalid_background_zoom");
 
     const badOverlay = parseBusinessBrandingInput({ overlay: "rgba(0,0,0,0.8)" }, allowed);
     assert.equal(badOverlay.ok === false && badOverlay.code, "invalid_overlay");
@@ -420,6 +432,7 @@ describe("brandingPageBackground", () => {
     });
     assert.equal(brandingUsesPortalSurface(branding), true);
     assert.equal(brandingChromeUsesLightText(branding), true);
+    assert.equal(brandingUsesPortalSurface({ companyName: "Acme", accentColor: "#2563eb" }), true);
   });
 
   it("builds a subtle accent gradient for Brand style", () => {
@@ -466,6 +479,7 @@ describe("branding portal layout", () => {
     assert.equal(brandingPortalLayout(undefined).cardPosition, "center");
     assert.equal(brandingPortalLayout(undefined).cardPositionMobile, "center");
     assert.equal(brandingPortalLayout(undefined).cardImage, "logo");
+    assert.equal(brandingPortalLayout(undefined).backgroundZoom, 100);
     assert.deepEqual(brandingCardAxis("top-left"), { x: "left", y: "top" });
     assert.deepEqual(brandingCardAxis("bottom-right"), { x: "right", y: "bottom" });
     assert.deepEqual(brandingCardAxis("left"), { x: "left", y: "middle" });
@@ -648,7 +662,7 @@ describe("branding reveal logo size", () => {
       companyName: "Acme",
     };
     assert.equal(brandingCardMarkUrl(branding), "https://acme.example/logo.png");
-    assert.equal(brandingLogoIsSolo(branding), true);
+    assert.equal(brandingLogoIsSolo(branding), false);
     assert.match(brandingRevealLogoClassName(branding), /max-h-44/);
     assert.equal(
       brandingCardMarkUrl({ logoUrl: "https://acme.example/logo.png" }),
@@ -668,5 +682,39 @@ describe("branding reveal logo size", () => {
       url: "https://acme.example/office.jpg",
     });
     assert.equal(brandingCardMarkUrl(branding), "https://acme.example/lockup.png");
+  });
+});
+
+describe("branding page modes", () => {
+  it("maps Default / Custom onto the stored backgroundStyle values", () => {
+    assert.equal(brandingPageMode("neutral"), "default");
+    assert.equal(brandingPageMode("gradient"), "default");
+    assert.equal(brandingPageMode("banner"), "custom");
+    assert.equal(brandingBackgroundStyleForPage("default", false), "neutral");
+    assert.equal(brandingBackgroundStyleForPage("default", true), "gradient");
+    assert.equal(brandingBackgroundStyleForPage("custom", true), "banner");
+    assert.equal(brandingMobileLane("top-left"), "top");
+    assert.equal(brandingMobileLane("right"), "center");
+    assert.equal(brandingIsPrivateNoteCanvas("#ffffff"), true);
+    assert.equal(brandingIsPrivateNoteCanvas("#e2e8f0"), false);
+  });
+
+  it("omits default zoom from the note snapshot and keeps a custom scale", () => {
+    const defaultsOnly = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      backgroundZoom: 100,
+    });
+    assert.equal("backgroundZoom" in (defaultsOnly ?? {}), false);
+    const zoomed = toRevealBranding({
+      companyName: "Acme",
+      senderName: null,
+      logoUrl: null,
+      accentColor: "#2563eb",
+      backgroundZoom: 140,
+    });
+    assert.equal(zoomed?.backgroundZoom, 140);
   });
 });

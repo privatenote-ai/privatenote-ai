@@ -55,8 +55,15 @@ import {
   BRANDING_CARD_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
+  BRANDING_BACKGROUND_ZOOM_MAX,
+  BRANDING_BACKGROUND_ZOOM_MIN,
+  brandingBackgroundStyleForPage,
   brandingCardMarkUrl,
   brandingCtaStyle,
+  brandingIsPrivateNoteCanvas,
+  brandingMobileLane,
+  brandingPageMode,
+  brandingPositionFromMobileLane,
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   contrastingTextOn,
@@ -64,15 +71,13 @@ import {
   DEFAULT_OPENED_NOTE_BRANDING,
   parseBrandingHexColor,
   parseStoredPortalLayoutJson,
-  openedSettingsFromAccountColumns,
+  parseOpenedNoteBrandingSettings,
   brandingPortalLayout,
   applyOpenedNoteBranding,
-  type BrandingBackgroundFit,
-  type BrandingBackgroundStyle,
   type BrandingCardPosition,
+  type BrandingMobileLane,
   type BrandingOverlay,
   type BrandingPortalLayout,
-  type OpenedNoteBackground,
   type OpenedNoteBrandingSettings,
   type RevealBranding,
 } from "@shared/businessBranding";
@@ -102,7 +107,7 @@ type BrandingAutosavePayload = {
   businessSenderName: string;
   businessSenderRole: string;
   businessTrustMessage: string;
-  businessBackgroundStyle: BrandingBackgroundStyle;
+  businessBackgroundStyle: "neutral" | "gradient" | "banner";
   businessPortalLayout: BrandingPortalLayout;
   businessOpenedBranding: OpenedNoteBrandingSettings;
 };
@@ -120,7 +125,64 @@ function normalizeBrandColorInput(raw: string): string | null {
   return parsed.ok && parsed.value ? parsed.value : null;
 }
 
-/** Scaled-down recipient portal so branding edits match what recipients see. */
+function ColorField({
+  id,
+  label,
+  value,
+  draft,
+  onValue,
+  onDraft,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  draft: string;
+  onValue: (next: string) => void;
+  onDraft: (next: string) => void;
+}) {
+  const valid = normalizeBrandColorInput(draft) != null;
+  return (
+    <div>
+      <Label htmlFor={`${id}-hex`} className="mb-2 block text-sm">
+        {label}
+      </Label>
+      <div className="flex items-center gap-3">
+        <input
+          id={id}
+          type="color"
+          value={value}
+          aria-label={label}
+          onChange={(event) => {
+            const next = event.target.value;
+            onValue(next);
+            onDraft(next);
+          }}
+          className="h-10 w-12 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
+        />
+        <input
+          id={`${id}-hex`}
+          value={draft}
+          onChange={(event) => {
+            const next = event.target.value;
+            onDraft(next);
+            const parsed = normalizeBrandColorInput(next);
+            if (parsed) onValue(parsed);
+          }}
+          onBlur={() => onDraft(value)}
+          spellCheck={false}
+          autoComplete="off"
+          autoCapitalize="off"
+          inputMode="text"
+          maxLength={7}
+          aria-invalid={!valid}
+          className={`w-32 rounded-md border bg-white px-3 py-2 font-mono text-sm dark:bg-gray-900 ${
+            valid ? "border-gray-300 dark:border-gray-700" : "border-red-400 dark:border-red-500"
+          }`}
+        />
+      </div>
+    </div>
+  );
+}
 const BrandingPreview: React.FC<{
   branding: RevealBranding;
   viewport: "desktop" | "mobile";
@@ -265,27 +327,6 @@ function BrandingPageHeading({
   );
 }
 
-const OPENED_BACKGROUND_CHOICES: Array<{
-  id: OpenedNoteBackground;
-  label: string;
-  hint: string;
-}> = [
-  { id: "same", label: "Same as reveal gate", hint: "Reuse the page above" },
-  { id: "neutral", label: "Default", hint: "PrivateNote dotted canvas" },
-  { id: "gradient", label: "Brand", hint: "Subtle gradient from your color" },
-  { id: "banner", label: "Custom", hint: "Full-page photograph" },
-];
-
-const BACKGROUND_CHOICES: Array<{
-  id: BrandingBackgroundStyle;
-  label: string;
-  hint: string;
-}> = [
-  { id: "neutral", label: "Default", hint: "PrivateNote dotted canvas" },
-  { id: "gradient", label: "Brand", hint: "Subtle gradient from your color" },
-  { id: "banner", label: "Custom", hint: "Full-page photograph" },
-];
-
 function ChoiceRow<T extends string>({
   label,
   value,
@@ -361,6 +402,53 @@ function CardPositionPad({
               title={cell.label}
               onClick={() => onChange(cell.id)}
               className={`h-7 rounded-md ${
+                selected
+                  ? "bg-primary shadow-sm"
+                  : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+              }`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MobileLanePad({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: BrandingCardPosition;
+  onChange: (id: BrandingCardPosition) => void;
+}) {
+  const lane = brandingMobileLane(value);
+  const cells: Array<{ id: BrandingMobileLane; label: string }> = [
+    { id: "top", label: "Top" },
+    { id: "center", label: "Center" },
+    { id: "bottom", label: "Bottom" },
+  ];
+  return (
+    <div>
+      <Label className="mb-2 block text-sm">{label}</Label>
+      <div
+        className="grid w-[2.25rem] grid-rows-3 gap-1 rounded-lg border border-gray-200 p-1 dark:border-gray-700"
+        role="radiogroup"
+        aria-label={label}
+      >
+        {cells.map((cell) => {
+          const selected = lane === cell.id;
+          return (
+            <button
+              key={cell.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={cell.label}
+              title={cell.label}
+              onClick={() => onChange(brandingPositionFromMobileLane(cell.id))}
+              className={`h-7 w-7 rounded-md ${
                 selected
                   ? "bg-primary shadow-sm"
                   : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
@@ -490,7 +578,9 @@ export default function AccountPreferences() {
   const [businessAccentColor, setBusinessAccentColor] = useState(DEFAULT_BRAND_COLOR);
   const [businessAccentColorDraft, setBusinessAccentColorDraft] = useState(DEFAULT_BRAND_COLOR);
   const [businessBackgroundColor, setBusinessBackgroundColor] = useState("#ffffff");
+  const [businessBackgroundColorDraft, setBusinessBackgroundColorDraft] = useState("#ffffff");
   const [businessTextColor, setBusinessTextColor] = useState("#ffffff");
+  const [businessTextColorDraft, setBusinessTextColorDraft] = useState("#ffffff");
   const [businessLogoUrl, setBusinessLogoUrl] = useState<string | null>(null);
   const [businessSenderName, setBusinessSenderName] = useState("");
   const [businessSenderRole, setBusinessSenderRole] = useState("");
@@ -567,7 +657,6 @@ export default function AccountPreferences() {
         businessBackgroundStyle?: "neutral" | "gradient" | "banner";
         businessPortalLayout?: BrandingPortalLayout | string | null;
         businessOpenedBranding?: OpenedNoteBrandingSettings | string | null;
-        businessShowBrandingAfterReveal?: boolean;
       }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
         setEmailNotifications(data.emailNotifications);
@@ -583,10 +672,10 @@ export default function AccountPreferences() {
         setBusinessAccentColor(accent);
         setBusinessAccentColorDraft(accent);
         setBusinessBackgroundColor(data.businessBackgroundColor ?? "#ffffff");
-        setBusinessTextColor(
-          data.businessTextColor
-            ?? contrastingTextOn(accent),
-        );
+        setBusinessBackgroundColorDraft(data.businessBackgroundColor ?? "#ffffff");
+        const text = data.businessTextColor ?? contrastingTextOn(accent);
+        setBusinessTextColor(text);
+        setBusinessTextColorDraft(text);
         setBusinessSenderName(data.businessSenderName ?? "");
         setBusinessSenderRole(data.businessSenderRole ?? "");
         setBusinessTrustMessage(data.businessTrustMessage ?? "");
@@ -597,12 +686,7 @@ export default function AccountPreferences() {
             ? parseStoredPortalLayoutJson(data.businessPortalLayout)
             : brandingPortalLayout(data.businessPortalLayout ?? undefined),
         );
-        setOpenedNoteBranding(
-          openedSettingsFromAccountColumns(
-            data.businessOpenedBranding,
-            data.businessShowBrandingAfterReveal,
-          ),
-        );
+        setOpenedNoteBranding(parseOpenedNoteBrandingSettings(data.businessOpenedBranding));
       }
       if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
         setPreferredLanguage(data.preferredLanguage);
@@ -791,10 +875,12 @@ export default function AccountPreferences() {
       setBusinessAccentColor(accent);
       setBusinessAccentColorDraft(accent);
       setBusinessBackgroundColor(response.businessBackgroundColor ?? "#ffffff");
-      setBusinessTextColor(
+      setBusinessBackgroundColorDraft(response.businessBackgroundColor ?? "#ffffff");
+      const text =
         response.businessTextColor
-          ?? contrastingTextOn(accent),
-      );
+          ?? contrastingTextOn(accent);
+      setBusinessTextColor(text);
+      setBusinessTextColorDraft(text);
       if (response.businessPortalLayout) {
         setPortalLayout(brandingPortalLayout(response.businessPortalLayout));
       }
@@ -886,7 +972,7 @@ export default function AccountPreferences() {
   const uploadBusinessBanner = async (file: File) => {
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_BANNER_MAX_BYTES) {
       toast({
-        title: "Unsupported banner",
+        title: "Unsupported photograph",
         description: `Use a PNG, JPEG, or WebP image, ${BRANDING_BANNER_SIZE_LABEL} px, under ${Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.`,
         variant: "destructive",
       });
@@ -898,9 +984,9 @@ export default function AccountPreferences() {
       setBusinessBannerUrl(response.bannerUrl);
       setBusinessBackgroundStyle("banner");
       await refreshEntitlements();
-      toast({ title: "Banner uploaded" });
+      toast({ title: "Background photograph uploaded" });
     } catch (error) {
-      toast({ title: "Could not upload banner", description: describeApiPreferenceError(error), variant: "destructive" });
+      toast({ title: "Could not upload photograph", description: describeApiPreferenceError(error), variant: "destructive" });
     } finally {
       setUploadingBanner(false);
       if (bannerInputRef.current) bannerInputRef.current.value = "";
@@ -1227,57 +1313,6 @@ export default function AccountPreferences() {
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor="business-accent-color-hex" className="mb-2 block text-sm">
-                  Brand color
-                </Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    id="business-accent-color"
-                    type="color"
-                    value={businessAccentColor}
-                    aria-label="Brand color picker"
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setBusinessAccentColor(next);
-                      setBusinessAccentColorDraft(next);
-                      setBusinessTextColor(contrastingTextOn(next));
-                    }}
-                    className="h-10 w-12 shrink-0 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
-                  />
-                  <input
-                    id="business-accent-color-hex"
-                    value={businessAccentColorDraft}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setBusinessAccentColorDraft(next);
-                      const parsed = normalizeBrandColorInput(next);
-                      if (parsed) {
-                        setBusinessAccentColor(parsed);
-                        setBusinessTextColor(contrastingTextOn(parsed));
-                      }
-                    }}
-                    onBlur={() => setBusinessAccentColorDraft(businessAccentColor)}
-                    spellCheck={false}
-                    autoComplete="off"
-                    autoCapitalize="off"
-                    inputMode="text"
-                    maxLength={7}
-                    placeholder={DEFAULT_BRAND_COLOR}
-                    aria-invalid={normalizeBrandColorInput(businessAccentColorDraft) == null}
-                    className={`w-32 rounded-md border bg-white px-3 py-2 font-mono text-sm dark:bg-gray-900 ${
-                      normalizeBrandColorInput(businessAccentColorDraft)
-                        ? "border-gray-300 dark:border-gray-700"
-                        : "border-red-400 dark:border-red-500"
-                    }`}
-                  />
-                </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Hex value such as #2563eb. Used for Reveal and Copy. Brand
-                  background generates a gradient from this colour.
-                </p>
-              </div>
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="business-sender-name" className="mb-2 block text-sm">Sender name</Label>
@@ -1309,8 +1344,8 @@ export default function AccountPreferences() {
                 <div className="mb-4 grid gap-2 sm:grid-cols-2">
                   {(
                     [
-                      ["logo", "Logo", "Square mark next to your name"],
-                      ["banner", "Banner", "Wide lockup instead of logo and names"],
+                      ["logo", "Logo", "Square mark. Optional name, role, and company sit with it."],
+                      ["banner", "Banner", "Wider lockup. Name, role, company, and trust message still show."],
                     ] as const
                   ).map(([id, label, hint]) => (
                     <label
@@ -1367,6 +1402,16 @@ export default function AccountPreferences() {
                       if (file) void uploadBusinessLogo(file);
                     }}
                   />
+                  <input
+                    ref={bannerInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadBusinessBanner(file);
+                    }}
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -1390,7 +1435,7 @@ export default function AccountPreferences() {
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {portalLayout.cardImage === "banner"
-                    ? `Wide lockup, about ${BRANDING_CARD_BANNER_SIZE_LABEL}. It replaces logo and names on the card. Page photograph is under Background.`
+                    ? `Wide lockup, about ${BRANDING_CARD_BANNER_SIZE_LABEL}. Names and trust message stay on the card.`
                     : `Square mark. PNG, JPEG, or WebP; maximum ${Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB. Recommended ${BRANDING_LOGO_RECOMMENDED_PX.width}×${BRANDING_LOGO_RECOMMENDED_PX.height}.`}
                 </p>
               </div>
@@ -1398,8 +1443,8 @@ export default function AccountPreferences() {
               <div className="border-t border-violet-100 pt-6 dark:border-violet-900/40">
                 <BrandingPageHeading
                   eyebrow="Page"
-                  title="Reveal gate"
-                  description="What recipients see before they open the note — background, image, and overlay."
+                  title="Reveal page"
+                  description="Default is a centered card on PrivateNote. Custom is a photograph you pan and scale."
                   actions={
                     <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
                       {([
@@ -1426,21 +1471,33 @@ export default function AccountPreferences() {
               </div>
 
               <div>
-                <Label className="mb-2 block text-sm">Background</Label>
-                <div className="mb-3 grid grid-cols-3 gap-2">
-                  {BACKGROUND_CHOICES.map((choice) => (
+                <Label className="mb-2 block text-sm">Page</Label>
+                <div className="mb-4 grid grid-cols-2 gap-2">
+                  {([
+                    { id: "default" as const, label: "Default", hint: "Centered card, your colours" },
+                    { id: "custom" as const, label: "Custom", hint: "Photograph behind the card" },
+                  ]).map((choice) => (
                     <button
                       key={choice.id}
                       type="button"
                       onClick={() => {
-                        if (choice.id === "banner" && !businessBannerUrl) {
-                          bannerInputRef.current?.click();
+                        if (choice.id === "custom") {
+                          if (!businessBannerUrl) {
+                            bannerInputRef.current?.click();
+                            return;
+                          }
+                          setBusinessBackgroundStyle("banner");
                           return;
                         }
-                        setBusinessBackgroundStyle(choice.id);
+                        setBusinessBackgroundStyle(
+                          brandingBackgroundStyleForPage(
+                            "default",
+                            businessBackgroundStyle === "gradient",
+                          ),
+                        );
                       }}
                       className={`rounded-lg border px-3 py-2 text-left ${
-                        businessBackgroundStyle === choice.id
+                        brandingPageMode(businessBackgroundStyle) === choice.id
                           ? "border-primary bg-primary/5 text-primary"
                           : "border-gray-200 dark:border-gray-700"
                       }`}
@@ -1452,159 +1509,251 @@ export default function AccountPreferences() {
                     </button>
                   ))}
                 </div>
-                {businessBackgroundStyle === "banner" || businessBannerUrl ? (
-                  <>
-                    <div
-                      className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-slate-950 dark:border-gray-700"
-                      style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
-                    >
-                      {businessBannerUrl ? (
+
+                {brandingPageMode(businessBackgroundStyle) === "default" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="mb-2 block text-sm">Background</Label>
+                      <div className="mb-3 inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
                         <button
                           type="button"
-                          className="relative block h-full w-full cursor-crosshair"
-                          aria-label="Set image focal point"
-                          onClick={(event) => {
-                            const rect = event.currentTarget.getBoundingClientRect();
-                            const x = Math.round(((event.clientX - rect.left) / rect.width) * 100);
-                            const y = Math.round(((event.clientY - rect.top) / rect.height) * 100);
-                            setPortalLayout((prev) => ({
-                              ...prev,
-                              focalX: Math.min(100, Math.max(0, x)),
-                              focalY: Math.min(100, Math.max(0, y)),
-                            }));
+                          onClick={() => {
+                            setBusinessBackgroundColor("#ffffff");
+                            setBusinessBackgroundColorDraft("#ffffff");
                           }}
+                          className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                            brandingIsPrivateNoteCanvas(businessBackgroundColor)
+                              ? "bg-primary/10 text-primary"
+                              : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
+                          }`}
                         >
-                          <img
-                            src={businessBannerUrl}
-                            alt="Custom recipient background"
-                            className="h-full w-full object-contain"
-                          />
-                          <span
-                            className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow"
-                            style={{
-                              left: `${portalLayout.focalX}%`,
-                              top: `${portalLayout.focalY}%`,
-                            }}
-                          />
+                          PrivateNote
                         </button>
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
-                          <p className="m-0 text-sm font-semibold text-gray-200">
-                            {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px
-                          </p>
-                          <p className="m-0 text-xs text-gray-400">
-                            Landscape photograph · PNG, JPEG, or WebP
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        ref={bannerInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        className="sr-only"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (file) void uploadBusinessBanner(file);
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={uploadingBanner}
-                        onClick={() => bannerInputRef.current?.click()}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {uploadingBanner ? "Uploading…" : businessBannerUrl ? "Replace image" : "Upload image"}
-                      </Button>
-                      {businessBannerUrl ? (
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          disabled={uploadingBanner}
-                          onClick={() => void removeBusinessBanner()}
+                          onClick={() => {
+                            if (brandingIsPrivateNoteCanvas(businessBackgroundColor)) {
+                              setBusinessBackgroundColor("#e2e8f0");
+                              setBusinessBackgroundColorDraft("#e2e8f0");
+                            }
+                          }}
+                          className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                            !brandingIsPrivateNoteCanvas(businessBackgroundColor)
+                              ? "bg-primary/10 text-primary"
+                              : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
+                          }`}
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remove
-                        </Button>
+                          Color
+                        </button>
+                      </div>
+                      {!brandingIsPrivateNoteCanvas(businessBackgroundColor) ? (
+                        <ColorField
+                          id="business-background-color"
+                          label="Page color"
+                          value={businessBackgroundColor}
+                          draft={businessBackgroundColorDraft}
+                          onValue={setBusinessBackgroundColor}
+                          onDraft={setBusinessBackgroundColorDraft}
+                        />
                       ) : null}
                     </div>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                      Recommended {BRANDING_BANNER_SIZE_LABEL} (16:9). Maximum{" "}
-                      {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.
-                      Click the photo to set the focal point. Recipients cannot move the image.
+                    <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100">
+                      <input
+                        type="checkbox"
+                        checked={businessBackgroundStyle === "gradient"}
+                        onChange={(event) =>
+                          setBusinessBackgroundStyle(event.target.checked ? "gradient" : "neutral")
+                        }
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      Gradient wash
+                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <ColorField
+                        id="business-accent-color"
+                        label="Reveal button"
+                        value={businessAccentColor}
+                        draft={businessAccentColorDraft}
+                        onValue={(next) => {
+                          setBusinessAccentColor(next);
+                          setBusinessAccentColorDraft(next);
+                        }}
+                        onDraft={setBusinessAccentColorDraft}
+                      />
+                      <ColorField
+                        id="business-text-color"
+                        label="Button text"
+                        value={businessTextColor}
+                        draft={businessTextColorDraft}
+                        onValue={(next) => {
+                          setBusinessTextColor(next);
+                          setBusinessTextColorDraft(next);
+                        }}
+                        onDraft={setBusinessTextColorDraft}
+                      />
+                    </div>
+                    {brandingCtaStyle({
+                      accentColor: businessAccentColor,
+                      textColor: businessTextColor,
+                    })?.color.toLowerCase() !== businessTextColor.toLowerCase() ? (
+                      <p className="text-xs text-amber-800 dark:text-amber-200">
+                        Button text will use a higher-contrast colour so it stays readable.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {brandingPageMode(businessBackgroundStyle) === "custom" ? (
+                  <>
+                    <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                      One photograph. Click to set the focal point, then scale. The reveal card stays inset from the edges.
                     </p>
-                    {businessBackgroundStyle === "banner" ? (
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                        <ChoiceRow<BrandingBackgroundFit>
-                          label="Image"
-                          value={portalLayout.backgroundFit}
-                          onChange={(backgroundFit) =>
-                            setPortalLayout((prev) => ({ ...prev, backgroundFit }))
-                          }
-                          options={[
-                            { id: "fill", label: "Fill" },
-                            { id: "fit", label: "Fit" },
-                          ]}
+                <div
+                  className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-slate-950 dark:border-gray-700"
+                  style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
+                >
+                  {businessBannerUrl ? (
+                    <button
+                      type="button"
+                      className="relative block h-full w-full cursor-crosshair"
+                      aria-label="Set image focal point"
+                      onClick={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const x = Math.round(((event.clientX - rect.left) / rect.width) * 100);
+                        const y = Math.round(((event.clientY - rect.top) / rect.height) * 100);
+                        setPortalLayout((prev) => ({
+                          ...prev,
+                          focalX: Math.min(100, Math.max(0, x)),
+                          focalY: Math.min(100, Math.max(0, y)),
+                        }));
+                        if (businessBackgroundStyle !== "banner") {
+                          setBusinessBackgroundStyle("banner");
+                        }
+                      }}
+                    >
+                      <img
+                        src={businessBannerUrl}
+                        alt="Custom recipient background"
+                        className="h-full w-full object-contain"
+                        style={{
+                          transform: `scale(${portalLayout.backgroundZoom / 100})`,
+                          transformOrigin: `${portalLayout.focalX}% ${portalLayout.focalY}%`,
+                        }}
+                      />
+                      <span
+                        className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow"
+                        style={{
+                          left: `${portalLayout.focalX}%`,
+                          top: `${portalLayout.focalY}%`,
+                        }}
+                      />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex h-full w-full flex-col items-center justify-center gap-1 px-4 text-center"
+                      onClick={() => bannerInputRef.current?.click()}
+                    >
+                      <p className="m-0 text-sm font-semibold text-gray-200">
+                        Upload a background photograph
+                      </p>
+                      <p className="m-0 text-xs text-gray-400">
+                        {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px · landscape
+                      </p>
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingBanner}
+                    onClick={() => bannerInputRef.current?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploadingBanner ? "Uploading…" : businessBannerUrl ? "Replace photograph" : "Upload photograph"}
+                  </Button>
+                  {businessBannerUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={uploadingBanner}
+                      onClick={() => void removeBusinessBanner()}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Recommended {BRANDING_BANNER_SIZE_LABEL} (16:9). Maximum{" "}
+                  {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.
+                  Click the photo to set the focal point. Recipients cannot move the image.
+                </p>
+                {businessBackgroundStyle === "banner" ? (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <Label htmlFor="business-background-zoom" className="mb-2 block text-sm">
+                        Scale {portalLayout.backgroundZoom}%
+                      </Label>
+                      <input
+                        id="business-background-zoom"
+                        type="range"
+                        min={BRANDING_BACKGROUND_ZOOM_MIN}
+                        max={BRANDING_BACKGROUND_ZOOM_MAX}
+                        value={portalLayout.backgroundZoom}
+                        onChange={(event) =>
+                          setPortalLayout((prev) => ({
+                            ...prev,
+                            backgroundZoom: Number(event.target.value),
+                          }))
+                        }
+                        className="w-full accent-primary"
+                      />
+                    </div>
+                    <ChoiceRow<BrandingOverlay>
+                      label="Overlay"
+                      value={portalLayout.overlay}
+                      onChange={(overlay) =>
+                        setPortalLayout((prev) => ({ ...prev, overlay }))
+                      }
+                      options={[
+                        { id: "light", label: "Light" },
+                        { id: "medium", label: "Medium" },
+                        { id: "dark", label: "Dark" },
+                      ]}
+                    />
+                    <div>
+                      <div className="mb-3">
+                        <Label className="text-sm">Reveal card</Label>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Move the card inside a padded frame — not to the screen edge. Phones use top, center, or bottom.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-8">
+                        <CardPositionPad
+                          label="Desktop"
+                          value={portalLayout.cardPosition}
+                          onChange={(cardPosition) => {
+                            setPortalLayout((prev) => ({ ...prev, cardPosition }));
+                            setBrandingPreviewViewport("desktop");
+                          }}
                         />
-                        <ChoiceRow<BrandingOverlay>
-                          label="Overlay"
-                          value={portalLayout.overlay}
-                          onChange={(overlay) =>
-                            setPortalLayout((prev) => ({ ...prev, overlay }))
-                          }
-                          options={[
-                            { id: "light", label: "Light" },
-                            { id: "medium", label: "Medium" },
-                            { id: "dark", label: "Dark" },
-                          ]}
+                        <MobileLanePad
+                          label="Mobile"
+                          value={portalLayout.cardPositionMobile}
+                          onChange={(cardPositionMobile) => {
+                            setPortalLayout((prev) => ({ ...prev, cardPositionMobile }));
+                            setBrandingPreviewViewport("mobile");
+                          }}
                         />
                       </div>
-                    ) : null}
+                    </div>
+                  </div>
+                ) : null}
                   </>
-                ) : (
-                  <input
-                    ref={bannerInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadBusinessBanner(file);
-                    }}
-                  />
-                )}
+                ) : null}
               </div>
-
-              {businessBackgroundStyle !== "neutral" ? (
-                <div>
-                  <div className="mb-3">
-                    <Label className="text-sm">Card position</Label>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Place the reveal card separately on desktop and on phones.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-8">
-                    <CardPositionPad
-                      label="Desktop"
-                      value={portalLayout.cardPosition}
-                      onChange={(cardPosition) => {
-                        setPortalLayout((prev) => ({ ...prev, cardPosition }));
-                        setBrandingPreviewViewport("desktop");
-                      }}
-                    />
-                    <CardPositionPad
-                      label="Mobile"
-                      value={portalLayout.cardPositionMobile}
-                      onChange={(cardPositionMobile) => {
-                        setPortalLayout((prev) => ({ ...prev, cardPositionMobile }));
-                        setBrandingPreviewViewport("mobile");
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : null}
 
               <div>
                 <BrandingPreview
@@ -1629,7 +1778,7 @@ export default function AccountPreferences() {
                 <BrandingPageHeading
                   eyebrow="Page"
                   title="After the note is opened"
-                  description="Off by default so screenshots of the message stay unbranded."
+                  description="Off by default so screenshots stay unbranded. When on, the opened note inherits this page."
                 />
                 <div className="rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-950/30">
                   <div className="flex items-start justify-between gap-4">
@@ -1649,7 +1798,10 @@ export default function AccountPreferences() {
                       id="business-show-branding-after-reveal"
                       checked={openedNoteBranding.show}
                       onCheckedChange={(checked) =>
-                        setOpenedNoteBranding((current) => ({ ...current, show: checked }))
+                        setOpenedNoteBranding({
+                          ...DEFAULT_OPENED_NOTE_BRANDING,
+                          show: checked,
+                        })
                       }
                       aria-label="Show branding after the note is opened"
                     />
@@ -1657,101 +1809,24 @@ export default function AccountPreferences() {
                 </div>
 
                 {openedNoteBranding.show ? (
-                  <>
-                    <div>
-                      <Label className="mb-2 block text-sm">Background</Label>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {OPENED_BACKGROUND_CHOICES.map((choice) => (
-                          <button
-                            key={choice.id}
-                            type="button"
-                            onClick={() => {
-                              if (choice.id === "banner" && !businessBannerUrl) {
-                                bannerInputRef.current?.click();
-                                setOpenedNoteBranding((current) => ({
-                                  ...current,
-                                  background: "banner",
-                                }));
-                                return;
-                              }
-                              setOpenedNoteBranding((current) => ({
-                                ...current,
-                                background: choice.id,
-                              }));
-                            }}
-                            className={`rounded-lg border px-3 py-2 text-left ${
-                              openedNoteBranding.background === choice.id
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-gray-200 dark:border-gray-700"
-                            }`}
-                          >
-                            <span className="block text-sm font-medium">{choice.label}</span>
-                            <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
-                              {choice.hint}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                      {openedNoteBranding.background === "banner" ? (
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Uses the same photograph as the reveal gate. Upload one above if you have not already.
-                        </p>
-                      ) : null}
-                    </div>
-                    <div>
-                      <Label className="mb-2 block text-sm">Show on the opened note</Label>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {(
-                          [
-                            ["showLogo", "Logo / banner"],
-                            ["showSenderName", "Sender name"],
-                            ["showCompanyName", "Company name"],
-                            ["showTrustMessage", "Trust message"],
-                          ] as const
-                        ).map(([key, label]) => (
-                          <label
-                            key={key}
-                            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:text-gray-100"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={openedNoteBranding[key]}
-                              onChange={(event) =>
-                                setOpenedNoteBranding((current) => ({
-                                  ...current,
-                                  [key]: event.target.checked,
-                                }))
-                              }
-                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                            />
-                            {label}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <OpenedNoteBrandingPreview
-                      viewport={brandingPreviewViewport}
-                      branding={applyOpenedNoteBranding({
-                        companyName: businessDisplayName || undefined,
-                        senderName: businessSenderName || undefined,
-                        senderRole: businessSenderRole || undefined,
-                        trustMessage: businessTrustMessage || undefined,
-                        logoUrl: businessLogoUrl ?? undefined,
-                        bannerUrl: businessBannerUrl ?? undefined,
-                        accentColor: businessAccentColor,
-                        backgroundColor: businessBackgroundColor,
-                        textColor: businessTextColor,
-                        backgroundStyle: businessBackgroundStyle,
-                        ...portalLayout,
-                        showBrandingAfterReveal: true,
-                        openedBackground: openedNoteBranding.background,
-                        openedShowLogo: openedNoteBranding.showLogo,
-                        openedShowSenderName: openedNoteBranding.showSenderName,
-                        openedShowCompanyName: openedNoteBranding.showCompanyName,
-                        openedShowTrustMessage: openedNoteBranding.showTrustMessage,
-                      })}
-                    />
-                  </>
+                  <OpenedNoteBrandingPreview
+                    viewport={brandingPreviewViewport}
+                    branding={applyOpenedNoteBranding({
+                      companyName: businessDisplayName || undefined,
+                      senderName: businessSenderName || undefined,
+                      senderRole: businessSenderRole || undefined,
+                      trustMessage: businessTrustMessage || undefined,
+                      logoUrl: businessLogoUrl ?? undefined,
+                      bannerUrl: businessBannerUrl ?? undefined,
+                      accentColor: businessAccentColor,
+                      backgroundColor: businessBackgroundColor,
+                      textColor: businessTextColor,
+                      backgroundStyle: businessBackgroundStyle,
+                      ...portalLayout,
+                      showBrandingAfterReveal: true,
+                      openedBackground: "same",
+                    })}
+                  />
                 ) : null}
               </div>
 
@@ -1770,10 +1845,8 @@ export default function AccountPreferences() {
                     Available with Business
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                    Add your logo, brand color, and recipient background
-                    (Default, Brand gradient, or Custom image) to secure
-                    delivery pages. Stored branding remains retained if you
-                    downgrade.
+                    Add your logo, colours, and a Default or Custom reveal page.
+                    Stored branding remains retained if you downgrade.
                   </p>
                   {(businessDisplayName || businessLogoUrl) ? (
                     <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">

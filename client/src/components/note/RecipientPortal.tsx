@@ -8,6 +8,7 @@ import {
   brandingOverlayOpacity,
   brandingPageBackground,
   brandingPortalLayout,
+  brandingShowsBanner,
   brandingUsesPortalSurface,
   brandingCardAxis,
   type BrandingCardPosition,
@@ -69,20 +70,20 @@ function cardPlacementClassName(
 
   if (mode === "desktop") {
     const { x, y } = brandingCardAxis(desktop);
-    const gutter = x === "left" ? "pl-8 pr-6" : x === "right" ? "pr-8 pl-6" : "px-6";
-    const stack = y === "top" ? "pt-6 pb-12" : y === "bottom" ? "pt-12 pb-6" : "py-12";
+    const gutter = x === "left" ? "pl-12 pr-10" : x === "right" ? "pr-12 pl-10" : "px-12";
+    const stack = y === "top" ? "pt-10 pb-14" : y === "bottom" ? "pt-14 pb-10" : "py-12";
     return `${axisClass(desktop, "base")} ${gutter} ${stack}`;
   }
   if (mode === "mobile") {
-    return `${axisClass(mobile, "base")} px-4 py-8`;
+    return `${axisClass(mobile, "base")} px-6 py-10`;
   }
 
   const { x, y } = brandingCardAxis(desktop);
   const gutter =
-    x === "left" ? "sm:pl-8 sm:pr-6 lg:pl-14" : x === "right" ? "sm:pr-8 sm:pl-6 lg:pr-14" : "sm:px-6";
+    x === "left" ? "sm:pl-12 sm:pr-10 lg:pl-16" : x === "right" ? "sm:pr-12 sm:pl-10 lg:pr-16" : "sm:px-12";
   const stack =
-    y === "top" ? "sm:pt-6 sm:pb-12" : y === "bottom" ? "sm:pt-12 sm:pb-6" : "sm:py-12";
-  return `${axisClass(mobile, "base")} px-4 py-8 ${axisClass(desktop, "sm")} ${gutter} ${stack}`;
+    y === "top" ? "sm:pt-10 sm:pb-14" : y === "bottom" ? "sm:pt-14 sm:pb-10" : "sm:py-12";
+  return `${axisClass(mobile, "base")} px-6 py-10 ${axisClass(desktop, "sm")} ${gutter} ${stack}`;
 }
 
 export function RecipientPortal({
@@ -105,14 +106,14 @@ export function RecipientPortal({
     LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
   const languageControl = Boolean(onLanguageChange) && !preview;
   const placementMode = preview ? previewViewport : "live";
-  /** Opened note (`wide`) stays centered; only the pre-reveal card follows sender placement. */
-  const honorSenderPlacement = resolvedSurface === "card";
+  /** Opened note (`wide`) stays centered; Default is always centered; Custom follows sender placement. */
+  const honorSenderPlacement = resolvedSurface === "card" && brandingShowsBanner(branding);
   const cardPlacement = cardPlacementClassName(
     honorSenderPlacement ? layout.cardPosition : "center",
     honorSenderPlacement ? layout.cardPositionMobile : "center",
     placementMode,
   );
-  const soloLogo = brandingLogoIsSolo(branding);
+  const wideCard = brandingLogoIsSolo(branding) || brandingCardMarkIsBanner(branding);
 
   const chromeText = lightChrome
     ? "text-white"
@@ -149,9 +150,16 @@ export function RecipientPortal({
             src={page.url}
             alt=""
             className={`pointer-events-none absolute inset-0 h-full w-full ${
-              layout.backgroundFit === "fit" ? "object-contain" : "object-cover"
+              layout.backgroundFit === "fit" && layout.backgroundZoom === 100
+                ? "object-contain"
+                : "object-cover"
             }`}
-            style={{ objectPosition: `${layout.focalX}% ${layout.focalY}%` }}
+            style={{
+              objectPosition: `${layout.focalX}% ${layout.focalY}%`,
+              transform:
+                layout.backgroundZoom !== 100 ? `scale(${layout.backgroundZoom / 100})` : undefined,
+              transformOrigin: `${layout.focalX}% ${layout.focalY}%`,
+            }}
             loading={preview ? "lazy" : "eager"}
             referrerPolicy="no-referrer"
           />
@@ -229,10 +237,10 @@ export function RecipientPortal({
               resolvedSurface === "wide"
                 ? "max-w-3xl p-5 sm:p-6"
                 : preview && previewViewport === "desktop"
-                  ? soloLogo
+                  ? wideCard
                     ? "max-w-[18rem] p-3.5"
                     : "max-w-[13rem] p-3.5"
-                  : soloLogo
+                  : wideCard
                     ? "max-w-md p-5 sm:max-w-xl sm:p-7"
                     : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
             }`}
@@ -284,12 +292,11 @@ export function RevealHandoffStack({
   footnote,
   compact = false,
 }: RevealHandoffCardProps) {
-  const bannerOnly = brandingCardMarkIsBanner(branding);
-  const sender = bannerOnly ? undefined : branding?.senderName?.trim();
-  const role = bannerOnly ? undefined : branding?.senderRole?.trim();
-  const company = bannerOnly ? undefined : branding?.companyName?.trim();
+  const sender = branding?.senderName?.trim();
+  const role = branding?.senderRole?.trim();
+  const company = branding?.companyName?.trim();
   const meta = [role, company].filter(Boolean).join(" · ");
-  const hasIdentity = Boolean(logo || sender || company || (!bannerOnly && brandingLine));
+  const hasIdentity = Boolean(logo || sender || company || brandingLine);
 
   return (
     <div className="flex flex-col items-center text-center">
