@@ -14,6 +14,7 @@ import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
 import { AccountEntitlementsProvider } from "@/context/AccountEntitlementsContext";
 import Home from "@/pages/Home";
+import AccountBranding from "@/pages/account/AccountBranding";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -60,7 +61,6 @@ const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
 const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
-const AccountBranding = lazy(() => import("@/pages/account/AccountBranding"));
 const Premium = lazy(() => import("@/pages/Premium"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
@@ -96,7 +96,7 @@ function LazyPage({ children }: { children: ReactNode }) {
 
 type LazyRouteErrorBoundaryState = { error: Error | null };
 
-const LAZY_CHUNK_RELOAD_KEY = "pn:lazy-chunk-reload-at";
+const LAZY_CHUNK_RELOAD_KEY = "pn:lazy-chunk-reload-count";
 
 function isLikelyStaleChunkLoadError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -107,9 +107,9 @@ function isLikelyStaleChunkLoadError(error: unknown): boolean {
 
 function reloadOnceForStaleChunk(): boolean {
   try {
-    const last = Number(sessionStorage.getItem(LAZY_CHUNK_RELOAD_KEY) || "0");
-    if (Number.isFinite(last) && Date.now() - last < 15_000) return false;
-    sessionStorage.setItem(LAZY_CHUNK_RELOAD_KEY, String(Date.now()));
+    const attempts = Number(sessionStorage.getItem(LAZY_CHUNK_RELOAD_KEY) || "0");
+    if (Number.isFinite(attempts) && attempts >= 2) return false;
+    sessionStorage.setItem(LAZY_CHUNK_RELOAD_KEY, String((Number.isFinite(attempts) ? attempts : 0) + 1));
   } catch {
     /* private mode / quota */
   }

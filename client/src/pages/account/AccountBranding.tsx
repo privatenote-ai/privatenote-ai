@@ -82,6 +82,11 @@ function normalizeBrandColorInput(raw: string): string | null {
   return parsed.ok && parsed.value ? parsed.value : null;
 }
 
+/** `<input type="color">` throws if the value is not `#rrggbb`. */
+function hexColorForInput(raw: string | null | undefined, fallback: string): string {
+  return normalizeBrandColorInput(raw ?? "") ?? fallback;
+}
+
 function ColorField({
   id,
   label,
@@ -107,7 +112,7 @@ function ColorField({
         <input
           id={id}
           type="color"
-          value={value}
+          value={hexColorForInput(value, DEFAULT_BRAND_COLOR)}
           aria-label={label}
           onChange={(event) => {
             const next = event.target.value;
@@ -496,12 +501,13 @@ export default function AccountBranding() {
       if (data.ok) {
         setBusinessDisplayName(data.businessDisplayName ?? "");
         setBusinessLogoUrl(data.businessLogoUrl ?? null);
-        const accent = data.businessAccentColor ?? DEFAULT_BRAND_COLOR;
+        const accent = hexColorForInput(data.businessAccentColor, DEFAULT_BRAND_COLOR);
         setBusinessAccentColor(accent);
         setBusinessAccentColorDraft(accent);
-        setBusinessBackgroundColor(data.businessBackgroundColor ?? "#ffffff");
-        setBusinessBackgroundColorDraft(data.businessBackgroundColor ?? "#ffffff");
-        const text = data.businessTextColor ?? contrastingTextOn(accent);
+        const background = hexColorForInput(data.businessBackgroundColor, "#ffffff");
+        setBusinessBackgroundColor(background);
+        setBusinessBackgroundColorDraft(background);
+        const text = hexColorForInput(data.businessTextColor, contrastingTextOn(accent));
         setBusinessTextColor(text);
         setBusinessTextColorDraft(text);
         setBusinessSenderName(data.businessSenderName ?? "");
@@ -545,14 +551,13 @@ export default function AccountBranding() {
       skipBrandingAutosaveRef.current = true;
       lastSavedBrandingKeyRef.current = key;
       setBusinessDisplayName(response.businessDisplayName ?? "");
-      const accent = response.businessAccentColor ?? DEFAULT_BRAND_COLOR;
+      const accent = hexColorForInput(response.businessAccentColor, DEFAULT_BRAND_COLOR);
       setBusinessAccentColor(accent);
       setBusinessAccentColorDraft(accent);
-      setBusinessBackgroundColor(response.businessBackgroundColor ?? "#ffffff");
-      setBusinessBackgroundColorDraft(response.businessBackgroundColor ?? "#ffffff");
-      const text =
-        response.businessTextColor
-          ?? contrastingTextOn(accent);
+      const background = hexColorForInput(response.businessBackgroundColor, "#ffffff");
+      setBusinessBackgroundColor(background);
+      setBusinessBackgroundColorDraft(background);
+      const text = hexColorForInput(response.businessTextColor, contrastingTextOn(accent));
       setBusinessTextColor(text);
       setBusinessTextColorDraft(text);
       if (response.businessPortalLayout) {
@@ -1143,7 +1148,7 @@ export default function AccountBranding() {
                         alt="Custom recipient background"
                         className="h-full w-full object-contain"
                         style={{
-                          transform: `scale(${portalLayout.backgroundZoom / 100})`,
+                          transform: `scale(${(portalLayout.backgroundZoom ?? 100) / 100})`,
                           transformOrigin: `${portalLayout.focalX}% ${portalLayout.focalY}%`,
                         }}
                       />
@@ -1203,14 +1208,14 @@ export default function AccountBranding() {
                   <div className="mt-4 space-y-4">
                     <div>
                       <Label htmlFor="business-background-zoom" className="mb-2 block text-sm">
-                        Scale {portalLayout.backgroundZoom}%
+                        Scale {portalLayout.backgroundZoom ?? 100}%
                       </Label>
                       <input
                         id="business-background-zoom"
                         type="range"
                         min={BRANDING_BACKGROUND_ZOOM_MIN}
                         max={BRANDING_BACKGROUND_ZOOM_MAX}
-                        value={portalLayout.backgroundZoom}
+                        value={portalLayout.backgroundZoom ?? 100}
                         onChange={(event) =>
                           setPortalLayout((prev) => ({
                             ...prev,

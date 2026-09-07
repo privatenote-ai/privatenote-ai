@@ -606,6 +606,8 @@ export function brandingCardAxis(position: BrandingCardPosition): BrandingCardAx
       return { x: "center", y: "bottom" };
     case "bottom-right":
       return { x: "right", y: "bottom" };
+    default:
+      return { x: "center", y: "middle" };
   }
 }
 

@@ -99,6 +99,7 @@ export function RecipientPortal({
   const page = brandingPageBackground(branding);
   const layout = brandingPortalLayout(branding);
   const overlayOpacity = brandingOverlayOpacity(branding);
+  const zoom = layout.backgroundZoom ?? 100;
   const resolvedSurface = resolveSurface(branding, surface);
   const useCard = resolvedSurface === "card" || resolvedSurface === "wide";
   const lightChrome = brandingChromeUsesLightText(branding);
@@ -150,14 +151,14 @@ export function RecipientPortal({
             src={page.url}
             alt=""
             className={`pointer-events-none absolute inset-0 h-full w-full ${
-              layout.backgroundFit === "fit" && layout.backgroundZoom === 100
+              layout.backgroundFit === "fit" && zoom === 100
                 ? "object-contain"
                 : "object-cover"
             }`}
             style={{
               objectPosition: `${layout.focalX}% ${layout.focalY}%`,
               transform:
-                layout.backgroundZoom !== 100 ? `scale(${layout.backgroundZoom / 100})` : undefined,
+                zoom !== 100 ? `scale(${zoom / 100})` : undefined,
               transformOrigin: `${layout.focalX}% ${layout.focalY}%`,
             }}
             loading={preview ? "lazy" : "eager"}

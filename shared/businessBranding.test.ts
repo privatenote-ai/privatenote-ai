@@ -718,3 +718,12 @@ describe("branding page modes", () => {
     assert.equal(zoomed?.backgroundZoom, 140);
   });
 });
+
+describe("brandingCardAxis", () => {
+  it("falls back to center for an unexpected stored position", () => {
+    assert.deepEqual(
+      brandingCardAxis("not-a-position" as Parameters<typeof brandingCardAxis>[0]),
+      { x: "center", y: "middle" },
+    );
+  });
+});
