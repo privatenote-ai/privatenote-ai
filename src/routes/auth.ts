@@ -1665,6 +1665,14 @@ function businessBannerPublicUrl(
   return publicBrandingAssetPath(objectKey, "banner");
 }
 
+function businessCardBannerPublicUrl(
+  request: Request,
+  objectKey: string | null | undefined,
+): string | null {
+  void request;
+  return publicBrandingAssetPath(objectKey, "cardBanner");
+}
+
 function businessOpenedBannerPublicUrl(
   request: Request,
   objectKey: string | null | undefined,
