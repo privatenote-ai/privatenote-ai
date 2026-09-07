@@ -802,14 +802,14 @@ describe("branding reveal logo size", () => {
     );
     assert.match(
       brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }, { preview: true }),
-      /max-h-11/,
+      /max-h-8/,
     );
     assert.match(
       brandingRevealLogoClassName(
         { logoUrl: "https://acme.example/logo.png", companyName: "Acme" },
         { preview: true },
       ),
-      /max-h-8/,
+      /max-h-5/,
     );
   });
 

@@ -915,28 +915,70 @@ async function noteCreationAccountType(env: Env, request: Request): Promise<Acco
   }
 }
 
+const ACCOUNT_BRANDING_CORE_COLUMNS = [
+  "business_display_name",
+  "business_logo_key",
+  "business_accent_color",
+  "business_background_color",
+  "business_text_color",
+] as const;
+
+const ACCOUNT_BRANDING_OPTIONAL_COLUMNS = [
+  "business_sender_name",
+  "business_sender_role",
+  "business_trust_message",
+  "business_banner_key",
+  "business_background_style",
+  "business_portal_layout",
+  "business_opened_branding",
+  "business_show_branding_after_reveal",
+] as const;
+
+async function selectAccountBrandingRow(
+  env: Env,
+  userId: string,
+): Promise<Record<string, string | null> | null> {
+  if (!env.AUTH_DB) return null;
+  const columns: string[] = [...ACCOUNT_BRANDING_CORE_COLUMNS];
+  try {
+    const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();
+    const names = new Set((info.results || []).map((row) => row.name));
+    for (const column of ACCOUNT_BRANDING_OPTIONAL_COLUMNS) {
+      if (names.has(column)) columns.push(column);
+    }
+  } catch {
+    // Core columns only — a missing optional column must not drop sender identity.
+  }
+  return env.AUTH_DB.prepare(`SELECT ${columns.join(", ")} FROM users WHERE id = ? LIMIT 1`)
+    .bind(userId)
+    .first<Record<string, string | null>>();
+}
+
+function fillRevealBrandingIdentityGaps<
+  T extends {
+    companyName?: string;
+    senderName?: string;
+    senderRole?: string;
+    trustMessage?: string;
+  },
+>(trusted: T, client: T | undefined): T {
+  if (!client) return trusted;
+  return {
+    ...trusted,
+    ...(!trusted.companyName && client.companyName ? { companyName: client.companyName } : {}),
+    ...(!trusted.senderName && client.senderName ? { senderName: client.senderName } : {}),
+    ...(!trusted.senderRole && client.senderRole ? { senderRole: client.senderRole } : {}),
+    ...(!trusted.trustMessage && client.trustMessage ? { trustMessage: client.trustMessage } : {}),
+  };
+}
+
 async function resolveAccountRevealBranding(env: Env, request: Request) {
   const session = await getSessionFromRequest(env, request, { rotate: false });
   if (!session?.id || !env.AUTH_DB) return undefined;
   const entitlements = await getAccountEntitlements(env, session.id);
   if (!entitlements.capabilities.revealBranding) return undefined;
-  const selectFull = `SELECT business_display_name, business_sender_name, business_sender_role,
-              business_trust_message, business_logo_key, business_banner_key,
-              business_accent_color, business_background_color, business_text_color,
-              business_background_style, business_portal_layout,
-              business_show_branding_after_reveal, business_opened_branding
-       FROM users WHERE id = ? LIMIT 1`;
-  const selectCore = `SELECT business_display_name, business_logo_key, business_accent_color,
-              business_background_color, business_text_color
-       FROM users WHERE id = ? LIMIT 1`;
   try {
-    let row: Record<string, string | null> | null = null;
-    try {
-      row = await env.AUTH_DB.prepare(selectFull).bind(session.id).first<Record<string, string | null>>();
-    } catch (error) {
-      console.warn("[BRANDING] Full branding select failed, retrying core columns:", error);
-      row = await env.AUTH_DB.prepare(selectCore).bind(session.id).first<Record<string, string | null>>();
-    }
+    const row = await selectAccountBrandingRow(env, session.id);
     if (!row) return undefined;
     const layout = parseStoredPortalLayoutJson(row.business_portal_layout);
     const opened = openedSettingsFromAccountColumns(
@@ -9351,7 +9393,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     if (requestBody?.revealBranding != null) {
       const trustedBranding = await resolveAccountRevealBranding(env, request);
       if (trustedBranding) {
-        requestBody.revealBranding = trustedBranding;
+        requestBody.revealBranding = fillRevealBrandingIdentityGaps(
+          trustedBranding,
+          parseStoredRevealBranding(requestBody.revealBranding),
+        );
       } else {
         const session = await getSessionFromRequest(env, request, { rotate: false });
         const parsedClientBranding = parseStoredRevealBranding(requestBody.revealBranding);

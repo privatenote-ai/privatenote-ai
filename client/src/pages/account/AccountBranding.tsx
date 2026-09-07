@@ -1309,17 +1309,17 @@ export default function AccountBranding() {
                       ) : null}
                     </Label>
                     <div
-                      className="mb-3 flex w-full max-w-xl items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700"
+                      className="relative mb-3 w-full max-w-xl overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700"
                       style={{ aspectRatio: `${BRANDING_CARD_BANNER_RECOMMENDED_PX.width} / ${BRANDING_CARD_BANNER_RECOMMENDED_PX.height}` }}
                     >
                       {portalLayout.cardBannerUrl ? (
                         <img
                           src={portalLayout.cardBannerUrl}
                           alt="Current reveal banner"
-                          className="h-full w-full object-contain"
+                          className="absolute inset-0 h-full w-full object-contain p-2"
                         />
                       ) : (
-                        <div className="flex flex-col items-center gap-1 text-gray-400">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-gray-400">
                           <ImageIcon className="h-8 w-8 text-gray-300 dark:text-gray-600" />
                           <span className="text-xs">No banner yet</span>
                         </div>
