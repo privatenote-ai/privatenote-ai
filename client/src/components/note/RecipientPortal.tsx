@@ -143,6 +143,21 @@ export function RecipientPortal({
   );
   const place = brandingCardPlacePercent(layout, placeViewport);
   const wideCard = brandingLogoIsSolo(branding) || brandingCardMarkIsBanner(branding);
+  const previewRevealCard = preview && resolvedSurface === "card";
+  const revealCardSize = previewRevealCard
+    ? wideCard
+      ? "w-[min(100%,18rem)] p-4"
+      : "w-[min(100%,15rem)] p-3.5"
+    : wideCard
+      ? "w-[min(100%,36rem)] p-5 sm:p-7"
+      : "w-[min(100%,24rem)] p-5 sm:p-6";
+  const centeredRevealCardSize = previewRevealCard
+    ? wideCard
+      ? "max-w-[18rem] p-4"
+      : "max-w-[15rem] p-3.5"
+    : wideCard
+      ? "max-w-md p-5 sm:max-w-xl sm:p-7"
+      : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6";
   const stageRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ grabX: number; grabY: number } | null>(null);
@@ -328,11 +343,7 @@ export function RecipientPortal({
                 onPointerMove={onCardPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
-                className={`rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
-                  wideCard
-                    ? "w-[min(100%,36rem)] p-5 sm:p-7"
-                    : "w-[min(100%,24rem)] p-5 sm:p-6"
-                } ${canDrag ? "touch-none select-none" : ""} ${
+                className={`rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${revealCardSize} ${canDrag ? "touch-none select-none" : ""} ${
                   dragging ? "cursor-grabbing" : canDrag ? "cursor-grab" : ""
                 }`}
                 style={{
@@ -357,11 +368,7 @@ export function RecipientPortal({
             </div>
           ) : (
             <div
-              className={`mx-auto w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${
-                wideCard
-                  ? "max-w-md p-5 sm:max-w-xl sm:p-7"
-                  : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6"
-              }`}
+              className={`mx-auto w-full rounded-2xl bg-white shadow-xl ring-1 ring-black/5 [&_h1.page-title]:text-xl [&_h1.page-title]:sm:text-2xl ${centeredRevealCardSize}`}
             >
               {children}
             </div>
@@ -420,7 +427,7 @@ export function RevealHandoffStack({
   return (
     <div className="flex flex-col items-center text-center">
       {logo ? (
-        <div className={`flex w-full justify-center ${compact ? "mb-3" : "mb-5"}`}>
+        <div className={`flex w-full justify-center ${compact ? "mb-2.5" : "mb-5"}`}>
           {logo}
         </div>
       ) : null}
@@ -463,7 +470,7 @@ export function RevealHandoffStack({
         </div>
       ) : null}
 
-      <div className={`${compact ? "mt-6" : "mt-10 sm:mt-12"} w-full`}>{action}</div>
+      <div className={`${compact ? "mt-4" : "mt-10 sm:mt-12"} w-full`}>{action}</div>
       {footnote ? (
         <p className={`m-0 ${compact ? "mt-3 text-xs text-gray-500" : "mt-4 text-sm text-gray-600/70 dark:text-gray-300/60 sm:mt-5"}`}>
           {footnote}

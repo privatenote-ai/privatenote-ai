@@ -1173,8 +1173,8 @@ export function brandingRevealLogoClassName(
   const large = brandingLogoIsSolo(branding) || brandingCardMarkIsBanner(branding);
   if (options?.preview) {
     return large
-      ? "mx-auto max-h-24 w-auto max-w-full object-contain"
-      : "max-h-7 max-w-24 object-contain";
+      ? "mx-auto max-h-11 w-auto max-w-[11rem] object-contain"
+      : "mx-auto max-h-8 w-auto max-w-16 object-contain";
   }
   return large
     ? "mx-auto max-h-44 w-auto max-w-full object-contain sm:max-h-52"

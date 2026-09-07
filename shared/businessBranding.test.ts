@@ -773,6 +773,17 @@ describe("branding reveal logo size", () => {
       }),
       /max-h-14/,
     );
+    assert.match(
+      brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }, { preview: true }),
+      /max-h-11/,
+    );
+    assert.match(
+      brandingRevealLogoClassName(
+        { logoUrl: "https://acme.example/logo.png", companyName: "Acme" },
+        { preview: true },
+      ),
+      /max-h-8/,
+    );
   });
 
   it("uses a wide lockup on the card when cardImage is banner", () => {

@@ -204,7 +204,7 @@ const BrandingPreview: React.FC<{
   const buttonStyle = brandingCtaStyle(branding);
   const markUrl = brandingCardMarkUrl(branding);
   const logo = markUrl ? (
-    <img src={markUrl} alt="" className={brandingRevealLogoClassName(branding)} />
+    <img src={markUrl} alt="" className={brandingRevealLogoClassName(branding, { preview: true })} />
   ) : null;
   const sender = branding.senderName?.trim();
   const company = branding.companyName?.trim();
@@ -219,10 +219,10 @@ const BrandingPreview: React.FC<{
     <div className="flex w-full justify-center">
       <button
         type="button"
-        className="inline-flex w-full max-w-sm items-center justify-center rounded-md bg-primary px-5 py-3 text-base font-semibold text-white"
+        className="inline-flex w-full max-w-[12.5rem] items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white"
         style={buttonStyle}
       >
-        <Unlock className="mr-2 h-4 w-4" />
+        <Unlock className="mr-1.5 h-3.5 w-3.5" />
         Reveal Note
       </button>
     </div>
