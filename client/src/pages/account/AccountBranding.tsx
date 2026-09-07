@@ -1085,16 +1085,30 @@ export default function AccountBranding() {
           {accountEntitlements.capabilities.revealBranding ? (
             <div className="space-y-5 px-5 py-5">
               <div>
-                <Label htmlFor="business-display-name" className="mb-2 block text-sm">
-                  Display name
-                </Label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <Label htmlFor="business-display-name" className="text-sm">
+                    Display name
+                  </Label>
+                  <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <Switch
+                      checked={portalLayout.showCompanyName}
+                      onCheckedChange={(checked) =>
+                        setPortalLayout((prev) => ({ ...prev, showCompanyName: checked }))
+                      }
+                      aria-label="Show company name on the reveal card"
+                    />
+                    Show on card
+                  </label>
+                </div>
                 <input
                   id="business-display-name"
                   value={businessDisplayName}
                   onChange={(event) => setBusinessDisplayName(event.target.value)}
                   maxLength={120}
                   placeholder="Company or team name"
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+                  className={`w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${
+                    portalLayout.showCompanyName ? "" : "opacity-50"
+                  }`}
                 />
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
                   Shown as the company name on branded reveal pages.
@@ -1103,27 +1117,69 @@ export default function AccountBranding() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="business-sender-name" className="mb-2 block text-sm">Sender name</Label>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <Label htmlFor="business-sender-name" className="text-sm">Sender name</Label>
+                    <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <Switch
+                        checked={portalLayout.showSenderName}
+                        onCheckedChange={(checked) =>
+                          setPortalLayout((prev) => ({ ...prev, showSenderName: checked }))
+                        }
+                        aria-label="Show sender name on the reveal card"
+                      />
+                      Show on card
+                    </label>
+                  </div>
                   <input id="business-sender-name" value={businessSenderName}
                     onChange={(event) => setBusinessSenderName(event.target.value)} maxLength={80}
                     placeholder="Marjan Skrobot"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900" />
+                    className={`w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${
+                      portalLayout.showSenderName ? "" : "opacity-50"
+                    }`} />
                 </div>
                 <div>
-                  <Label htmlFor="business-sender-role" className="mb-2 block text-sm">Role or department</Label>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <Label htmlFor="business-sender-role" className="text-sm">Role or department</Label>
+                    <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <Switch
+                        checked={portalLayout.showSenderRole}
+                        onCheckedChange={(checked) =>
+                          setPortalLayout((prev) => ({ ...prev, showSenderRole: checked }))
+                        }
+                        aria-label="Show role on the reveal card"
+                      />
+                      Show on card
+                    </label>
+                  </div>
                   <input id="business-sender-role" value={businessSenderRole}
                     onChange={(event) => setBusinessSenderRole(event.target.value)} maxLength={80}
                     placeholder="Security Operations"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900" />
+                    className={`w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${
+                      portalLayout.showSenderRole ? "" : "opacity-50"
+                    }`} />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="business-trust-message" className="mb-2 block text-sm">Recipient trust message</Label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <Label htmlFor="business-trust-message" className="text-sm">Recipient trust message</Label>
+                  <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <Switch
+                      checked={portalLayout.showTrustMessage}
+                      onCheckedChange={(checked) =>
+                        setPortalLayout((prev) => ({ ...prev, showTrustMessage: checked }))
+                      }
+                      aria-label="Show trust message on the reveal card"
+                    />
+                    Show on card
+                  </label>
+                </div>
                 <textarea id="business-trust-message" value={businessTrustMessage}
                   onChange={(event) => setBusinessTrustMessage(event.target.value)} maxLength={160} rows={2}
                   placeholder="We use PrivateNote to deliver sensitive information securely."
-                  className="w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900" />
+                  className={`w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 ${
+                    portalLayout.showTrustMessage ? "" : "opacity-50"
+                  }`} />
                 <p className="mt-1 text-right text-xs text-gray-500">{businessTrustMessage.length}/160</p>
               </div>
 
@@ -1632,10 +1688,10 @@ export default function AccountBranding() {
                       : undefined
                   }
                   branding={{
-                    companyName: businessDisplayName || undefined,
-                    senderName: businessSenderName || undefined,
-                    senderRole: businessSenderRole || undefined,
-                    trustMessage: businessTrustMessage || undefined,
+                    companyName: portalLayout.showCompanyName ? businessDisplayName || undefined : undefined,
+                    senderName: portalLayout.showSenderName ? businessSenderName || undefined : undefined,
+                    senderRole: portalLayout.showSenderRole ? businessSenderRole || undefined : undefined,
+                    trustMessage: portalLayout.showTrustMessage ? businessTrustMessage || undefined : undefined,
                     logoUrl: businessLogoUrl ?? undefined,
                     bannerUrl: businessBannerUrl ?? undefined,
                     accentColor: businessAccentColor,

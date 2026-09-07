@@ -97,6 +97,11 @@ export type BrandingPortalLayout = {
   cardY: number;
   cardXMobile: number;
   cardYMobile: number;
+  /** Identity lines on the Logo and Banner reveal cards. Default on. */
+  showCompanyName: boolean;
+  showSenderName: boolean;
+  showSenderRole: boolean;
+  showTrustMessage: boolean;
 };
 
 /** Light overlay is ~16% so photography stays visible behind an opaque card. */
@@ -120,6 +125,10 @@ export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
   cardY: 50,
   cardXMobile: 50,
   cardYMobile: 50,
+  showCompanyName: true,
+  showSenderName: true,
+  showSenderRole: true,
+  showTrustMessage: true,
 };
 
 /** Persisted shape. `null` means "not configured". */
@@ -147,6 +156,10 @@ export type BusinessBranding = {
   focalX?: number | null;
   focalY?: number | null;
   backgroundZoom?: number | null;
+  showCompanyName?: boolean | null;
+  showSenderName?: boolean | null;
+  showSenderRole?: boolean | null;
+  showTrustMessage?: boolean | null;
   showBrandingAfterReveal?: boolean | null;
   openedBackground?: OpenedNoteBackground | null;
   openedShowLogo?: boolean | null;
@@ -215,6 +228,10 @@ export type RevealBranding = {
   focalX?: number;
   focalY?: number;
   backgroundZoom?: number;
+  showCompanyName?: boolean;
+  showSenderName?: boolean;
+  showSenderRole?: boolean;
+  showTrustMessage?: boolean;
   showBrandingAfterReveal?: boolean;
   openedBackground?: OpenedNoteBackground;
   openedShowLogo?: boolean;
@@ -273,6 +290,10 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   cardY: DEFAULT_BRANDING_PORTAL_LAYOUT.cardY,
   cardXMobile: DEFAULT_BRANDING_PORTAL_LAYOUT.cardXMobile,
   cardYMobile: DEFAULT_BRANDING_PORTAL_LAYOUT.cardYMobile,
+  showCompanyName: true,
+  showSenderName: true,
+  showSenderRole: true,
+  showTrustMessage: true,
   showBrandingAfterReveal: false,
   openedBackground: "same",
   openedShowLogo: true,
@@ -778,6 +799,12 @@ function parseCardImage(
   return raw === "logo" || raw === "banner" ? { ok: true, value: raw } : { ok: false };
 }
 
+function parseShowFlag(raw: unknown, fallback: boolean): boolean {
+  if (raw === true) return true;
+  if (raw === false) return false;
+  return fallback;
+}
+
 function parseLayoutCardBannerUrl(raw: unknown): string | null {
   if (raw === undefined || raw === null || raw === "") return null;
   const parsed = parseBrandingLogoUrl(raw);
@@ -878,6 +905,10 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
       cardY: cardY.value,
       cardXMobile: cardXMobile.value,
       cardYMobile: cardYMobile.value,
+      showCompanyName: parseShowFlag(body.showCompanyName, true),
+      showSenderName: parseShowFlag(body.showSenderName, true),
+      showSenderRole: parseShowFlag(body.showSenderRole, true),
+      showTrustMessage: parseShowFlag(body.showTrustMessage, true),
     },
   };
 }
@@ -917,6 +948,10 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
     cardY: cardY.ok ? cardY.value : desktopPlace.y,
     cardXMobile: cardXMobile.ok ? cardXMobile.value : mobilePlace.x,
     cardYMobile: cardYMobile.ok ? cardYMobile.value : mobilePlace.y,
+    showCompanyName: parseShowFlag(body.showCompanyName, true),
+    showSenderName: parseShowFlag(body.showSenderName, true),
+    showSenderRole: parseShowFlag(body.showSenderRole, true),
+    showTrustMessage: parseShowFlag(body.showTrustMessage, true),
   };
 }
 
@@ -937,6 +972,10 @@ export function brandingPortalLayout(
         | "cardY"
         | "cardXMobile"
         | "cardYMobile"
+        | "showCompanyName"
+        | "showSenderName"
+        | "showSenderRole"
+        | "showTrustMessage"
       >
     | undefined,
 ): BrandingPortalLayout {
@@ -954,6 +993,10 @@ export function brandingPortalLayout(
     cardY: branding?.cardY,
     cardXMobile: branding?.cardXMobile,
     cardYMobile: branding?.cardYMobile,
+    showCompanyName: branding?.showCompanyName,
+    showSenderName: branding?.showSenderName,
+    showSenderRole: branding?.showSenderRole,
+    showTrustMessage: branding?.showTrustMessage,
   });
 }
 
@@ -1356,6 +1399,10 @@ export function parseBusinessBrandingInput(
       cardY: layout.layout.cardY,
       cardXMobile: layout.layout.cardXMobile,
       cardYMobile: layout.layout.cardYMobile,
+      showCompanyName: layout.layout.showCompanyName,
+      showSenderName: layout.layout.showSenderName,
+      showSenderRole: layout.layout.showSenderRole,
+      showTrustMessage: layout.layout.showTrustMessage,
       showBrandingAfterReveal: opened.settings.show,
       openedBackground: opened.settings.background,
       openedShowLogo: opened.settings.showLogo,
@@ -1403,15 +1450,19 @@ export function toRevealBranding(
     cardY: branding.cardY ?? undefined,
     cardXMobile: branding.cardXMobile ?? undefined,
     cardYMobile: branding.cardYMobile ?? undefined,
+    showCompanyName: branding.showCompanyName ?? undefined,
+    showSenderName: branding.showSenderName ?? undefined,
+    showSenderRole: branding.showSenderRole ?? undefined,
+    showTrustMessage: branding.showTrustMessage ?? undefined,
   });
   const defaults = DEFAULT_BRANDING_PORTAL_LAYOUT;
   const desktopPlace = brandingCardPercentFromPosition(layout.cardPosition);
   const mobilePlace = brandingCardPercentFromPosition(layout.cardPositionMobile);
   return {
-    ...(branding.companyName ? { companyName: branding.companyName } : {}),
-    ...(branding.senderName ? { senderName: branding.senderName } : {}),
-    ...(branding.senderRole ? { senderRole: branding.senderRole } : {}),
-    ...(branding.trustMessage ? { trustMessage: branding.trustMessage } : {}),
+    ...(branding.companyName && layout.showCompanyName ? { companyName: branding.companyName } : {}),
+    ...(branding.senderName && layout.showSenderName ? { senderName: branding.senderName } : {}),
+    ...(branding.senderRole && layout.showSenderRole ? { senderRole: branding.senderRole } : {}),
+    ...(branding.trustMessage && layout.showTrustMessage ? { trustMessage: branding.trustMessage } : {}),
     ...(branding.logoUrl ? { logoUrl: branding.logoUrl } : {}),
     ...(branding.bannerUrl ? { bannerUrl: branding.bannerUrl } : {}),
     ...(branding.cardBannerUrl ? { cardBannerUrl: branding.cardBannerUrl } : {}),
@@ -1518,6 +1569,10 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     cardY: layout.cardY,
     cardXMobile: layout.cardXMobile,
     cardYMobile: layout.cardYMobile,
+    showCompanyName: layout.showCompanyName,
+    showSenderName: layout.showSenderName,
+    showSenderRole: layout.showSenderRole,
+    showTrustMessage: layout.showTrustMessage,
     showBrandingAfterReveal: openedSettings.show,
     openedBackground: openedSettings.background,
     openedShowLogo: openedSettings.showLogo,

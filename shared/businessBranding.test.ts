@@ -99,6 +99,10 @@ describe("parseBusinessBrandingInput", () => {
       cardY: 50,
       cardXMobile: 50,
       cardYMobile: 50,
+      showCompanyName: true,
+      showSenderName: true,
+      showSenderRole: true,
+      showTrustMessage: true,
       showBrandingAfterReveal: false,
       openedBackground: "same",
       openedShowLogo: true,
@@ -116,6 +120,29 @@ describe("parseBusinessBrandingInput", () => {
     const result = parseBusinessBrandingInput({}, allowed);
     assert.equal(result.ok, true);
     assert.equal(result.ok === true && brandingIsEmpty(result.branding), true);
+  });
+
+  it("omits hidden identity lines from the reveal snapshot", () => {
+    const result = parseBusinessBrandingInput(
+      {
+        companyName: "Acme",
+        senderName: "Ada",
+        senderRole: "IT Officer",
+        trustMessage: "We send secrets here.",
+        accentColor: "#2563eb",
+        showCompanyName: false,
+        showSenderName: true,
+        showSenderRole: false,
+        showTrustMessage: false,
+      },
+      allowed,
+    );
+    assert.equal(result.ok, true);
+    const snapshotted = result.ok === true ? toRevealBranding(result.branding) : undefined;
+    assert.equal(snapshotted?.senderName, "Ada");
+    assert.equal(snapshotted?.companyName, undefined);
+    assert.equal(snapshotted?.senderRole, undefined);
+    assert.equal(snapshotted?.trustMessage, undefined);
   });
 
   it("normalizes whitespace and blank strings in names", () => {
