@@ -479,7 +479,9 @@ export default function AccountBranding() {
   const lastSavedBrandingKeyRef = useRef("");
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const cardBannerInputRef = useRef<HTMLInputElement>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [uploadingCardBanner, setUploadingCardBanner] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -684,6 +686,39 @@ export default function AccountBranding() {
     }
   };
 
+  const uploadCardBanner = async (file: File) => {
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_LOGO_MAX_BYTES) {
+      toast({
+        title: "Unsupported banner",
+        description: `Use a PNG, JPEG, or WebP image under ${Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB. About ${BRANDING_CARD_BANNER_SIZE_LABEL}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setUploadingCardBanner(true);
+    try {
+      const response = await apiUploadRequest<{ cardBannerUrl: string }>(
+        "/api/auth/account/branding/card-banner",
+        file,
+      );
+      setPortalLayout((prev) => ({ ...prev, cardImage: "banner", cardBannerUrl: response.cardBannerUrl }));
+      toast({ title: "Card banner uploaded" });
+    } catch (error) {
+      toast({
+        title: "Could not upload banner",
+        description: describeApiPreferenceError(error),
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingCardBanner(false);
+      if (cardBannerInputRef.current) cardBannerInputRef.current.value = "";
+    }
+  };
+
+  const removeCardBanner = () => {
+    setPortalLayout((prev) => ({ ...prev, cardBannerUrl: null }));
+  };
+
   const uploadBusinessLogo = async (file: File) => {
     if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
       toast({
@@ -856,102 +891,158 @@ export default function AccountBranding() {
               <div>
                 <Label className="mb-2 block text-sm">Show on the reveal card</Label>
                 <div className="mb-4 grid gap-2 sm:grid-cols-2">
-                  {(
-                    [
-                      ["logo", "Logo", "Square mark. Optional name, role, and company sit with it."],
-                      ["banner", "Banner", "Wider lockup. Name, role, company, and trust message still show."],
-                    ] as const
-                  ).map(([id, label, hint]) => (
-                    <label
-                      key={id}
-                      className="flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:text-gray-100"
+                  {([
+                    {
+                      id: "logo" as const,
+                      label: "Logo",
+                      hint: "Square mark. Optional name, role, and company sit with it.",
+                      imageUrl: businessLogoUrl,
+                      emptyLabel: "No logo yet",
+                    },
+                    {
+                      id: "banner" as const,
+                      label: "Banner",
+                      hint: "Wider lockup. Name, role, company, and trust message still show.",
+                      imageUrl: portalLayout.cardBannerUrl,
+                      emptyLabel: "No banner yet",
+                    },
+                  ]).map((choice) => (
+                    <button
+                      key={choice.id}
+                      type="button"
+                      aria-pressed={portalLayout.cardImage === choice.id}
+                      onClick={() => setPortalLayout((prev) => ({ ...prev, cardImage: choice.id }))}
+                      className={`rounded-lg border px-3 py-2 text-left ${
+                        portalLayout.cardImage === choice.id
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-gray-200 dark:border-gray-700"
+                      }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={portalLayout.cardImage === id}
-                        onChange={() => {
-                          if (id === "banner" && !businessLogoUrl) {
-                            logoInputRef.current?.click();
-                          }
-                          if (id === "logo" && !businessLogoUrl) {
-                            logoInputRef.current?.click();
-                          }
-                          setPortalLayout((prev) => ({ ...prev, cardImage: id }));
-                        }}
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <span>
-                        <span className="block font-medium">{label}</span>
-                        <span className="mt-0.5 block text-xs font-normal text-gray-500 dark:text-gray-400">
-                          {hint}
-                        </span>
+                      <div
+                        className={`mb-2 flex items-center justify-center overflow-hidden rounded-md bg-white p-1.5 dark:bg-gray-950 ${
+                          choice.id === "banner" ? "h-14 w-full" : "mx-auto h-14 w-14"
+                        }`}
+                      >
+                        {choice.imageUrl ? (
+                          <img
+                            src={choice.imageUrl}
+                            alt=""
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-[11px] font-normal text-gray-400">{choice.emptyLabel}</span>
+                        )}
+                      </div>
+                      <span className="block text-sm font-medium">{choice.label}</span>
+                      <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                        {choice.hint}
                       </span>
-                    </label>
+                    </button>
                   ))}
                 </div>
-                <Label className="mb-2 block text-sm">
-                  {portalLayout.cardImage === "banner" ? "Banner image" : "Logo"}
-                </Label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className={`flex h-16 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 ${
-                    portalLayout.cardImage === "banner" ? "w-28" : "w-16"
-                  }`}>
-                    {businessLogoUrl ? (
-                      <img
-                        src={businessLogoUrl}
-                        alt={portalLayout.cardImage === "banner" ? "Current reveal banner" : "Current reveal logo"}
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    ) : (
-                      <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                    )}
-                  </div>
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadBusinessLogo(file);
-                    }}
-                  />
-                  <input
-                    ref={bannerInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadBusinessBanner(file);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={uploadingLogo || removingLogo}
-                    onClick={() => logoInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {uploadingLogo ? "Uploading…" : businessLogoUrl ? "Replace" : "Upload"}
-                  </Button>
-                  {businessLogoUrl ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={uploadingLogo || removingLogo}
-                      onClick={() => void removeBusinessLogo()}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {removingLogo ? "Removing…" : "Remove"}
-                    </Button>
-                  ) : null}
-                </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  {portalLayout.cardImage === "banner"
-                    ? `Wide lockup, about ${BRANDING_CARD_BANNER_SIZE_LABEL}. Names and trust message stay on the card.`
-                    : `Square mark. PNG, JPEG, or WebP; maximum ${Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB. Recommended ${BRANDING_LOGO_RECOMMENDED_PX.width}×${BRANDING_LOGO_RECOMMENDED_PX.height}.`}
-                </p>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadBusinessLogo(file);
+                  }}
+                />
+                <input
+                  ref={cardBannerInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadCardBanner(file);
+                  }}
+                />
+                <input
+                  ref={bannerInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadBusinessBanner(file);
+                  }}
+                />
+                {portalLayout.cardImage === "logo" ? (
+                  <>
+                    <Label className="mb-2 block text-sm">Logo</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
+                        {businessLogoUrl ? (
+                          <img src={businessLogoUrl} alt="Current reveal logo" className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadingLogo || removingLogo}
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {uploadingLogo ? "Uploading…" : businessLogoUrl ? "Replace" : "Upload"}
+                      </Button>
+                      {businessLogoUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={uploadingLogo || removingLogo}
+                          onClick={() => void removeBusinessLogo()}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {removingLogo ? "Removing…" : "Remove"}
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Square mark. PNG, JPEG, or WebP; maximum {Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB. Recommended {BRANDING_LOGO_RECOMMENDED_PX.width}×{BRANDING_LOGO_RECOMMENDED_PX.height}.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Label className="mb-2 block text-sm">Banner image</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
+                        {portalLayout.cardBannerUrl ? (
+                          <img src={portalLayout.cardBannerUrl} alt="Current reveal banner" className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploadingCardBanner}
+                        onClick={() => cardBannerInputRef.current?.click()}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {uploadingCardBanner ? "Uploading…" : portalLayout.cardBannerUrl ? "Replace" : "Upload"}
+                      </Button>
+                      {portalLayout.cardBannerUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={uploadingCardBanner}
+                          onClick={() => removeCardBanner()}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Wide lockup, about {BRANDING_CARD_BANNER_SIZE_LABEL}. Names and trust message stay on the card.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="border-t border-violet-100 pt-6 dark:border-violet-900/40">

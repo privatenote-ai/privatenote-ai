@@ -114,6 +114,7 @@ interface RevealBranding {
   backgroundColor?: string;
   textColor?: string;
   bannerUrl?: string;
+  cardBannerUrl?: string;
   cardImage?: "logo" | "banner";
   backgroundStyle?: "neutral" | "gradient" | "banner";
   showBrandingAfterReveal?: boolean;

@@ -19,6 +19,7 @@ export const BRANDING_LOGO_URL_MAX = 512;
 /** Same-origin paths snapshotted onto notes so recipients never load workers.dev. */
 export const BRANDING_LOGO_PUBLIC_PATH_PREFIX = "/api/auth/branding/logo/";
 export const BRANDING_BANNER_PUBLIC_PATH_PREFIX = "/api/auth/branding/banner/";
+export const BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX = "/api/auth/branding/card-banner/";
 const BRANDING_HOSTED_ASSET_FILE = /^[A-Za-z0-9_-]{20,}\.(?:png|jpg|webp)$/;
 
 /** Soft recommendations for Business upload UI (enforced limits are byte size + type). */
@@ -79,6 +80,8 @@ export type BrandingPortalLayout = {
   cardPositionMobile: BrandingCardPosition;
   /** Which hosted image sits on the reveal card. */
   cardImage: BrandingCardImage;
+  /** Wide lockup on the reveal card. Separate from `logoUrl` and the page photograph. */
+  cardBannerUrl: string | null;
   backgroundFit: BrandingBackgroundFit;
   overlay: BrandingOverlay;
   focalX: number;
@@ -98,6 +101,7 @@ export const DEFAULT_BRANDING_PORTAL_LAYOUT: BrandingPortalLayout = {
   cardPosition: "center",
   cardPositionMobile: "center",
   cardImage: "logo",
+  cardBannerUrl: null,
   backgroundFit: "fill",
   overlay: "light",
   focalX: 50,
@@ -113,6 +117,7 @@ export type BusinessBranding = {
   trustMessage?: string | null;
   logoUrl: string | null;
   bannerUrl?: string | null;
+  cardBannerUrl?: string | null;
   accentColor: string | null;
   backgroundColor?: string | null;
   textColor?: string | null;
@@ -163,6 +168,7 @@ export type RevealBranding = {
   trustMessage?: string;
   logoUrl?: string;
   bannerUrl?: string;
+  cardBannerUrl?: string;
   accentColor?: string;
   backgroundColor?: string;
   textColor?: string;
@@ -212,6 +218,7 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   trustMessage: null,
   logoUrl: null,
   bannerUrl: null,
+  cardBannerUrl: null,
   accentColor: null,
   backgroundColor: null,
   textColor: null,
@@ -337,6 +344,7 @@ export function applyOpenedNoteBranding(
 
   if (gate.openedShowLogo === false) {
     delete next.logoUrl;
+    delete next.cardBannerUrl;
     delete next.cardImage;
   }
   if (gate.openedShowSenderName === false) {
@@ -422,11 +430,20 @@ function parseName(
  */
 export function publicBrandingAssetPath(
   objectKey: string | null | undefined,
-  kind: "logo" | "banner",
+  kind: "logo" | "banner" | "cardBanner",
 ): string | null {
-  const prefix = kind === "logo" ? "account-branding/" : "account-branding/banner/";
+  const prefix =
+    kind === "logo"
+      ? "account-branding/"
+      : kind === "banner"
+        ? "account-branding/banner/"
+        : "account-branding/card-banner/";
   const publicPrefix =
-    kind === "logo" ? BRANDING_LOGO_PUBLIC_PATH_PREFIX : BRANDING_BANNER_PUBLIC_PATH_PREFIX;
+    kind === "logo"
+      ? BRANDING_LOGO_PUBLIC_PATH_PREFIX
+      : kind === "banner"
+        ? BRANDING_BANNER_PUBLIC_PATH_PREFIX
+        : BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX;
   if (!objectKey?.startsWith(prefix)) return null;
   const fileName = objectKey.slice(prefix.length);
   if (!BRANDING_HOSTED_ASSET_FILE.test(fileName)) return null;
@@ -434,7 +451,11 @@ export function publicBrandingAssetPath(
 }
 
 function hostedBrandingPublicPath(pathname: string): string | null | undefined {
-  const prefixes = [BRANDING_LOGO_PUBLIC_PATH_PREFIX, BRANDING_BANNER_PUBLIC_PATH_PREFIX] as const;
+  const prefixes = [
+    BRANDING_LOGO_PUBLIC_PATH_PREFIX,
+    BRANDING_BANNER_PUBLIC_PATH_PREFIX,
+    BRANDING_CARD_BANNER_PUBLIC_PATH_PREFIX,
+  ] as const;
   for (const prefix of prefixes) {
     if (!pathname.startsWith(prefix)) continue;
     const fileName = pathname.slice(prefix.length);
@@ -640,6 +661,12 @@ function parseCardImage(
   return raw === "logo" || raw === "banner" ? { ok: true, value: raw } : { ok: false };
 }
 
+function parseLayoutCardBannerUrl(raw: unknown): string | null {
+  if (raw === undefined || raw === null || raw === "") return null;
+  const parsed = parseBrandingLogoUrl(raw);
+  return parsed.ok && parsed.value ? parsed.value : null;
+}
+
 function parseFocalPercent(
   raw: unknown,
   fallback: number,
@@ -717,6 +744,7 @@ function parsePortalLayoutFields(body: Record<string, unknown>): {
       focalX: focalX.value,
       focalY: focalY.value,
       backgroundZoom: backgroundZoom.value,
+      cardBannerUrl: parseLayoutCardBannerUrl(body.cardBannerUrl),
     },
   };
 }
@@ -743,6 +771,7 @@ function parsePortalLayoutLenient(body: Record<string, unknown>): BrandingPortal
     focalX: focalX.ok ? focalX.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalX,
     focalY: focalY.ok ? focalY.value : DEFAULT_BRANDING_PORTAL_LAYOUT.focalY,
     backgroundZoom: backgroundZoom.ok ? backgroundZoom.value : DEFAULT_BRANDING_PORTAL_LAYOUT.backgroundZoom,
+    cardBannerUrl: parseLayoutCardBannerUrl(body.cardBannerUrl),
   };
 }
 
@@ -758,6 +787,7 @@ export function brandingPortalLayout(
         | "focalX"
         | "focalY"
         | "backgroundZoom"
+        | "cardBannerUrl"
       >
     | undefined,
 ): BrandingPortalLayout {
@@ -770,6 +800,7 @@ export function brandingPortalLayout(
     focalX: branding?.focalX,
     focalY: branding?.focalY,
     backgroundZoom: branding?.backgroundZoom,
+    cardBannerUrl: branding?.cardBannerUrl,
   });
 }
 
@@ -952,13 +983,16 @@ export function brandingUsesPortalSurface(branding: RevealBranding | undefined):
 
 type BrandingCardMarkSource = Pick<
   RevealBranding,
-  "logoUrl" | "bannerUrl" | "cardImage" | "senderName" | "companyName"
+  "logoUrl" | "bannerUrl" | "cardBannerUrl" | "cardImage" | "senderName" | "companyName"
 >;
 
 /** Image shown on the reveal card. Page photography (`bannerUrl`) stays behind the card. */
 export function brandingCardMarkUrl(
   branding: BrandingCardMarkSource | undefined,
 ): string | undefined {
+  if (branding?.cardImage === "banner") {
+    return branding.cardBannerUrl || branding.logoUrl;
+  }
   return branding?.logoUrl;
 }
 
@@ -1152,6 +1186,7 @@ export function parseBusinessBrandingInput(
       trustMessage: trustMessage.value,
       logoUrl: logoUrl.value,
       bannerUrl: bannerUrl.value,
+      cardBannerUrl: layout.layout.cardBannerUrl,
       accentColor: accentColor.value,
       backgroundColor: backgroundColor.value,
       textColor: textColor.value,
@@ -1178,7 +1213,7 @@ export function brandingIsEmpty(branding: BusinessBranding | null | undefined): 
   if (!branding) return true;
   return (
     !branding.companyName && !branding.senderName && !branding.senderRole &&
-    !branding.trustMessage && !branding.logoUrl && !branding.bannerUrl &&
+    !branding.trustMessage && !branding.logoUrl && !branding.bannerUrl && !branding.cardBannerUrl &&
     !branding.accentColor && !branding.backgroundColor && !branding.textColor
   );
 }
@@ -1197,6 +1232,7 @@ export function toRevealBranding(
     cardPosition: branding.cardPosition ?? undefined,
     cardPositionMobile: branding.cardPositionMobile ?? undefined,
     cardImage: branding.cardImage ?? undefined,
+    cardBannerUrl: branding.cardBannerUrl ?? undefined,
     backgroundFit: branding.backgroundFit ?? undefined,
     overlay: branding.overlay ?? undefined,
     focalX: branding.focalX ?? undefined,
@@ -1211,6 +1247,7 @@ export function toRevealBranding(
     ...(branding.trustMessage ? { trustMessage: branding.trustMessage } : {}),
     ...(branding.logoUrl ? { logoUrl: branding.logoUrl } : {}),
     ...(branding.bannerUrl ? { bannerUrl: branding.bannerUrl } : {}),
+    ...(branding.cardBannerUrl ? { cardBannerUrl: branding.cardBannerUrl } : {}),
     ...(branding.accentColor ? { accentColor: branding.accentColor } : {}),
     ...(branding.backgroundColor ? { backgroundColor: branding.backgroundColor } : {}),
     ...(branding.textColor ? { textColor: branding.textColor } : {}),
@@ -1281,6 +1318,7 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     trustMessage: trustMessage.ok ? trustMessage.value : null,
     logoUrl: logoUrl.ok ? logoUrl.value : null,
     bannerUrl: bannerUrl.ok ? bannerUrl.value : null,
+    cardBannerUrl: layout.cardBannerUrl,
     accentColor: accentColor.ok ? accentColor.value : null,
     backgroundColor: backgroundColor.ok ? backgroundColor.value : null,
     textColor: textColor.ok ? textColor.value : null,

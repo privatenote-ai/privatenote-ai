@@ -79,6 +79,7 @@ describe("parseBusinessBrandingInput", () => {
       trustMessage: "Verify unexpected requests through your usual channel.",
       logoUrl: "https://passwords.lu/logo.svg",
       bannerUrl: "https://passwords.lu/banner.webp",
+      cardBannerUrl: null,
       accentColor: "#2563eb",
       backgroundColor: "#ffffff",
       textColor: "#111827",
@@ -189,6 +190,13 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(badPosition.ok === false && badPosition.code, "invalid_card_position");
     const cardBanner = parseBusinessBrandingInput({ cardImage: "banner" }, allowed);
     assert.equal(cardBanner.ok === true && cardBanner.branding.cardImage, "banner");
+    const cardBannerFile = "abcdefghijklmnopqrstuvwxyz12.png";
+    const cardBannerPath = `/api/auth/branding/card-banner/${cardBannerFile}`;
+    const dedicatedBanner = parseBusinessBrandingInput(
+      { cardImage: "banner", cardBannerUrl: cardBannerPath },
+      allowed,
+    );
+    assert.equal(dedicatedBanner.ok === true && dedicatedBanner.branding.cardBannerUrl, cardBannerPath);
     const badCardImage = parseBusinessBrandingInput({ cardImage: "hero" }, allowed);
     assert.equal(badCardImage.ok === false && badCardImage.code, "invalid_card_image");
   });
@@ -210,6 +218,8 @@ describe("parseBrandingLogoUrl", () => {
       parseBrandingLogoUrl(`https://privatenote-api.marjan-skrobot.workers.dev${path}`),
       { ok: true, value: path },
     );
+    const cardBannerPath = `/api/auth/branding/card-banner/${file}`;
+    assert.deepEqual(parseBrandingLogoUrl(cardBannerPath), { ok: true, value: cardBannerPath });
   });
 
   it("treats omitted and blank values as unset", () => {
@@ -519,8 +529,10 @@ describe("branding portal layout", () => {
       logoUrl: null,
       accentColor: "#2563eb",
       cardImage: "banner",
+      cardBannerUrl: "https://acme.example/lockup.png",
     });
     assert.equal(bannerMark?.cardImage, "banner");
+    assert.equal(bannerMark?.cardBannerUrl, "https://acme.example/lockup.png");
 
     const split = toRevealBranding({
       companyName: "Acme",
@@ -656,23 +668,32 @@ describe("branding reveal logo size", () => {
   it("uses a wide lockup on the card when cardImage is banner", () => {
     const branding = {
       logoUrl: "https://acme.example/logo.png",
+      cardBannerUrl: "https://acme.example/lockup.png",
       bannerUrl: "https://acme.example/office.jpg",
       cardImage: "banner" as const,
       senderName: "Ada",
       companyName: "Acme",
     };
-    assert.equal(brandingCardMarkUrl(branding), "https://acme.example/logo.png");
+    assert.equal(brandingCardMarkUrl(branding), "https://acme.example/lockup.png");
     assert.equal(brandingLogoIsSolo(branding), false);
     assert.match(brandingRevealLogoClassName(branding), /max-h-44/);
     assert.equal(
       brandingCardMarkUrl({ logoUrl: "https://acme.example/logo.png" }),
       "https://acme.example/logo.png",
     );
+    assert.equal(
+      brandingCardMarkUrl({
+        logoUrl: "https://acme.example/logo.png",
+        cardImage: "banner",
+      }),
+      "https://acme.example/logo.png",
+    );
   });
 
   it("keeps the page photograph when the card uses a banner lockup", () => {
     const branding = {
-      logoUrl: "https://acme.example/lockup.png",
+      logoUrl: "https://acme.example/logo.png",
+      cardBannerUrl: "https://acme.example/lockup.png",
       bannerUrl: "https://acme.example/office.jpg",
       backgroundStyle: "banner" as const,
       cardImage: "banner" as const,
