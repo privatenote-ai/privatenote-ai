@@ -787,7 +787,7 @@ describe("branding reveal logo size", () => {
     );
     assert.match(
       brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }),
-      /max-h-44/,
+      /max-h-16/,
     );
     assert.match(
       brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }),
@@ -798,7 +798,7 @@ describe("branding reveal logo size", () => {
         logoUrl: "https://acme.example/logo.png",
         companyName: "Acme",
       }),
-      /max-h-14/,
+      /max-h-12/,
     );
     assert.match(
       brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }, { preview: true }),
@@ -809,8 +809,17 @@ describe("branding reveal logo size", () => {
         { logoUrl: "https://acme.example/logo.png", companyName: "Acme" },
         { preview: true },
       ),
-      /max-h-5/,
+      /max-h-6/,
     );
+  });
+
+  it("keeps shared/ in the Tailwind content globs", async () => {
+    // These sizes are authored here, not in client/src. If Tailwind stops
+    // scanning shared/ the utilities are never emitted and the logo renders
+    // at its natural size on the reveal card.
+    const { readFile } = await import("node:fs/promises");
+    const config = await readFile(new URL("../tailwind.config.ts", import.meta.url), "utf8");
+    assert.match(config, /\.\/shared\/\*\*/);
   });
 
   it("uses a wide lockup on the card when cardImage is banner", () => {
@@ -824,7 +833,7 @@ describe("branding reveal logo size", () => {
     };
     assert.equal(brandingCardMarkUrl(branding), "https://acme.example/lockup.png");
     assert.equal(brandingLogoIsSolo(branding), false);
-    assert.match(brandingRevealLogoClassName(branding), /max-h-44/);
+    assert.match(brandingRevealLogoClassName(branding), /max-h-16/);
     assert.equal(
       brandingCardMarkUrl({ logoUrl: "https://acme.example/logo.png" }),
       "https://acme.example/logo.png",
