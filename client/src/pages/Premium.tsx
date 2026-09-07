@@ -128,6 +128,7 @@ function planHighlights(planId: AccountType): string[] {
   if (planId === "free") {
     return [
       "Unlimited basic encrypted notes · fair use",
+      "Up to 10 file, photo, audio, or recording transfers per day",
       "Burn after reading and password protection",
       "Open notes without creating an account",
       "Open notifications with a free account",
@@ -191,6 +192,10 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
       return flag(features.revealBranding);
     case "attachments":
       return cell(formatBytesLabel(features.attachmentMaxBytes));
+    case "attachmentTransfers":
+      return features.maxAttachmentTransfersPerDay == null
+        ? cell("Unlimited")
+        : cell(`${features.maxAttachmentTransfersPerDay} / day`);
     case "payloadBuffer":
       return cell(
         formatBytesLabel(features.activePayloadBufferBytes),
@@ -251,6 +256,7 @@ const comparisonSections: {
     description: "Attachment size, download window, and hosted drafting limits.",
     rows: [
       { key: "attachments", label: "Max attachment size" },
+      { key: "attachmentTransfers", label: "File / photo / audio transfers" },
       { key: "payloadBuffer", label: "Active payload buffer" },
       { key: "fileWindow", label: "Post-open download window" },
       { key: "hostedAi", label: "Hosted AI drafts" },
