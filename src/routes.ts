@@ -94,7 +94,7 @@ import {
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
 import { parseStoredRevealBranding, parseStoredPortalLayoutJson, openedSettingsFromAccountColumns, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
-import { parseRevealBodyFont } from "@shared/revealBodyFont";
+import { mayStoreRevealBodyFont, parseRevealBodyFont } from "@shared/revealBodyFont";
 import { parseAttachmentRecipientPermission } from "@shared/attachmentRecipientPermission";
 import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
 
@@ -9327,7 +9327,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
 
     if (requestBody?.bodyFont != null) {
       const parsedBodyFont = parseRevealBodyFont(requestBody.bodyFont);
-      if (parsedBodyFont && noteCreationFeatures.revealBodyFont) {
+      if (parsedBodyFont && mayStoreRevealBodyFont(parsedBodyFont, noteCreationFeatures.revealBodyFont)) {
         requestBody.bodyFont = parsedBodyFont;
       } else {
         delete requestBody.bodyFont;

@@ -49,7 +49,7 @@ import { readHostedAiQuotaSnapshot } from "../planHostedAi";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { parseNoteFileAccessWindowFromBody } from "@shared/noteFileAccess";
 import { isSupportedLanguage } from "@shared/supportedLanguages";
-import { parseRevealBodyFont } from "@shared/revealBodyFont";
+import { mayStoreRevealBodyFont, parseRevealBodyFont } from "@shared/revealBodyFont";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -5378,7 +5378,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (bodyFontRaw != null && !bodyFont) {
       return jsonResponse({ error: "invalid_body_font" }, 400, request);
     }
-    if (bodyFont && !capabilities.revealBodyFont) {
+    if (bodyFont && !mayStoreRevealBodyFont(bodyFont, capabilities.revealBodyFont)) {
       return jsonResponse({ error: "premium_required" }, 403, request);
     }
     const requireRecipientVerification = body.requireRecipientVerification === true;

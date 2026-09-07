@@ -4,4 +4,7 @@ https://github.com/adobe-fonts/source-serif
 Fraunces — SIL Open Font License 1.1
 https://github.com/undercasetype/fraunces
 
-Self-hosted latin / latin-ext variable WOFF2 subsets. Do not load these from a third-party CDN.
+Satoshi — ITF Free Font License (FFL) 2.0
+https://www.fontshare.com/fonts/satoshi
+
+Self-hosted files. Do not load these from a third-party CDN.

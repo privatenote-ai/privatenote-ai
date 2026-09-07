@@ -9,7 +9,7 @@ type RevealBodyFontPickerProps = {
   value: RevealBodyFont;
   onChange: (id: RevealBodyFont) => void;
   disabled?: boolean;
-  /** Free plan: non-default faces open the upgrade prompt instead of applying. */
+  /** Free plan: paid faces open the upgrade prompt instead of applying. */
   locked?: boolean;
   onLockedSelect?: () => void;
   labels?: Partial<Record<RevealBodyFont, string>>;
@@ -29,7 +29,7 @@ export function RevealBodyFontPicker({
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="group" id="reveal-body-font">
       {REVEAL_BODY_FONT_CATALOG.map((font) => {
         const selected = value === font.id;
-        const paid = font.id !== "system";
+        const paid = !font.free;
         return (
           <button
             key={font.id}

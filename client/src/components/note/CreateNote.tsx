@@ -27,7 +27,9 @@ import {
 import { planFeaturesFor } from "@shared/planCatalog";
 import { toRevealBranding } from "@shared/businessBranding";
 import {
+  isFreeRevealBodyFont,
   isRevealBodyFont,
+  mayStoreRevealBodyFont,
   parseRevealBodyFont,
   type RevealBodyFont,
 } from "@shared/revealBodyFont";
@@ -1073,7 +1075,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (requireRecipientVerification) setRequireRecipientVerification(false);
     if (recipientEmail) setRecipientEmail("");
     if (readerLanguage !== "auto") setReaderLanguage("auto");
-    if (bodyFont !== "system") setBodyFont("system");
+    if (bodyFont !== "system" && !isFreeRevealBodyFont(bodyFont)) setBodyFont("system");
   }, [isPremiumUser, readerLanguage, bodyFont, recipientEmail, requireRecipientVerification]);
 
   useEffect(() => {
@@ -1572,9 +1574,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     const applyNoteLabel = isPremiumUser ? noteLabel.trim().slice(0, 120) : "";
     const applyReaderLanguage =
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
+    const parsedBodyFont = parseRevealBodyFont(bodyFont);
     const applyBodyFont =
-      planCapabilities.revealBodyFont && bodyFont !== "system"
-        ? parseRevealBodyFont(bodyFont)
+      parsedBodyFont && mayStoreRevealBodyFont(parsedBodyFont, planCapabilities.revealBodyFont)
+        ? parsedBodyFont
         : undefined;
     const applyAttachmentPermission =
       planCapabilities.attachmentViewOnly && selectedFile

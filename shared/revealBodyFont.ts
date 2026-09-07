@@ -8,6 +8,7 @@
 
 export const REVEAL_BODY_FONT_IDS = [
   "system",
+  "satoshi",
   "source-serif",
   "fraunces",
   "jetbrains-mono",
@@ -28,6 +29,8 @@ export type RevealBodyFontCatalogEntry = {
   cssFamily: string;
   /** Tailwind-safe class applied to `.note-read-content`. */
   className: string;
+  /** Free plan may pick these; others need Starter+. */
+  free: boolean;
 };
 
 export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
@@ -37,6 +40,15 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     hint: "Default — clear and professional",
     cssFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
     className: "note-body-font-system",
+    free: true,
+  },
+  {
+    id: "satoshi",
+    label: "Satoshi",
+    hint: "Modern geometric sans",
+    cssFamily: 'Satoshi, Inter, ui-sans-serif, system-ui, sans-serif',
+    className: "note-body-font-satoshi",
+    free: true,
   },
   {
     id: "source-serif",
@@ -44,6 +56,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     hint: "Letter and document",
     cssFamily: '"Source Serif 4", Georgia, "Times New Roman", serif',
     className: "note-body-font-source-serif",
+    free: false,
   },
   {
     id: "fraunces",
@@ -51,6 +64,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     hint: "Warm editorial",
     cssFamily: 'Fraunces, Georgia, "Times New Roman", serif',
     className: "note-body-font-fraunces",
+    free: false,
   },
   {
     id: "jetbrains-mono",
@@ -58,6 +72,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     hint: "Passwords, keys, and code",
     cssFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     className: "note-body-font-jetbrains-mono",
+    free: false,
   },
 ] as const;
 
@@ -69,6 +84,10 @@ export function isRevealBodyFont(value: unknown): value is RevealBodyFont {
   return typeof value === "string" && (REVEAL_BODY_FONT_IDS as readonly string[]).includes(value);
 }
 
+export function isFreeRevealBodyFont(id: RevealBodyFont | null | undefined): boolean {
+  return revealBodyFontEntry(id).free;
+}
+
 /**
  * Parses a wire value. `"system"`, null, and unknown tokens become `undefined`
  * so callers can omit the field rather than persist a default.
@@ -77,11 +96,15 @@ export function parseRevealBodyFont(raw: unknown): StoredRevealBodyFont | undefi
   if (raw == null) return undefined;
   if (typeof raw !== "string") return undefined;
   const trimmed = raw.trim();
-  if (!trimmed || trimmed === "system") return undefined;
-  if (trimmed === "source-serif" || trimmed === "fraunces" || trimmed === "jetbrains-mono") {
-    return trimmed;
-  }
-  return undefined;
+  if (!isRevealBodyFont(trimmed) || trimmed === "system") return undefined;
+  return trimmed;
+}
+
+export function mayStoreRevealBodyFont(
+  id: StoredRevealBodyFont,
+  canChoosePaidFonts: boolean,
+): boolean {
+  return isFreeRevealBodyFont(id) || canChoosePaidFonts;
 }
 
 export function revealBodyFontEntry(

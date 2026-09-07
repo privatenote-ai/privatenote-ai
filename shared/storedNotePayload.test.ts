@@ -125,6 +125,11 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     );
     assert.ok(stored);
     assert.equal(stored!.bodyFont, "source-serif");
+    const satoshi = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "satoshi" })),
+    );
+    assert.ok(satoshi);
+    assert.equal(satoshi!.bodyFont, "satoshi");
     const omitted = parseStoredNoteCiphertextForReveal(
       JSON.stringify(basePayload({ bodyFont: "system" })),
     );

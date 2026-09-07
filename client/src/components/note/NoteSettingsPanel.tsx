@@ -1693,12 +1693,14 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   onChange={setBodyFont}
                   labels={{
                     system: t.settingsRevealBodyFontSystem ?? "Inter",
+                    satoshi: t.settingsRevealBodyFontSatoshi ?? "Satoshi",
                     "source-serif": t.settingsRevealBodyFontSourceSerif ?? "Source Serif 4",
                     fraunces: t.settingsRevealBodyFontFraunces ?? "Fraunces",
                     "jetbrains-mono": t.settingsRevealBodyFontMono ?? "JetBrains Mono",
                   }}
                   hints={{
                     system: t.settingsRevealBodyFontSystemHint ?? "Default — clear and professional",
+                    satoshi: t.settingsRevealBodyFontSatoshiHint ?? "Modern geometric sans",
                     "source-serif": t.settingsRevealBodyFontSourceSerifHint ?? "Letter and document",
                     fraunces: t.settingsRevealBodyFontFrauncesHint ?? "Warm editorial",
                     "jetbrains-mono": t.settingsRevealBodyFontMonoHint ?? "Passwords, keys, and code",
@@ -1706,7 +1708,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 />
                 <SettingsFieldHelper>
                   {t.settingsRevealBodyFontHint ??
-                    "Starter and Business can choose an open-source typeface for the revealed message."}
+                    "Inter and Satoshi are free. Starter and Business unlock more typefaces."}
                 </SettingsFieldHelper>
               </div>
               {!isPremiumUser ? (
