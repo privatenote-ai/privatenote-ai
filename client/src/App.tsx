@@ -60,6 +60,7 @@ const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
 const AccountPreferences = lazy(() => import("@/pages/account/AccountPreferences"));
+const AccountBranding = lazy(() => import("@/pages/account/AccountBranding"));
 const Premium = lazy(() => import("@/pages/Premium"));
 const BlogAdmin = lazy(() => import("@/pages/BlogAdmin"));
 const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
@@ -253,6 +254,13 @@ function LocalizedRoute({
   );
 }
 
+function AccountPreferencesRoute() {
+  if (typeof window !== "undefined" && window.location.hash === "#reveal-branding") {
+    return <Redirect to="/account/branding" />;
+  }
+  return <LazyRoute component={AccountPreferences} />;
+}
+
 function Router() {
   const [location] = useLocation();
   const { t } = useLanguage();
@@ -390,7 +398,8 @@ function Router() {
           <Route path="/account/notifications">
             <Redirect to="/account/activity" />
           </Route>
-          <Route path="/account/preferences" component={() => <LazyRoute component={AccountPreferences} />} />
+          <Route path="/account/branding" component={() => <LazyRoute component={AccountBranding} />} />
+          <Route path="/account/preferences" component={AccountPreferencesRoute} />
           <Route path="/account" component={() => <LazyRoute component={AccountOverview} />} />
           <Route component={() => <LazyRoute component={NotFound} />} />
         </Switch>

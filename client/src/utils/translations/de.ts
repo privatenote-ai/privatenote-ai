@@ -271,6 +271,10 @@ export const de: Translations = {
   authMagicLinkFailedDesc: "Der Link konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
   authNavActivity: "Aktivität",
   authNavPreferences: "Einstellungen",
+  authNavBranding: "Branding",
+  authBrandingSubtitle: "So erkennen Empfänger Sie auf den sicheren Übergabeseiten. PrivateNote bleibt die Vertrauensschicht.",
+  authBrandingGuestSubtitle: "Melden Sie sich an, um die Seite festzulegen, die Empfänger beim Öffnen sehen.",
+  authPrefsBrandingLinkHint: "Logo, Farben und die Seite, die Empfänger sehen.",
   authAccountSectionsAria: "Kontoabschnitte",
   authSignInToViewAccount: "Melden Sie sich an, um Ihr Konto zu sehen.",
   authOverviewSubtitle: "Ihre Identität, Sicherheit und Einstellungen auf einen Blick.",
@@ -1975,6 +1979,9 @@ export const de: Translations = {
   documentMetaAccountPreferencesTitle: "Einstellungen",
   documentMetaAccountPreferencesDescription: "Design, Sprache und Benachrichtigungen.",
 
+  documentMetaAccountBrandingTitle: "Branding",
+  documentMetaAccountBrandingDescription:
+    "Firmenidentität, Logo, Farben und die Standard- oder individuelle Seite, die Empfänger beim Öffnen sehen.",
   documentMetaNotificationCenterTitle: "Benachrichtigungen",
   documentMetaNotificationCenterDescription: "Zustellstatus Ihrer gesendeten Notizen — kein Inhalt oder Vorschauen.",
   notificationCenterTitle: "Benachrichtigungscenter",

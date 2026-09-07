@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { User, Shield, History, SlidersHorizontal } from "lucide-react";
+import { User, Shield, History, Palette, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -26,6 +26,7 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
     { href: "/account", label: tx("account", "Account"), icon: User },
     { href: "/account/security", label: tx("security", "Security"), icon: Shield },
     { href: "/account/activity", label: tx("authNavActivity", "Activity"), icon: History },
+    { href: "/account/branding", label: tx("authNavBranding", "Branding"), icon: Palette },
     { href: "/account/preferences", label: tx("authNavPreferences", "Preferences"), icon: SlidersHorizontal },
   ];
 

@@ -256,6 +256,10 @@ export const hr: Translations = {
   authMagicLinkFailedDesc: "Nismo mogli poslati vezu. Molimo pokušajte ponovo.",
   authNavActivity: "Aktivnost",
   authNavPreferences: "Postavke",
+  authNavBranding: "Brendiranje",
+  authBrandingSubtitle: "Kako vas primatelji prepoznaju na stranicama sigurne predaje. PrivateNote ostaje sloj povjerenja.",
+  authBrandingGuestSubtitle: "Prijavite se da postavite stranicu koju primatelji vide pri otvaranju.",
+  authPrefsBrandingLinkHint: "Logotip, boje i stranica koju primatelji vide.",
   authAccountSectionsAria: "Odjeljci računa",
   authSignInToViewAccount: "Prijavite se da vidite svoj račun.",
   authOverviewSubtitle: "Vaš identitet, sigurnost i postavke na prvi pogled.",
@@ -1985,6 +1989,9 @@ export const hr: Translations = {
   blogApiKeySharingMetaTitle: "Sigurno dijeljenje API ključa",
   blogApiKeySharingMetaDescription:
     "Kako API ključevi cure kroz chat, e-poštu, projektne alate i Git, te kako jednokratne šifrirane veze u pregledniku pomažu developerima sigurno dijeliti tajne.",
+  documentMetaAccountBrandingTitle: "Brendiranje",
+  documentMetaAccountBrandingDescription:
+    "Identitet tvrtke, logotip, boje i zadana ili prilagođena stranica koju primatelji vide pri otvaranju.",
   documentMetaNotificationCenterTitle: "Obavijesti",
   documentMetaNotificationCenterDescription: "Status dostave vaših poslanih bilješki — bez sadržaja ili pregleda.",
   notificationCenterTitle: "Centar obavijesti",

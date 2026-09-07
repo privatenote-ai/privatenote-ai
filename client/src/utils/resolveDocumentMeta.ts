@@ -490,6 +490,13 @@ function metaForAccountSegments(segments: string[], t: Translations): { title: s
         title: buildDocumentTitle(t.documentMetaAccountPreferencesTitle),
         description: t.documentMetaAccountPreferencesDescription,
       };
+    case "branding":
+      return {
+        title: buildDocumentTitle(t.documentMetaAccountBrandingTitle ?? "Branding"),
+        description:
+          t.documentMetaAccountBrandingDescription ??
+          "Company identity and the page recipients see when they open a note.",
+      };
     default:
       return notFoundDocumentMeta(t);
   }

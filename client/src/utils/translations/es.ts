@@ -271,6 +271,10 @@ export const es: Translations = {
   authMagicLinkFailedDesc: "No pudimos enviar el enlace. Inténtalo de nuevo.",
   authNavActivity: "Actividad",
   authNavPreferences: "Preferencias",
+  authNavBranding: "Marca",
+  authBrandingSubtitle: "Cómo te reconocen los destinatarios en las páginas de entrega segura. PrivateNote sigue siendo la capa de confianza.",
+  authBrandingGuestSubtitle: "Inicia sesión para configurar la página que ven los destinatarios al abrir una nota.",
+  authPrefsBrandingLinkHint: "Logotipo, colores y la página que ven los destinatarios.",
   authAccountSectionsAria: "Secciones de la cuenta",
   authSignInToViewAccount: "Inicia sesión para ver tu cuenta.",
   authOverviewSubtitle: "Tu identidad, seguridad y preferencias de un vistazo.",
@@ -1988,6 +1992,9 @@ export const es: Translations = {
   documentMetaAccountPreferencesTitle: "Preferencias",
   documentMetaAccountPreferencesDescription: "Tema, idioma y notificaciones por correo.",
 
+  documentMetaAccountBrandingTitle: "Marca",
+  documentMetaAccountBrandingDescription:
+    "Identidad de empresa, logotipo, colores y la página Predeterminada o Personalizada que ven los destinatarios.",
   documentMetaNotificationCenterTitle: "Notificaciones",
   documentMetaNotificationCenterDescription:
     "Estado de entrega de tus notas enviadas — sin contenido ni vistas previas.",

@@ -5,6 +5,14 @@ import { fr } from "./translations/fr.ts";
 import { isNoindexPath } from "./documentMeta.ts";
 import { resolveDocumentMeta } from "./resolveDocumentMeta.ts";
 
+test("resolveDocumentMeta titles the branding account page separately from preferences", () => {
+  const branding = resolveDocumentMeta("/account/branding", en);
+  const preferences = resolveDocumentMeta("/account/preferences", en);
+  assert.match(branding.title, /Branding/);
+  assert.notEqual(branding.title, preferences.title);
+  assert.match(branding.description, /recipients/i);
+});
+
 test("isNoindexPath marks private app routes", () => {
   assert.equal(isNoindexPath("/auth/sign-in"), true);
   assert.equal(isNoindexPath("/magic"), true);

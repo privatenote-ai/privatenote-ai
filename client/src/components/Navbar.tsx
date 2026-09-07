@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, FileLock2, Info, Mail, Key, LogOut, Code2, ChevronDown, History, SlidersHorizontal, BadgeDollarSign } from 'lucide-react';
+import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, FileLock2, Info, Mail, Key, LogOut, Code2, ChevronDown, History, Palette, SlidersHorizontal, BadgeDollarSign } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
@@ -222,6 +222,13 @@ export const Navbar: React.FC = () => {
                 className="block px-4 py-2 text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
               >
                 {t.authNavActivity ?? "Activity"}
+              </NavLink>
+              <NavLink
+                href="/account/branding"
+                closeMenu={closeMenu}
+                className="block px-4 py-2 text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60"
+              >
+                {t.authNavBranding ?? "Branding"}
               </NavLink>
               <NavLink
                 href="/account/preferences"
@@ -578,6 +585,10 @@ export const Navbar: React.FC = () => {
             <NavLink href="/account/activity" closeMenu={closeMenu} className={mobileItemClass}>
               <History className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.authNavActivity ?? "Activity"}</span>
+            </NavLink>
+            <NavLink href="/account/branding" closeMenu={closeMenu} className={mobileItemClass}>
+              <Palette className="h-4 w-4 shrink-0 opacity-80" />
+              <span>{t.authNavBranding ?? "Branding"}</span>
             </NavLink>
             <NavLink href="/account/preferences" closeMenu={closeMenu} className={mobileItemClass}>
               <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-80" />

@@ -522,8 +522,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
-  const preferencesHref = localizedPath("/account/preferences", language);
-  const brandingHref = `${preferencesHref}#reveal-branding`;
+  const brandingHref = localizedPath("/account/branding", language);
   const isConfiguredBusiness = configuredAccountType === "business_premium";
   const brandingAllowed = canBrandRevealPage || isConfiguredBusiness;
   const [selectedPremiumFeature, setSelectedPremiumFeature] =

@@ -321,6 +321,10 @@ export const en: Translations = {
   authMagicLinkFailedDesc: "We couldn't send the link. Please try again.",
   authNavActivity: "Activity",
   authNavPreferences: "Preferences",
+  authNavBranding: "Branding",
+  authBrandingSubtitle: "How recipients recognise you on secure delivery pages. PrivateNote stays the trust layer.",
+  authBrandingGuestSubtitle: "Sign in to set the page recipients see when they open a note.",
+  authPrefsBrandingLinkHint: "Logo, colours, and the page recipients see.",
   authAccountSectionsAria: "Account sections",
   authSignInToViewAccount: "Sign in to view your account.",
   authOverviewSubtitle: "Your identity, security, and settings at a glance.",
@@ -2592,6 +2596,9 @@ export const en: Translations = {
   documentMetaAccountPreferencesTitle: "Preferences",
   documentMetaAccountPreferencesDescription:
     "Theme, language, and notification settings.",
+  documentMetaAccountBrandingTitle: "Branding",
+  documentMetaAccountBrandingDescription:
+    "Company identity, logo, colours, and the Default or Custom page recipients see when they open a note.",
   documentMetaNotificationCenterTitle: "Notifications",
   documentMetaNotificationCenterDescription:
     "Delivery status for your sent notes — no content or previews.",

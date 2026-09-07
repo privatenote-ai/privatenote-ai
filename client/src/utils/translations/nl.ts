@@ -271,6 +271,10 @@ export const nl: Translations = {
   authMagicLinkFailedDesc: "We konden de link niet verzenden. Probeer het opnieuw.",
   authNavActivity: "Activiteit",
   authNavPreferences: "Voorkeuren",
+  authNavBranding: "Branding",
+  authBrandingSubtitle: "Zo herkennen ontvangers u op beveiligde afleverpagina’s. PrivateNote blijft de vertrouwenslaag.",
+  authBrandingGuestSubtitle: "Meld u aan om de pagina in te stellen die ontvangers zien bij het openen.",
+  authPrefsBrandingLinkHint: "Logo, kleuren en de pagina die ontvangers zien.",
   authAccountSectionsAria: "Accountsecties",
   authSignInToViewAccount: "Meld je aan om je account te bekijken.",
   authOverviewSubtitle: "Je identiteit, beveiliging en voorkeuren in één oogopslag.",
@@ -1974,6 +1978,9 @@ export const nl: Translations = {
   documentMetaAccountActivityDescription: "Recente account- en notitiegerelateerde activiteit.",
   documentMetaAccountPreferencesTitle: "Voorkeuren",
   documentMetaAccountPreferencesDescription: "Thema, taal en meldingsinstellingen.",
+  documentMetaAccountBrandingTitle: "Branding",
+  documentMetaAccountBrandingDescription:
+    "Bedrijfsidentiteit, logo, kleuren en de Standaard- of Aangepaste pagina die ontvangers zien bij het openen.",
   documentMetaNotificationCenterTitle: "Meldingen",
   documentMetaNotificationCenterDescription:
     "Bezorgstatus van je verzonden notities — geen inhoud of previews.",

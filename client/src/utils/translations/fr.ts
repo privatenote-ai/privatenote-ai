@@ -256,6 +256,10 @@ export const fr: Translations = {
   authMagicLinkFailedDesc: "Impossible d'envoyer le lien. Veuillez réessayer.",
   authNavActivity: "Activité",
   authNavPreferences: "Préférences",
+  authNavBranding: "Identité",
+  authBrandingSubtitle: "Comment les destinataires vous reconnaissent sur les pages de remise sécurisée. PrivateNote reste la couche de confiance.",
+  authBrandingGuestSubtitle: "Connectez-vous pour définir la page que les destinataires voient à l’ouverture.",
+  authPrefsBrandingLinkHint: "Logo, couleurs et page vue par les destinataires.",
   authAccountSectionsAria: "Sections du compte",
   authSignInToViewAccount: "Connectez-vous pour voir votre compte.",
   authOverviewSubtitle: "Votre identité, votre sécurité et vos réglages en un coup d'œil.",
@@ -1986,6 +1990,9 @@ export const fr: Translations = {
   blogApiKeySharingMetaDescription:
     "Comment les clés API fuient via chats, e-mails, outils et Git — et comment les liens éphémères chiffrés dans le navigateur aident les développeurs.",
 
+  documentMetaAccountBrandingTitle: "Identité",
+  documentMetaAccountBrandingDescription:
+    "Identité d’entreprise, logo, couleurs et page Par défaut ou Personnalisée vue par les destinataires.",
   documentMetaNotificationCenterTitle: "Notifications",
   documentMetaNotificationCenterDescription: "État de livraison de vos notes envoyées — pas de contenu ni d'aperçus.",
   notificationCenterTitle: "Centre de notifications",
