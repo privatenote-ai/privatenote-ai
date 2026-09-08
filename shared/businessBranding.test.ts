@@ -186,6 +186,18 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(badText.ok === false && badText.code, "invalid_text_color");
   });
 
+  it("accepts Default page filters and rejects unknown background styles", () => {
+    for (const style of ["neutral", "gradient", "vignette", "glow", "mesh", "banner"] as const) {
+      const result = parseBusinessBrandingInput(
+        { accentColor: "#2563eb", backgroundStyle: style },
+        allowed,
+      );
+      assert.equal(result.ok === true && result.branding.backgroundStyle, style);
+    }
+    const bad = parseBusinessBrandingInput({ backgroundStyle: "blur" }, allowed);
+    assert.equal(bad.ok === false && bad.code, "invalid_background_style");
+  });
+
   it("accepts sender layout controls and rejects CSS-carrying overlay values", () => {
     const result = parseBusinessBrandingInput(
       {

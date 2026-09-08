@@ -59,6 +59,15 @@ export const BRANDING_BACKGROUND_FILTERS = [
   "mesh",
 ] as const;
 export type BrandingBackgroundFilter = (typeof BRANDING_BACKGROUND_FILTERS)[number];
+export const BRANDING_BACKGROUND_STYLES = [
+  ...BRANDING_BACKGROUND_FILTERS,
+  "banner",
+] as const;
+const BRANDING_BACKGROUND_STYLE_SET = new Set<string>(BRANDING_BACKGROUND_STYLES);
+
+export function isBrandingBackgroundStyle(raw: unknown): raw is BrandingBackgroundStyle {
+  return typeof raw === "string" && BRANDING_BACKGROUND_STYLE_SET.has(raw);
+}
 /** UI page mode. Filters share Default; `banner` is Custom. */
 export type BrandingPageMode = "default" | "custom";
 export const BRANDING_MOBILE_LANES = ["top", "center", "bottom"] as const;
@@ -725,14 +734,7 @@ function parseBackgroundStyle(
   raw: unknown,
 ): { ok: true; value: BrandingBackgroundStyle } | { ok: false } {
   if (raw === undefined || raw === null || raw === "") return { ok: true, value: "neutral" };
-  return raw === "neutral" ||
-    raw === "gradient" ||
-    raw === "vignette" ||
-    raw === "glow" ||
-    raw === "mesh" ||
-    raw === "banner"
-    ? { ok: true, value: raw }
-    : { ok: false };
+  return isBrandingBackgroundStyle(raw) ? { ok: true, value: raw } : { ok: false };
 }
 
 function parseCardPositionToken(

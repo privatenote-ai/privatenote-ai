@@ -27,7 +27,7 @@ import {
   type StripePortalFlow,
 } from "../stripeBilling";
 import { getAccountEntitlements } from "../accountEntitlements";
-import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, parseOpenedNoteBrandingSettings, stringifyOpenedNoteBrandingSettings, openedSettingsFromAccountColumns, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, BRANDING_CARD_BANNER_MAX_BYTES, publicBrandingAssetPath, type BrandingPortalLayout, type OpenedNoteBrandingSettings } from "@shared/businessBranding";
+import { parseBrandingHexColor, parseBusinessPortalLayoutInput, parseStoredPortalLayoutJson, stringifyPortalLayout, parseOpenedNoteBrandingSettings, stringifyOpenedNoteBrandingSettings, openedSettingsFromAccountColumns, BRANDING_BANNER_MAX_BYTES, BRANDING_LOGO_MAX_BYTES, BRANDING_CARD_BANNER_MAX_BYTES, publicBrandingAssetPath, isBrandingBackgroundStyle, type BrandingPortalLayout, type OpenedNoteBrandingSettings } from "@shared/businessBranding";
 import {
   parseAccountActivityMetadata,
   type AccountActivityCreateMetadata,
@@ -5306,8 +5306,8 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       return jsonResponse({ message: "Branding text is invalid or too long" }, 400, request);
     }
     const normalizedBusinessBackgroundStyle = hasBusinessBackgroundStyle &&
-      ["neutral", "gradient", "vignette", "glow", "mesh", "banner"].includes(String(body.businessBackgroundStyle))
-        ? body.businessBackgroundStyle!
+      isBrandingBackgroundStyle(body.businessBackgroundStyle)
+        ? body.businessBackgroundStyle
         : hasBusinessBackgroundStyle ? null : undefined;
     if (hasBusinessBackgroundStyle && !normalizedBusinessBackgroundStyle) {
       return jsonResponse({ message: "Invalid branding background style" }, 400, request);

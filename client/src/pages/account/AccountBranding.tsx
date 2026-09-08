@@ -37,6 +37,7 @@ import {
   brandingCtaStyle,
   brandingIsPrivateNoteCanvas,
   brandingMobileLane,
+  brandingPageBackground,
   brandingPageMode,
   brandingPositionFromMobileLane,
   brandingRevealLogoClassName,
@@ -156,14 +157,33 @@ function ColorField({
   );
 }
 
+function filterSwatchStyle(
+  filter: BrandingBackgroundFilter,
+  accentColor: string,
+  backgroundColor: string,
+): { background?: string; backgroundColor?: string } {
+  const page = brandingPageBackground({
+    accentColor,
+    backgroundColor,
+    backgroundStyle: filter,
+  });
+  if (page.kind === "gradient") return { background: page.background };
+  if (page.kind === "color") return { backgroundColor: page.backgroundColor };
+  return { backgroundColor: brandingIsPrivateNoteCanvas(backgroundColor) ? "#ffffff" : backgroundColor };
+}
+
 function BackgroundFilterPicker({
   id,
   value,
   onChange,
+  accentColor,
+  backgroundColor,
 }: {
   id: string;
   value: BrandingBackgroundFilter;
   onChange: (next: BrandingBackgroundFilter) => void;
+  accentColor: string;
+  backgroundColor: string;
 }) {
   const options: Array<{ id: BrandingBackgroundFilter; label: string }> = [
     { id: "neutral", label: "None" },
@@ -175,19 +195,30 @@ function BackgroundFilterPicker({
   return (
     <div>
       <Label className="mb-2 block text-sm">Background filter</Label>
-      <div id={id} className="flex flex-wrap gap-1.5">
+      <div id={id} className="grid grid-cols-5 gap-1.5">
         {options.map((option) => (
           <button
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
-            className={`rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+            className={`overflow-hidden rounded-md border text-left ${
               value === option.id
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:text-gray-300"
+                ? "border-primary ring-1 ring-primary"
+                : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
             }`}
           >
-            {option.label}
+            <span
+              className="block h-10 w-full"
+              style={filterSwatchStyle(option.id, accentColor, backgroundColor)}
+              aria-hidden
+            />
+            <span
+              className={`block px-1.5 py-1 text-[10px] font-medium leading-tight ${
+                value === option.id ? "text-primary" : "text-gray-600 dark:text-gray-300"
+              }`}
+            >
+              {option.label}
+            </span>
           </button>
         ))}
       </div>
@@ -1528,6 +1559,8 @@ export default function AccountBranding() {
                         <BackgroundFilterPicker
                           id="business-background-filter"
                           value={brandingBackgroundFilter(businessBackgroundStyle)}
+                          accentColor={businessAccentColor}
+                          backgroundColor={businessBackgroundColor}
                           onChange={(filter) =>
                             setBusinessBackgroundStyle(
                               brandingBackgroundStyleForPage("default", filter),
@@ -1887,6 +1920,10 @@ export default function AccountBranding() {
                                 ? "neutral"
                                 : openedNoteBranding.background,
                             )}
+                            accentColor={openedNoteBranding.accentColor || businessAccentColor}
+                            backgroundColor={
+                              openedNoteBranding.backgroundColor || businessBackgroundColor
+                            }
                             onChange={(filter) =>
                               setOpenedNoteBranding((prev) => ({
                                 ...prev,

@@ -212,22 +212,28 @@ export function RecipientPortal({
     : "text-gray-600/80 dark:text-gray-300/75";
 
   const shellClass = preview
-    ? "relative flex h-full w-full min-h-0 flex-col overflow-hidden bg-white dark:bg-gray-950"
+    ? "relative flex h-full w-full min-h-0 flex-col overflow-hidden"
     : "relative flex min-h-[100dvh] w-full flex-col";
+  const pageFillStyle =
+    page.kind === "gradient"
+      ? { background: page.background }
+      : page.kind === "color"
+        ? { backgroundColor: page.backgroundColor }
+        : page.kind === "image"
+          ? { backgroundColor: "#020617" }
+          : preview
+            ? { backgroundColor: "#ffffff" }
+            : undefined;
 
   return (
-    <div
-      className={shellClass}
-      style={
-        page.kind === "gradient"
-          ? { background: page.background }
-          : page.kind === "color"
-            ? { backgroundColor: page.backgroundColor }
-            : page.kind === "image"
-              ? { backgroundColor: "#020617" }
-              : undefined
-      }
-    >
+    <div className={shellClass} style={pageFillStyle}>
+      {page.kind === "gradient" || page.kind === "color" ? (
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={pageFillStyle}
+          aria-hidden
+        />
+      ) : null}
       {page.kind === "image" ? (
         <>
           <img
