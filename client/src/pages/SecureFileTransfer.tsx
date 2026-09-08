@@ -75,31 +75,41 @@ const SecureFileTransfer: React.FC = () => {
 
   return (
     <div className={`${isCreateSuccessView ? "pt-16" : "pt-24"} min-w-0 max-w-full overflow-x-clip pb-24`}>
-      {!isCreateSuccessView ? (
-        <section className="relative isolate mx-auto max-w-4xl px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8">
-          <h1 className="page-title text-gray-900 dark:text-white">
-            <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
-              {t.sftHeroPrefix}
-            </span>
-            <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
-              {t.sftHeroAccent}
-            </span>
-          </h1>
-          <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-500 dark:text-gray-400 sm:text-xl">
-            {t.sftHeroSubtitle}
-          </p>
-        </section>
-      ) : null}
+      <div
+        className={
+          isCreateSuccessView
+            ? undefined
+            : "lg:flex lg:min-h-[calc(100svh-6rem)] lg:flex-col"
+        }
+      >
+        {!isCreateSuccessView ? (
+          <section className="relative isolate mx-auto max-w-4xl px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8">
+            <h1 className="page-title text-gray-900 dark:text-white">
+              <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                {t.sftHeroPrefix}
+              </span>
+              <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
+                {t.sftHeroAccent}
+              </span>
+            </h1>
+            <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-500 dark:text-gray-400 sm:text-xl md:mt-6">
+              {t.sftHeroSubtitle}
+            </p>
+          </section>
+        ) : null}
 
-      <div className={`${isCreateSuccessView ? "mt-0" : "mt-8 md:mt-10"} px-4 py-4 pb-14 sm:px-6 lg:px-8`}>
-        <div className="mx-auto min-w-0 max-w-4xl">
-          {mountCreateNote ? (
-            <Suspense fallback={<CreateNoteMountPlaceholder />}>
-              <CreateNote mode="file-transfer" onSuccessStateChange={setIsCreateSuccessView} />
-            </Suspense>
-          ) : (
-            <CreateNoteMountPlaceholder />
-          )}
+        <div
+          className={`${isCreateSuccessView ? "mt-0" : "mt-8 md:mt-10 lg:mt-12"} px-4 py-4 pb-14 sm:px-6 lg:flex-1 lg:px-8`}
+        >
+          <div className="mx-auto min-w-0 max-w-4xl">
+            {mountCreateNote ? (
+              <Suspense fallback={<CreateNoteMountPlaceholder />}>
+                <CreateNote mode="file-transfer" onSuccessStateChange={setIsCreateSuccessView} />
+              </Suspense>
+            ) : (
+              <CreateNoteMountPlaceholder />
+            )}
+          </div>
         </div>
       </div>
 

@@ -127,39 +127,47 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-w-0 max-w-full overflow-x-clip pt-16 pb-28 sm:pb-32">
-      {!isCreateSuccessView && (
-        <section className="relative mx-auto max-w-4xl px-4 pt-3 sm:px-6 sm:pt-5 lg:px-8">
-          <div className="text-center">
-            <h1 className="page-title text-gray-900 dark:text-white">
-              <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
-                {t.homeHeroLine1}
-              </span>
-              <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
-                {t.homeHeroLine2}
-              </span>
-            </h1>
-            <p className="mx-auto mt-2 max-w-4xl text-lg text-gray-500 dark:text-gray-400 sm:mt-3 sm:text-xl md:max-w-5xl md:text-[1.375rem]">
-              {t.homeHeroSubtitle}
-            </p>
-          </div>
-        </section>
-      )}
-
       <div
-        className={`${isCreateSuccessView ? "mt-0" : "mt-4 sm:mt-6"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:px-8`}
+        className={
+          isCreateSuccessView
+            ? undefined
+            : "lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col"
+        }
       >
-        <div className="mx-auto min-w-0 max-w-4xl">
-          {showCreateNote ? (
-            mountCreateNote ? (
-              <Suspense fallback={<CreateNoteMountPlaceholder />}>
-                <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
-              </Suspense>
+        {!isCreateSuccessView && (
+          <section className="relative mx-auto max-w-4xl px-4 pt-3 sm:px-6 sm:pt-5 lg:px-8">
+            <div className="text-center">
+              <h1 className="page-title text-gray-900 dark:text-white">
+                <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                  {t.homeHeroLine1}
+                </span>
+                <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
+                  {t.homeHeroLine2}
+                </span>
+              </h1>
+              <p className="mx-auto mt-2 max-w-4xl text-lg text-gray-500 dark:text-gray-400 sm:mt-3 sm:text-xl md:mt-6 md:max-w-5xl md:text-[1.375rem]">
+                {t.homeHeroSubtitle}
+              </p>
+            </div>
+          </section>
+        )}
+
+        <div
+          className={`${isCreateSuccessView ? "mt-0" : "mt-8 sm:mt-6 md:mt-10 lg:mt-12"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
+        >
+          <div className="mx-auto min-w-0 max-w-4xl">
+            {showCreateNote ? (
+              mountCreateNote ? (
+                <Suspense fallback={<CreateNoteMountPlaceholder />}>
+                  <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+                </Suspense>
+              ) : (
+                <CreateNoteMountPlaceholder />
+              )
             ) : (
-              <CreateNoteMountPlaceholder />
-            )
-          ) : (
-            <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
-          )}
+              <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
+            )}
+          </div>
         </div>
       </div>
 
