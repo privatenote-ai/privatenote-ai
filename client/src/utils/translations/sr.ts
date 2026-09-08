@@ -5,10 +5,10 @@ export const sr: Translations = {
   writeNote: "Napišite poruku",
   sharePassword: "Podelite lozinku",
   shareFile: "Podelite podatke",
-  sftHeroPrefix: "Privatan",
-  sftHeroAccent: "način",
-  sftHeroSuffix: "da delite podatke",
-  sftHeroSubtitle: "Nema skeniranja datoteka. Nema pristupa vašim podacima. Šifrovanje se dešava u vašem pretraživaču.",
+  sftHeroPrefix: "Bezbedan prenos datoteka.",
+  sftHeroAccent: "Šifrovano pre otpremanja.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Fajlovi se šifruju direktno u pregledaču pre nego što napuste vaš uređaj. Ne možemo čitati njihov sadržaj i nikad ih ne skeniramo.",
   sftFeatureEncryptionTitle: "Šifrovanje na strani pretraživača",
   sftFeatureEncryptionText: "Datoteke su šifrovane na ovom uređaju pre otpremanja. PrivateNote stores only ciphertext — never readable file contents.",
   sftFeatureFolderTitle: "Prenos fascikle",
@@ -1688,7 +1688,7 @@ export const sr: Translations = {
   documentMetaAccountPreferencesTitle: "Preferences",
   documentMetaAccountPreferencesDescription: "Podešavanja teme, jezika i obaveštenja.",
 
-  sftHeroTitle: "Bezbedan prenos datoteka sa šifrovanjem u pretraživaču",
+  sftHeroTitle: "Bezbedan prenos datoteka. Šifrovano pre otpremanja.",
   sftSeoHeading: "Delite šifrovane datoteke bez izlaganja sadržaja",
   sftSeoBody1:
     "PrivateNote šalje datoteke putem privremenih šifrovanih linkova. Datoteke se šifruju u vašem pretraživaču pre otpremanja, pa server čuva samo šifrovani tekst — nikad izvorni sadržaj.",

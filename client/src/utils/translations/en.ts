@@ -5,12 +5,12 @@ export const en: Translations = {
   writeNote: "Write a Note",
   sharePassword: "Share a Password",
   shareFile: "Share a File",
-  sftHeroTitle: "Secure file transfer with browser-side encryption",
-  sftHeroPrefix: "The",
-  sftHeroAccent: "private way",
-  sftHeroSuffix: "to share files",
+  sftHeroTitle: "Secure File Transfer. Encrypted Before Upload.",
+  sftHeroPrefix: "Secure File Transfer.",
+  sftHeroAccent: "Encrypted Before Upload.",
+  sftHeroSuffix: "",
   sftHeroSubtitle:
-    "No file scanning. No access to your file contents. Encryption happens in your browser before upload.",
+    "Your files are encrypted directly in your browser before leaving your device. We can’t read their contents, and we never scan them.",
   sftSeoHeading: "Encrypted file sharing without exposing your files",
   sftSeoBody1:
     "PrivateNote sends files through expiring encrypted links. Files are encrypted in your browser before upload, so the server stores only ciphertext — never the original contents.",

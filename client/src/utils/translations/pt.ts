@@ -5,10 +5,10 @@ export const pt: Translations = {
   writeNote: "Escreva uma nota",
   sharePassword: "Compartilhe uma senha",
   shareFile: "Compartilhar um arquivo",
-  sftHeroPrefix: "O",
-  sftHeroAccent: "maneira privada",
-  sftHeroSuffix: "para compartilhar arquivos",
-  sftHeroSubtitle: "Sem verificação de arquivos. Sem acesso aos seus dados. A criptografia acontece no seu navegador.",
+  sftHeroPrefix: "Transferência segura de arquivos.",
+  sftHeroAccent: "Criptografado antes do upload.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Seus arquivos são criptografados diretamente no navegador antes de sair do seu dispositivo. Não podemos ler o conteúdo e nunca os verificamos.",
   sftFeatureEncryptionTitle: "Criptografia do lado do navegador",
   sftFeatureEncryptionText: "Os arquivos são criptografados neste dispositivo antes do upload. A PrivateNote armazena apenas texto cifrado — nunca o conteúdo legível dos arquivos.",
   sftFeatureFolderTitle: "Transferência de pasta",
@@ -1688,7 +1688,7 @@ export const pt: Translations = {
   documentMetaAccountPreferencesTitle: "Preferências",
   documentMetaAccountPreferencesDescription: "Configurações de tema, idioma e notificação.",
 
-  sftHeroTitle: "Transferência segura de arquivos com criptografia no navegador",
+  sftHeroTitle: "Transferência segura de arquivos. Criptografado antes do upload.",
   sftSeoHeading: "Compartilhe arquivos criptografados sem expor o conteúdo",
   sftSeoBody1:
     "O PrivateNote envia arquivos por links criptografados que expiram. Os arquivos são criptografados no seu navegador antes do upload, então o servidor armazena apenas texto cifrado — nunca o conteúdo original.",
