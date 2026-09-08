@@ -421,7 +421,7 @@ export const fr: Translations = {
   closeNavigationMenu: "Fermer le menu",
   homeHeroLine1: "Vos messages,",
   homeHeroLine2: "votre vie privée",
-  homeHeroSubtitle: "Partagez des notes chiffrées qui disparaissent après lecture. Pas de publicité, pas de profilage, pas de collecte inutile — seulement des messages privés, à usage unique.",
+  homeHeroSubtitle: "Partagez mots de passe, messages sensibles et fichiers via des liens chiffrés de bout en bout qui disparaissent après ouverture. Pas de compte destinataire. Pas de publicité. Zéro profilage.",
   whyPrivateNote: "Pourquoi PrivateNote",
   shareSensitiveHeading: "Partagez des notes sensibles en toute confiance.",
   shareSensitiveBody: "PrivateNote protège vos messages en les chiffrant dans le navigateur, puis en supprimant la note après lecture. Pas de compte, pas de friction inutile, pas de publicité qui vous suit.",

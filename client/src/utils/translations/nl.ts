@@ -436,7 +436,7 @@ export const nl: Translations = {
   closeNavigationMenu: "Menu sluiten",
   homeHeroLine1: "Jouw berichten,",
   homeHeroLine2: "Uw privacy",
-  homeHeroSubtitle: "Deel gecodeerde notities die zichzelf vernietigen na het lezen. Geen advertenties, geen profilering, geen onnodige gegevensverzameling – alleen privé, eenmalige berichten.",
+  homeHeroSubtitle: "Deel wachtwoorden, gevoelige berichten en bestanden via end-to-end versleutelde links die na opening verdwijnen. Geen accounts voor ontvangers. Geen advertenties. Geen profilering.",
   whyPrivateNote: "Waarom PrivateNote",
   shareSensitiveHeading: "Deel gevoelige notities met vertrouwen.",
   shareSensitiveBody: "PrivateNote houdt uw berichten privé door deze in de browser te coderen en de notitie te laten verdwijnen nadat deze is gelezen. Geen accounts, geen wrijving en geen advertenties die u volgen.",

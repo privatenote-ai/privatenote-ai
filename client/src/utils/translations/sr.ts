@@ -421,7 +421,7 @@ export const sr: Translations = {
   closeNavigationMenu: "Zatvori meni",
   homeHeroLine1: "Vaše poruke,",
   homeHeroLine2: "Vaša privatnost",
-  homeHeroSubtitle: "Delite šifrovane poruke koje se samouništavaju nakon čitanja. Bez oglasa, bez profilisanja, bez nepotrebnog prikupljanja podataka — samo privatne, jednokratne poruke.",
+  homeHeroSubtitle: "Delite lozinke, osetljive poruke i fajlove putem end-to-end šifrovanih linkova koji nestaju nakon otvaranja. Bez naloga za primaoca. Bez oglasa. Nula profilisanja.",
   whyPrivateNote: "Zašto PrivateNote",
   shareSensitiveHeading: "Delite osetljive poruke sa poverenjem.",
   shareSensitiveBody: "PrivateNote čuva vaše poruke privatnim tako što ih šifruje u pregledaču i briše poruku nakon čitanja. Bez naloga, bez komplikacija i bez oglasa koji vas prate.",

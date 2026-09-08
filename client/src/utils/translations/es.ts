@@ -436,7 +436,7 @@ export const es: Translations = {
   closeNavigationMenu: "Cerrar menú",
   homeHeroLine1: "Tus mensajes,",
   homeHeroLine2: "tu privacidad",
-  homeHeroSubtitle: "Comparte notas cifradas que se autodestruyen después de leerlas. Sin anuncios, sin perfilado ni recopilación innecesaria de datos — solo mensajes privados de un solo uso.",
+  homeHeroSubtitle: "Comparte contraseñas, mensajes sensibles y archivos mediante enlaces cifrados de extremo a extremo que desaparecen al abrirlos. Sin cuentas para destinatarios. Sin anuncios. Cero perfilado.",
   whyPrivateNote: "Por qué PrivateNote",
   shareSensitiveHeading: "Comparte notas sensibles con confianza.",
   shareSensitiveBody: "PrivateNote cifra tus mensajes en el navegador y hace que la nota desaparezca después de leerla. Sin cuenta obligatoria, sin fricción y sin anuncios que te sigan.",

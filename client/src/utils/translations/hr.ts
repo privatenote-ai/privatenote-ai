@@ -421,7 +421,7 @@ export const hr: Translations = {
   closeNavigationMenu: "Zatvori izbornik",
   homeHeroLine1: "Vaše poruke,",
   homeHeroLine2: "Vaša privatnost",
-  homeHeroSubtitle: "Podijelite šifrirane bilješke koje se same uništavaju nakon čitanja. Bez oglasa, bez profiliranja, bez nepotrebnog prikupljanja podataka — samo privatne, jednokratne poruke.",
+  homeHeroSubtitle: "Podijelite lozinke, osjetljive poruke i datoteke putem end-to-end šifriranih poveznica koje nestaju nakon otvaranja. Bez računa za primatelje. Bez oglasa. Nula profiliranja.",
   whyPrivateNote: "Zašto PrivateNote",
   shareSensitiveHeading: "Podijelite osjetljive bilješke s povjerenjem.",
   shareSensitiveBody: "PrivateNote čuva privatnost vaših poruka šifriranjem u pregledniku i dopuštanjem da bilješka nestane nakon što se pročita. Bez računa, bez trvenja i bez reklama koje vas prate.",

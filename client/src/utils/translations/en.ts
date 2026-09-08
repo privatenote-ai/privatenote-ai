@@ -524,7 +524,7 @@ export const en: Translations = {
   homeHeroLine1: "Your Messages,",
   homeHeroLine2: "Your Privacy",
   homeHeroSubtitle:
-    "Share encrypted, read-once notes and files that disappear after opening. No ads, no profiling, and no unnecessary data collection.",
+    "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
   whyPrivateNote: "Why PrivateNote",
   shareSensitiveHeading: "Share sensitive notes with confidence.",
   shareSensitiveBody:

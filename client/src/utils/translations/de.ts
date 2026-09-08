@@ -436,7 +436,7 @@ export const de: Translations = {
   closeNavigationMenu: "Menü schließen",
   homeHeroLine1: "Ihre Nachrichten,",
   homeHeroLine2: "Ihre Privatsphäre",
-  homeHeroSubtitle: "Teilen Sie verschlüsselte Notizen und Dateien, die nach dem Öffnen verschwinden. Keine Werbung, kein Profiling und keine unnötige Datensammlung.",
+  homeHeroSubtitle: "Teilen Sie Passwörter, sensible Nachrichten und Dateien über Ende-zu-Ende-verschlüsselte Links, die nach dem Öffnen verschwinden. Keine Empfängerkonten. Keine Werbung. Kein Profiling.",
   whyPrivateNote: "Warum PrivateNote",
   shareSensitiveHeading: "Vertrauliche Informationen teilen, ohne dauerhafte Spuren zu hinterlassen.",
   shareSensitiveBody: "PrivateNote verschlüsselt Ihre Nachricht im Browser, bevor sie hochgeladen wird, und löscht sie nach dem Öffnen oder Ablauf. Keine Konten für Empfänger, keine unnötige Reibung und keine Werbung, die Ihnen folgt.",
