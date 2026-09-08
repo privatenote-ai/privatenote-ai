@@ -205,8 +205,12 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "Der Schutz der anwaltlichen Verschwiegenheit endet nicht bei der Verschlüsselung: entscheidend ist auch, welche Kopien nach der Übermittlung zurückbleiben.",
+    "Mandanten müssen keine App installieren; sie öffnen einen Link der Kanzlei im Browser.",
+    "Vernichtung nach dem Lesen und Ablauf vermeiden, dass eine Kopie standardmäßig im Chatverlauf bleibt.",
+    "Business ergänzt Kanzlei-Branding, Ansicht ohne Download und professionelle Übermittlungskontrollen.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
@@ -414,8 +418,12 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "La protection du secret professionnel ne s’arrête pas au chiffrement : il importe aussi de savoir quelles copies restent après l’envoi.",
+    "Le client n’installe ni Signal ni WhatsApp ; il ouvre un lien à l’image du cabinet dans le navigateur.",
+    "Lecture unique et expiration évitent qu’une copie permanente reste par défaut dans l’historique d’une messagerie.",
+    "L’offre Business rend la page d’ouverture identifiable (cabinet, logo) — sans authentifier cryptographiquement l’expéditeur.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
@@ -623,8 +631,12 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "La protección del secreto profesional no termina en el cifrado: también importa qué copias de la comunicación confidencial permanecen tras la entrega.",
+    "El cliente no instala Signal ni WhatsApp; abre un enlace con la marca del despacho en el navegador.",
+    "La lectura única y la caducidad reducen las copias que permanecen por defecto en un historial de mensajería.",
+    "Business añade marca del despacho, archivos en modo de solo visualización y controles de entrega — sin autenticar criptográficamente al remitente.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
@@ -832,8 +844,12 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "La tutela del segreto professionale non si esaurisce nella cifratura: conta anche quali copie della comunicazione riservata restano dopo la consegna.",
+    "Il cliente non installa Signal o WhatsApp; apre un link con l’identità dello studio nel browser.",
+    "Lettura unica e scadenza riducono le copie che rimangono per impostazione predefinita nella cronologia di una messaggistica.",
+    "Business aggiunge l’identità dello studio, file in sola visualizzazione e controlli di consegna — senza autenticare crittograficamente il mittente.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
@@ -1041,8 +1057,12 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "Bescherming van het beroepsgeheim stopt niet bij versleuteling: het gaat er ook om welke kopieën na de overdracht achterblijven.",
+    "Cliënten hoeven Signal of WhatsApp niet te installeren; ze openen een kantoorpagina in de browser.",
+    "Eenmalige toegang en verval verminderen de kopieën die standaard in een chatgeschiedenis achterblijven.",
+    "Business voegt kantoorhuisstijl, alleen-lezen bestanden en professionele overdrachtscontroles toe — zonder cryptografische authenticatie van de afzender.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
@@ -1250,8 +1270,12 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "A proteção do segredo profissional não se esgota na cifragem: também importa que cópias da comunicação confidencial permanecem após a entrega.",
+    "O cliente não instala Signal nem WhatsApp; abre uma hiperligação com a identidade do escritório no navegador.",
+    "A leitura única e a caducidade reduzem as cópias que ficam, por defeito, num historial de mensagens.",
+    "O Business acrescenta a identidade do escritório, ficheiros em modo apenas de visualização e controlos de entrega — sem autenticar criptograficamente o remetente.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
@@ -1459,8 +1483,12 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "Zaštita advokatske tajne ne završava se enkripcijom: važno je i koje kopije poverljive komunikacije ostaju nakon dostave.",
+    "Klijenti ne moraju da instaliraju Signal ili WhatsApp; link otvaraju direktno u pregledaču.",
+    "Jednokratno čitanje i istek smanjuju broj kopija koje podrazumevano ostaju u istoriji komunikacije.",
+    "Business paket dodaje identitet kancelarije, režim pregleda bez preuzimanja i profesionalne kontrole dostave.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
@@ -1668,6 +1696,10 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
-
-
+  "secure-client-delivery-for-lawyers": [
+    "Zaštita odvjetničke tajne ne završava se šifriranjem: važno je i koje kopije povjerljive komunikacije ostaju nakon dostave.",
+    "Klijenti ne moraju instalirati Signal ili WhatsApp; poveznicu otvaraju izravno u pregledniku.",
+    "Jednokratno čitanje i istek smanjuju broj kopija koje prema zadanim postavkama ostaju u povijesti komunikacije.",
+    "Business dodaje identitet ureda, način pregleda bez preuzimanja i profesionalne kontrole dostave.",
+  ],
 };

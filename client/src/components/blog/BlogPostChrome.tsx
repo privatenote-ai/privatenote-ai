@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { cn } from "@/lib/utils";
 import { localizedPath } from "@/utils/localizedPath";
+import { formatLocalizedLongDate } from "@/utils/formatLocalizedDate";
 import { buildStaticBlogPosts, getStaticBlogMeta, getStaticBlogReadTime } from "@/utils/staticBlogPosts";
 import { setStructuredDataScript } from "@/utils/documentMeta";
 import { buildBlogArticleStructuredData } from "@shared/blogStructuredData";
@@ -138,11 +139,7 @@ export function BlogPostHeader({
   const resolvedReadTime = readTime ?? (slug ? getStaticBlogReadTime(slug, t) : undefined);
   const resolvedAuthor = staticPost?.author?.trim() || undefined;
   const updatedAt = staticPost?.updatedAt ?? resolvedDate;
-  const formattedDate = updatedAt
-    ? new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(
-        updatedAt instanceof Date ? updatedAt : new Date(updatedAt),
-      )
-    : "";
+  const formattedDate = updatedAt ? formatLocalizedLongDate(language, updatedAt) : "";
 
   useEffect(() => {
     if (!slug || !isBlogCanonicalSlug(slug)) return;

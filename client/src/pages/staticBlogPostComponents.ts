@@ -146,4 +146,8 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/DelayedRevealScheduledSecretLinksPost"),
     "DelayedRevealScheduledSecretLinksPost",
   ),
+  "secure-client-delivery-for-lawyers": lazyPost(
+    () => import("@/components/blog/SecureClientDeliveryForLawyersPost"),
+    "SecureClientDeliveryForLawyersPost",
+  ),
 };

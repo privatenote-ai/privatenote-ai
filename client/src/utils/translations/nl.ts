@@ -1475,6 +1475,16 @@ export const nl: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Hoe je een privénotitie intrekt vóór openen",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Trek ongeopende PrivateNote-links in en bekijk bewijs-van-toegang-tijdlijnen voor leveringsgebeurtenissen—zonder secrets in e-mail te zetten.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Bescherm het beroepsgeheim zonder een blijvende chatgeschiedenis",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Een eenmalig versleuteld kanaal in de huisstijl van het kantoor, voor cliënten die geen extra app willen installeren.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Gewone berichtenapps kunnen blijvende kopieën achterlaten. Bij veel communicatie die onder het beroepsgeheim valt, is het praktische doel juist het tegenovergestelde: een instructie of gevoelig document overbrengen zonder er opnieuw een permanent chatarchief van te maken.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Bescherm het beroepsgeheim zonder blijvende chatgeschiedenis | PrivateNote Business",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Eenmalig versleuteld kanaal in de huisstijl van het kantoor, te openen in de browser van de cliënt. Geen extra app. Zie Business.",
   blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",
   blogSocialMediaBansSubtitle: "Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:

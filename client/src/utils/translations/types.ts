@@ -7,6 +7,7 @@ import {
 
 export {
   NON_ENGLISH_LANGUAGE_CODES,
+  intlLocaleForLanguage,
   normalizeLanguageCode,
   SUPPORTED_LANGUAGES,
   type SupportedLanguage,
