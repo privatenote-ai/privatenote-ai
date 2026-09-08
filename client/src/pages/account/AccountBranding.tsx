@@ -152,6 +152,26 @@ function ColorField({
     </div>
   );
 }
+
+function GradientWashToggle({
+  id,
+  checked,
+  onCheckedChange,
+}: {
+  id: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex h-10 shrink-0 items-center gap-2">
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+      <Label htmlFor={id} className="text-sm text-gray-800 dark:text-gray-100">
+        Gradient wash
+      </Label>
+    </div>
+  );
+}
+
 const PREVIEW_DESKTOP = { width: 1280, height: 800 };
 const PREVIEW_PHONE = { width: 390, height: 844 };
 
@@ -669,6 +689,11 @@ export default function AccountBranding() {
   // A null opened scale inherits the reveal page's, so the slider starts where that left off.
   const openedBackgroundZoom =
     openedNoteBranding.backgroundZoom ?? portalLayout.backgroundZoom ?? BRANDING_BACKGROUND_ZOOM_DEFAULT;
+  // `neutral` and `gradient` are both the Default opened page; the wash is a toggle on top.
+  const openedPageIsDefault =
+    openedNoteBranding.background === "neutral" ||
+    openedNoteBranding.background === "gradient" ||
+    openedNoteBranding.background === "same";
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -1439,28 +1464,26 @@ export default function AccountBranding() {
                           Color
                         </button>
                       </div>
-                      {!brandingIsPrivateNoteCanvas(businessBackgroundColor) ? (
-                        <ColorField
-                          id="business-background-color"
-                          label="Page color"
-                          value={businessBackgroundColor}
-                          draft={businessBackgroundColorDraft}
-                          onValue={setBusinessBackgroundColor}
-                          onDraft={setBusinessBackgroundColorDraft}
+                      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+                        {!brandingIsPrivateNoteCanvas(businessBackgroundColor) ? (
+                          <ColorField
+                            id="business-background-color"
+                            label="Page color"
+                            value={businessBackgroundColor}
+                            draft={businessBackgroundColorDraft}
+                            onValue={setBusinessBackgroundColor}
+                            onDraft={setBusinessBackgroundColorDraft}
+                          />
+                        ) : null}
+                        <GradientWashToggle
+                          id="business-gradient-wash"
+                          checked={businessBackgroundStyle === "gradient"}
+                          onCheckedChange={(checked) =>
+                            setBusinessBackgroundStyle(checked ? "gradient" : "neutral")
+                          }
                         />
-                      ) : null}
+                      </div>
                     </div>
-                    <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100">
-                      <input
-                        type="checkbox"
-                        checked={businessBackgroundStyle === "gradient"}
-                        onChange={(event) =>
-                          setBusinessBackgroundStyle(event.target.checked ? "gradient" : "neutral")
-                        }
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      Gradient wash
-                    </label>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <ColorField
                         id="business-accent-color"
@@ -1750,9 +1773,8 @@ export default function AccountBranding() {
                   <>
                     <div>
                       <Label className="mb-2 block text-sm">Opened page</Label>
-                      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="mb-4 grid grid-cols-2 gap-2">
                         {([
-                          { id: "same" as const, label: "Same as reveal", hint: "Keep the page behind the note" },
                           { id: "neutral" as const, label: "Default", hint: "Centered note, your colours" },
                           { id: "banner" as const, label: "Custom", hint: "Photograph behind the note" },
                         ]).map((choice) => (
@@ -1762,7 +1784,12 @@ export default function AccountBranding() {
                             onClick={() =>
                               setOpenedNoteBranding((prev) => ({
                                 ...prev,
-                                background: choice.id,
+                                // Re-picking Default keeps an existing gradient wash rather than clearing it.
+                                background:
+                                  choice.id === "neutral" &&
+                                  (prev.background === "neutral" || prev.background === "gradient")
+                                    ? prev.background
+                                    : choice.id,
                                 ...(choice.id === "neutral" && !prev.backgroundColor
                                   ? {
                                       backgroundColor: brandingIsPrivateNoteCanvas(businessBackgroundColor)
@@ -1773,7 +1800,9 @@ export default function AccountBranding() {
                               }))
                             }
                             className={`rounded-lg border px-3 py-2 text-left ${
-                              openedNoteBranding.background === choice.id
+                              (choice.id === "neutral"
+                                ? openedPageIsDefault
+                                : openedNoteBranding.background === choice.id)
                                 ? "border-primary bg-primary/5 text-primary"
                                 : "border-gray-200 dark:border-gray-700"
                             }`}
@@ -1785,18 +1814,30 @@ export default function AccountBranding() {
                           </button>
                         ))}
                       </div>
-                      {openedNoteBranding.background === "neutral" ? (
-                        <ColorField
-                          id="opened-page-color"
-                          label="Page color"
-                          value={openedNoteBranding.backgroundColor || "#e2e8f0"}
-                          draft={openedPageColorDraft}
-                          onValue={(next) => {
-                            setOpenedNoteBranding((prev) => ({ ...prev, backgroundColor: next }));
-                            setOpenedPageColorDraft(next);
-                          }}
-                          onDraft={setOpenedPageColorDraft}
-                        />
+                      {openedPageIsDefault ? (
+                        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+                          <ColorField
+                            id="opened-page-color"
+                            label="Page color"
+                            value={openedNoteBranding.backgroundColor || "#e2e8f0"}
+                            draft={openedPageColorDraft}
+                            onValue={(next) => {
+                              setOpenedNoteBranding((prev) => ({ ...prev, backgroundColor: next }));
+                              setOpenedPageColorDraft(next);
+                            }}
+                            onDraft={setOpenedPageColorDraft}
+                          />
+                          <GradientWashToggle
+                            id="opened-gradient-wash"
+                            checked={openedNoteBranding.background === "gradient"}
+                            onCheckedChange={(checked) =>
+                              setOpenedNoteBranding((prev) => ({
+                                ...prev,
+                                background: checked ? "gradient" : "neutral",
+                              }))
+                            }
+                          />
+                        </div>
                       ) : null}
                       {openedNoteBranding.background === "banner" ? (
                         <div className="space-y-3">

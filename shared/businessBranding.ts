@@ -197,7 +197,7 @@ export type OpenedNoteBrandingSettings = {
 
 export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
   show: false,
-  background: "same",
+  background: "neutral",
   showLogo: true,
   showSenderName: true,
   showCompanyName: true,
@@ -365,9 +365,11 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
       ? (source as Record<string, unknown>)
       : {};
   const backgroundRaw = record.background;
-  const background = OPENED_NOTE_BACKGROUNDS.includes(backgroundRaw as OpenedNoteBackground)
+  const parsedBackground = OPENED_NOTE_BACKGROUNDS.includes(backgroundRaw as OpenedNoteBackground)
     ? (backgroundRaw as OpenedNoteBackground)
-    : "same";
+    : "neutral";
+  // "same as reveal" is no longer offered; older stored values become Default.
+  const background = parsedBackground === "same" ? "neutral" : parsedBackground;
   const bannerUrl = parseBrandingBannerUrl(record.bannerUrl ?? record.openedBannerUrl);
   const backgroundColor = parseBrandingHexColor(record.backgroundColor ?? record.openedBackgroundColor);
   const accentColor = parseBrandingHexColor(record.accentColor ?? record.openedAccentColor);

@@ -104,7 +104,7 @@ describe("parseBusinessBrandingInput", () => {
       showSenderRole: true,
       showTrustMessage: true,
       showBrandingAfterReveal: false,
-      openedBackground: "same",
+      openedBackground: "neutral",
       openedShowLogo: true,
       openedShowSenderName: true,
       openedShowCompanyName: true,
@@ -766,6 +766,12 @@ describe("opened-note branding", () => {
     assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: 99 }).backgroundZoom, null);
     assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: 120.5 }).backgroundZoom, null);
     assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: "130" }).backgroundZoom, 130);
+  });
+
+  it("maps the retired same-as-reveal opened page onto Default", () => {
+    assert.equal(parseOpenedNoteBrandingSettings({ background: "same" }).background, "neutral");
+    assert.equal(parseOpenedNoteBrandingSettings({}).background, "neutral");
+    assert.equal(DEFAULT_OPENED_NOTE_BRANDING.background, "neutral");
   });
 
   it("can switch the opened page to a solid colour without moving the message", () => {
