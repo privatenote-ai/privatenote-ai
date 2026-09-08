@@ -1869,7 +1869,7 @@ export const pt: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "As aplicações de mensagens do dia a dia podem deixar um historial duradouro. Em muitas comunicações abrangidas pelo segredo profissional, o objetivo prático é precisamente o contrário: transmitir uma instrução ou um documento sensível sem criar mais um registo permanente.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Proteja o segredo profissional sem historial permanente | PrivateNote Business",
+    "Segredo profissional sem historial",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Canal cifrado de utilização única, com a identidade do escritório, aberto no navegador do cliente. Sem aplicação. Ver Business.",
   blogSocialMediaBansTitle: "As proibições de redes sociais para crianças funcionarão?",

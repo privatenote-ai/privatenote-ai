@@ -1529,7 +1529,7 @@ export const es: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "El correo y las mensajerías pueden dejar copias duraderas. En muchos intercambios sujetos al secreto profesional, el objetivo práctico es el contrario: transmitir una instrucción o una pieza sensible sin convertirla en otro historial permanente.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Proteja el secreto profesional sin historial permanente | PrivateNote Business",
+    "Secreto profesional sin historial",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Canal cifrado de un solo uso, con la identidad del despacho, abierto en el navegador del cliente. Sin aplicación. Véase Business.",
   blogSocialMediaBansTitle: "¿Funcionarán las prohibiciones de redes sociales para menores?",

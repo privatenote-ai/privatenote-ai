@@ -1869,7 +1869,7 @@ export const sr: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "Poverljiva komunikacija između advokata i klijenta zaslužuje više od enkripcije tokom prenosa. Važno je i koje kopije ostaju nakon dostave, ko im kasnije može pristupiti i koliko dugo ostaju dostupne.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Zaštitite advokatsku tajnu bez trajne istorije poruka | PrivateNote Business",
+    "Advokatska tajna bez istorije poruka",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Sigurna dostava uputstava i dokumenata klijentima — bez instaliranja dodatnih aplikacija. Pogledajte Business paket.",
   blogSocialMediaBansTitle: "Da li će zabrane društvenih mreža za decu delovati?",

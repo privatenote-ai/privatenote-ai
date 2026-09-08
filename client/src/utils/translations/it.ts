@@ -1862,7 +1862,7 @@ export const it: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "Le comuni app di messaggistica lasciano una cronologia. Per molte comunicazioni coperte dal segreto professionale, l’esigenza pratica è opposta: trasmettere un’informazione sensibile senza trasformarla in un’altra conversazione permanente.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Proteggere il segreto professionale senza cronologia permanente | PrivateNote Business",
+    "Segreto professionale senza cronologia",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Canale cifrato monouso, con l’identità dello studio, aperto nel browser del cliente. Senza applicazione. Vedi Business.",
   blogSocialMediaBansTitle: "I divieti sui social media per i minori funzioneranno?",

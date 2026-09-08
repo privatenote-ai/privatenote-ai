@@ -167,6 +167,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogDelayedRevealMetaTitle),
         description: t.blogDelayedRevealMetaDescription,
       };
+    case "secure-client-delivery-for-lawyers":
+      return {
+        title: buildDocumentTitle(t.blogSecureClientDeliveryForLawyersMetaTitle),
+        description: t.blogSecureClientDeliveryForLawyersMetaDescription,
+      };
     case "how-to-make-a-private-note":
       return {
         title: buildDocumentTitle(t.blogMakePrivateNoteMetaTitle),

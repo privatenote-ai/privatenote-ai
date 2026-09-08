@@ -1869,7 +1869,7 @@ export const hr: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "Povjerljiva komunikacija između odvjetnika i klijenta zaslužuje više od šifriranja tijekom prijenosa. Važno je i koje kopije ostaju nakon dostave, tko im kasnije može pristupiti i koliko dugo ostaju dostupne.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Zaštitite odvjetničku tajnu bez trajne povijesti poruka | PrivateNote Business",
+    "Odvjetnička tajna bez povijesti poruka",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Sigurna dostava uputa i dokumenata klijentima — bez instaliranja dodatnih aplikacija. Pogledajte Business.",
   blogSocialMediaBansTitle: "Hoće li zabrane društvenih mreža za djecu djelovati?",

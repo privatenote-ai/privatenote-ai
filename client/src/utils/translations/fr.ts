@@ -1862,7 +1862,7 @@ export const fr: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "Les messageries grand public conservent une trace. Pour beaucoup d’échanges couverts par le secret, l’objectif est inverse : transmettre une instruction, puis cesser d’accumuler des copies. Comment les cabinets, surtout en défense pénale, envoient instructions et pièces sous leur nom, sans imposer une autre application.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Transmettez vos instructions sans trace numérique | PrivateNote Business",
+    "Instructions sans historique durable",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Canal d’envoi chiffré aux couleurs du cabinet, ouvert dans le navigateur du client. Sans application. Découvrez l’offre Business pour cabinets.",
   blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",

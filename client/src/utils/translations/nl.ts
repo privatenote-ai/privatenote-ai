@@ -1482,7 +1482,7 @@ export const nl: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "Gewone berichtenapps kunnen blijvende kopieën achterlaten. Bij veel communicatie die onder het beroepsgeheim valt, is het praktische doel juist het tegenovergestelde: een instructie of gevoelig document overbrengen zonder er opnieuw een permanent chatarchief van te maken.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Bescherm het beroepsgeheim zonder blijvende chatgeschiedenis | PrivateNote Business",
+    "Beroepsgeheim zonder chatgeschiedenis",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Eenmalig versleuteld kanaal in de huisstijl van het kantoor, te openen in de browser van de cliënt. Geen extra app. Zie Business.",
   blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",

@@ -1838,7 +1838,7 @@ export const en: Translations = {
   blogSecureClientDeliveryForLawyersExcerpt:
     "Consumer chat keeps a record. Many privileged exchanges need the opposite: a short-lived delivery, not another transcript. How law firms—especially in criminal defence—can deliver instructions and papers under their own name, without asking a lay client to install another app.",
   blogSecureClientDeliveryForLawyersMetaTitle:
-    "Secure client delivery for lawyers | PrivateNote Business",
+    "Secure client delivery for lawyers",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Deliver privileged instructions without a Signal or WhatsApp transcript. Branded one-time links for counsel and clients—no app install. See Business.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
