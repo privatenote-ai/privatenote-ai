@@ -212,11 +212,11 @@ export function RecipientPortal({
     : "text-gray-600/80 dark:text-gray-300/75";
 
   const shellClass = preview
-    ? "relative flex h-full w-full min-h-0 flex-col overflow-hidden"
-    : "relative flex min-h-[100dvh] w-full flex-col";
+    ? "absolute inset-0 isolate flex flex-col overflow-hidden"
+    : "relative isolate flex min-h-[100dvh] w-full flex-col";
   const pageFillStyle =
     page.kind === "gradient"
-      ? { background: page.background }
+      ? { backgroundColor: page.backgroundColor, backgroundImage: page.background }
       : page.kind === "color"
         ? { backgroundColor: page.backgroundColor }
         : page.kind === "image"
@@ -229,7 +229,9 @@ export function RecipientPortal({
     <div className={shellClass} style={pageFillStyle}>
       {page.kind === "gradient" || page.kind === "color" ? (
         <div
-          className="pointer-events-none absolute inset-0"
+          className={`pointer-events-none absolute inset-0 z-0 h-full w-full ${
+            preview ? "" : "min-h-[100dvh]"
+          }`}
           style={pageFillStyle}
           aria-hidden
         />

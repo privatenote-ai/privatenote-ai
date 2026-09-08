@@ -301,7 +301,7 @@ export type BrandingHeroStyle = {
 
 export type BrandingPageBackground =
   | { kind: "none" }
-  | { kind: "gradient"; background: string }
+  | { kind: "gradient"; background: string; backgroundColor: string }
   | { kind: "color"; backgroundColor: string }
   | { kind: "image"; url: string };
 
@@ -1284,6 +1284,7 @@ export function brandingPageBackground(
     return {
       kind: "gradient",
       background: brandFilterBackground(filter, accent, wash),
+      backgroundColor: wash,
     };
   }
   if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
@@ -1551,7 +1552,8 @@ export function brandingIsEmpty(branding: BusinessBranding | null | undefined): 
   return (
     !branding.companyName && !branding.senderName && !branding.senderRole &&
     !branding.trustMessage && !branding.logoUrl && !branding.bannerUrl && !branding.cardBannerUrl &&
-    !branding.accentColor && !branding.backgroundColor && !branding.textColor
+    !branding.accentColor && !branding.backgroundColor && !branding.textColor &&
+    (!branding.backgroundStyle || branding.backgroundStyle === "neutral")
   );
 }
 

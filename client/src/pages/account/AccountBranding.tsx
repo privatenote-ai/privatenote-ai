@@ -161,13 +161,15 @@ function filterSwatchStyle(
   filter: BrandingBackgroundFilter,
   accentColor: string,
   backgroundColor: string,
-): { background?: string; backgroundColor?: string } {
+): { backgroundImage?: string; backgroundColor?: string } {
   const page = brandingPageBackground({
     accentColor,
     backgroundColor,
     backgroundStyle: filter,
   });
-  if (page.kind === "gradient") return { background: page.background };
+  if (page.kind === "gradient") {
+    return { backgroundColor: page.backgroundColor, backgroundImage: page.background };
+  }
   if (page.kind === "color") return { backgroundColor: page.backgroundColor };
   return { backgroundColor: brandingIsPrivateNoteCanvas(backgroundColor) ? "#ffffff" : backgroundColor };
 }
@@ -421,7 +423,9 @@ function PreviewDeviceFrame({
               </div>
               <span className="w-14" aria-hidden />
             </div>
-            <div className="min-h-0 flex-1">{children}</div>
+            <div className="relative min-h-0 flex-1">
+              <div className="absolute inset-0 overflow-hidden">{children}</div>
+            </div>
           </div>
         </ScaledViewport>
       ) : (
@@ -438,7 +442,9 @@ function PreviewDeviceFrame({
                   <span className="tracking-tight">••••</span>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 pt-11">{children}</div>
+              <div className="relative min-h-0 flex-1 pt-11">
+                <div className="absolute inset-x-0 bottom-0 top-11 overflow-hidden">{children}</div>
+              </div>
               <div className="relative z-20 flex shrink-0 flex-col items-center gap-2 bg-black/40 px-4 pb-2 pt-1 backdrop-blur-md">
                 <div className="flex h-11 w-full items-center justify-center rounded-2xl bg-white/15 text-[13px] text-white">
                   <Lock className="mr-1.5 h-3 w-3 text-white/80" aria-hidden />
@@ -1858,6 +1864,21 @@ export default function AccountBranding() {
                         setOpenedNoteBranding((prev) => ({
                           ...prev,
                           show: checked,
+                          ...(checked &&
+                          (prev.background === "neutral" || prev.background === "same")
+                            ? {
+                                background: brandingBackgroundFilter(businessBackgroundStyle),
+                                ...(prev.backgroundColor
+                                  ? {}
+                                  : {
+                                      backgroundColor: brandingIsPrivateNoteCanvas(
+                                        businessBackgroundColor,
+                                      )
+                                        ? "#e2e8f0"
+                                        : businessBackgroundColor,
+                                    }),
+                              }
+                            : {}),
                         }))
                       }
                       aria-label="Show branding after the note is opened"

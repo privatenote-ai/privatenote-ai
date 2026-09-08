@@ -58,6 +58,7 @@ import {
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   applyOpenedNoteBranding,
+  parseStoredRevealBranding,
 } from '@shared/businessBranding';
 import {
   parseRevealBodyFont,
@@ -682,7 +683,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             ? normalizeLanguageCode(meta.readerLanguage)
             : null,
         );
-        setResolvedRevealBranding(meta.revealBranding ?? revealBranding);
+        setResolvedRevealBranding(
+          parseStoredRevealBranding(meta.revealBranding) ?? revealBranding,
+        );
         setBodyFont(parseRevealBodyFont(meta.bodyFont));
         setAttachmentViewOnly(parseAttachmentRecipientPermission((meta as { attachmentPermission?: string }).attachmentPermission) === "view-only");
       })
@@ -1149,7 +1152,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         setSenderSelectedLanguage(normalizeLanguageCode(data.readerLanguage));
       }
       if (data.revealBranding) {
-        setResolvedRevealBranding(data.revealBranding);
+        setResolvedRevealBranding(
+          parseStoredRevealBranding(data.revealBranding) ?? data.revealBranding,
+        );
       }
       setBodyFont(parseRevealBodyFont((data as { bodyFont?: string }).bodyFont));
       setAttachmentViewOnly(

@@ -518,6 +518,23 @@ describe("brandingPageBackground", () => {
     if (page.kind !== "gradient") return;
     assert.equal(page.background.includes("#2563eb"), true);
     assert.equal(page.background.includes("#84cc16"), true);
+    assert.equal(page.backgroundColor, "#84cc16");
+  });
+
+  it("keeps filter styles on stored note snapshots so the live page can paint them", () => {
+    for (const style of ["gradient", "vignette", "glow", "mesh"] as const) {
+      const parsed = parseStoredRevealBranding({
+        accentColor: "#2563eb",
+        backgroundColor: "#84cc16",
+        backgroundStyle: style,
+      });
+      assert.equal(parsed?.backgroundStyle, style);
+      const page = brandingPageBackground(parsed);
+      assert.equal(page.kind, "gradient");
+      if (page.kind !== "gradient") return;
+      assert.equal(page.backgroundColor, "#84cc16");
+      assert.equal(page.background.includes("#2563eb"), true);
+    }
   });
 
   it("builds vignette, soft glow, and mesh filters from the accent", () => {
