@@ -62,7 +62,7 @@ import {
   type OpenedNoteBrandingSettings,
   type RevealBranding,
 } from "@shared/businessBranding";
-import { RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
+import { BrandFilterAtmosphere, RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
 import { useLanguage } from "@/context/LanguageContext";
 
 const DEFAULT_BRAND_COLOR = "#2563eb";
@@ -158,21 +158,18 @@ function ColorField({
   );
 }
 
-function filterSwatchStyle(
+function filterSwatchWash(
   filter: BrandingBackgroundFilter,
   accentColor: string,
   backgroundColor: string,
-): { background?: string; backgroundColor?: string } {
+): string {
   const page = brandingPageBackground({
     accentColor,
     backgroundColor,
     backgroundStyle: filter,
   });
-  if (page.kind === "gradient") {
-    return { background: page.background, backgroundColor: page.backgroundColor };
-  }
-  if (page.kind === "color") return { backgroundColor: page.backgroundColor };
-  return { backgroundColor: brandingIsPrivateNoteCanvas(backgroundColor) ? "#ffffff" : backgroundColor };
+  if (page.kind === "gradient" || page.kind === "color") return page.backgroundColor;
+  return brandingIsPrivateNoteCanvas(backgroundColor) ? "#ffffff" : backgroundColor;
 }
 
 function BackgroundFilterPicker({
@@ -210,11 +207,14 @@ function BackgroundFilterPicker({
                 : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
             }`}
           >
-            <span
-              className="block h-16 w-full"
-              style={filterSwatchStyle(option.id, accentColor, backgroundColor)}
-              aria-hidden
-            />
+            <span className="relative block h-16 w-full overflow-hidden" aria-hidden>
+              <BrandFilterAtmosphere
+                filter={option.id}
+                accent={accentColor}
+                wash={filterSwatchWash(option.id, accentColor, backgroundColor)}
+                compact
+              />
+            </span>
             <span
               className={`block px-1.5 py-1 text-[10px] font-medium leading-tight ${
                 value === option.id ? "text-primary" : "text-gray-600 dark:text-gray-300"

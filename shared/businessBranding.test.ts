@@ -18,6 +18,7 @@ import {
   brandingHeroUsesLightText,
   brandingIsEmpty,
   brandingPageBackground,
+  brandingFilterBlobs,
   brandingOverlayOpacity,
   brandingPortalLayout,
   brandingShowsBanner,
@@ -581,6 +582,18 @@ describe("brandingPageBackground", () => {
       assert.match(background, /ellipse \d+%/);
     }
   });
+
+  it("lays out a different number of DOM blobs for wash, glow, and mesh", () => {
+    const accent = "#2563eb";
+    assert.equal(brandingFilterBlobs("neutral", accent).length, 0);
+    assert.equal(brandingFilterBlobs("vignette", accent).length, 0);
+    assert.equal(brandingFilterBlobs("gradient", accent).length, 2);
+    assert.equal(brandingFilterBlobs("glow", accent).length, 3);
+    assert.equal(brandingFilterBlobs("mesh", accent).length, 4);
+    const colors = brandingFilterBlobs("mesh", accent).map((blob) => blob.color);
+    assert.equal(colors.every((color) => color.startsWith("#2563eb")), true);
+  });
+
 });
 
 describe("brandingBannerStyle", () => {

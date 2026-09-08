@@ -1288,6 +1288,52 @@ function brandFilterBackground(
   }
 }
 
+export type BrandingFilterBlob = {
+  left: string;
+  top: string;
+  width: string;
+  height: string;
+  color: string;
+};
+
+/**
+ * DOM blobs for Default-page filters. Each blob is a single coloured circle so
+ * the picker and live page do not depend on multi-layer CSS backgrounds.
+ */
+export function brandingFilterBlobs(
+  filter: BrandingBackgroundFilter,
+  accent: string,
+): BrandingFilterBlob[] {
+  switch (filter) {
+    case "gradient":
+      return [
+        { left: "-8%", top: "-12%", width: "72%", height: "70%", color: withHexAlpha(accent, "99") },
+        { left: "42%", top: "40%", width: "68%", height: "68%", color: withHexAlpha(accent, "73") },
+      ];
+    case "glow":
+      return [
+        { left: "10%", top: "-18%", width: "80%", height: "48%", color: withHexAlpha(accent, "b3") },
+        { left: "-18%", top: "18%", width: "46%", height: "72%", color: withHexAlpha(accent, "80") },
+        { left: "68%", top: "28%", width: "46%", height: "72%", color: withHexAlpha(accent, "66") },
+      ];
+    case "mesh":
+      return [
+        { left: "4%", top: "6%", width: "40%", height: "36%", color: withHexAlpha(accent, "c7") },
+        { left: "58%", top: "4%", width: "36%", height: "32%", color: withHexAlpha(accent, "99") },
+        { left: "54%", top: "58%", width: "38%", height: "36%", color: withHexAlpha(accent, "80") },
+        { left: "2%", top: "60%", width: "34%", height: "32%", color: withHexAlpha(accent, "66") },
+      ];
+    default:
+      return [];
+  }
+}
+
+export function brandingFilterVignetteShadow(accent: string, compact = false): string {
+  return compact
+    ? `inset 0 0 16px 8px ${withHexAlpha(accent, "73")}`
+    : `inset 0 0 12rem 5rem ${withHexAlpha(accent, "73")}`;
+}
+
 /**
  * Full-viewport recipient background. Custom images are atmospheric; copy never
  * sits on the photograph. Filters and solid colour are generated from the
