@@ -1855,6 +1855,16 @@ export const it: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Come revocare una nota privata prima dell’apertura",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoca i link PrivateNote non aperti e consulta le timeline di prova di accesso per gli eventi di consegna—senza mettere segreti nelle email.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Proteggere il segreto professionale senza lasciare una cronologia permanente",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Un canale cifrato monouso, con l’identità dello studio, accessibile direttamente dal browser del cliente.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Le comuni app di messaggistica lasciano una cronologia. Per molte comunicazioni coperte dal segreto professionale, l’esigenza pratica è opposta: trasmettere un’informazione sensibile senza trasformarla in un’altra conversazione permanente.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Segreto professionale senza cronologia",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canale cifrato monouso, con l’identità dello studio, aperto nel browser del cliente. Senza applicazione. Vedi Business.",
   blogSocialMediaBansTitle: "I divieti sui social media per i minori funzioneranno?",
   blogSocialMediaBansSubtitle: "Cosa dice l'evidenza",
   blogSocialMediaBansExcerpt:

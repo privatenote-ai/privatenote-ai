@@ -1862,6 +1862,16 @@ export const sr: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Kako da opozovete privatnu belešku pre otvaranja",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Opozovite neotvorene PrivateNote linkove i pregledajte vremenske linije dokaza pristupa za događaje isporuke—bez stavljanja tajni u e-poštu.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Zaštitite advokatsku tajnu bez trajne istorije poruka",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Sigurna dostava uputstava i dokumenata klijentima — bez instaliranja dodatnih aplikacija.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Poverljiva komunikacija između advokata i klijenta zaslužuje više od enkripcije tokom prenosa. Važno je i koje kopije ostaju nakon dostave, ko im kasnije može pristupiti i koliko dugo ostaju dostupne.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Advokatska tajna bez istorije poruka",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Sigurna dostava uputstava i dokumenata klijentima — bez instaliranja dodatnih aplikacija. Pogledajte Business paket.",
   blogSocialMediaBansTitle: "Da li će zabrane društvenih mreža za decu delovati?",
   blogSocialMediaBansSubtitle: "Šta kaže evidencija",
   blogSocialMediaBansExcerpt:

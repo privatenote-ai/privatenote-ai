@@ -36,6 +36,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "know-when-secret-link-opened",
   "revoke-unopened-note-proof-of-access",
   "delayed-reveal-scheduled-secret-links",
+  "secure-client-delivery-for-lawyers",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -443,6 +444,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "revelacao-adiada-links-secretos-agendados",
     sr: "odlozeno-otkrivanje-zakazani-tajni-linkovi",
     hr: "odgodeno-otkrivanje-zakazani-tajni-linkovi",
+  },
+  "secure-client-delivery-for-lawyers": {
+    en: "secure-client-delivery-for-lawyers",
+    de: "sichere-mandantenuebergabe-fuer-anwaelte",
+    fr: "remise-confidentielle-pour-avocats",
+    es: "entrega-confidencial-para-abogados",
+    it: "consegna-riservata-per-avvocati",
+    nl: "veilige-clientlevering-voor-advocaten",
+    pt: "entrega-confidencial-para-advogados",
+    sr: "bezbedna-dostava-klijentima-za-advokate",
+    hr: "sigurna-dostava-klijentima-za-odvjetnike",
   },
 
 };

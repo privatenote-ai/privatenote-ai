@@ -386,6 +386,17 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
     ],
     trust: "/how-it-works",
   },
+  "secure-client-delivery-for-lawyers": {
+    related: [
+      "workplace-texts-private-note",
+      "send-sensitive-documents-securely",
+      "secrets-never-send-in-chat",
+      "why-email-is-worst-for-secrets",
+      "one-time-secret-links",
+      "send-secret-message-without-account",
+    ],
+    trust: "/how-it-works",
+  },
 
 };
 

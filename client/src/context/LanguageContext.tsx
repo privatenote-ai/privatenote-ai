@@ -3,6 +3,7 @@ import { en, getTranslations, loadTranslations } from "@/utils/translation";
 import {
   SUPPORTED_LANGUAGES,
   getUserLanguage,
+  intlLocaleForLanguage,
   normalizeLanguageCode,
   type SupportedLanguage,
   type Translations,
@@ -49,7 +50,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   useEffect(() => {
-    document.documentElement.lang = language;
+    document.documentElement.lang = intlLocaleForLanguage(language);
   }, [language]);
 
   useEffect(() => {

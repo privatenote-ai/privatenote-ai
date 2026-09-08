@@ -1522,6 +1522,16 @@ export const es: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Cómo revocar una nota privada antes de abrirla",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoca enlaces PrivateNote sin abrir y consulta cronologías de prueba de acceso de los eventos de entrega—sin poner secretos en el correo.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Proteja el secreto profesional sin dejar un historial permanente",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Un canal cifrado de un solo uso, con la identidad de su despacho y accesible directamente desde el navegador del cliente.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "El correo y las mensajerías pueden dejar copias duraderas. En muchos intercambios sujetos al secreto profesional, el objetivo práctico es el contrario: transmitir una instrucción o una pieza sensible sin convertirla en otro historial permanente.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Secreto profesional sin historial",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canal cifrado de un solo uso, con la identidad del despacho, abierto en el navegador del cliente. Sin aplicación. Véase Business.",
   blogSocialMediaBansTitle: "¿Funcionarán las prohibiciones de redes sociales para menores?",
   blogSocialMediaBansSubtitle: "Lo que dice la evidencia",
   blogSocialMediaBansExcerpt:

@@ -1831,6 +1831,16 @@ export const en: Translations = {
   blogDelayedRevealMetaTitle: "Delayed reveal for one-time secret links",
   blogDelayedRevealMetaDescription:
     "Set Do not allow opening before a UTC time on PrivateNote. Share encrypted links early for handovers, HR, and embargoes.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Privileged Communications Without a Lasting Chat Transcript",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "A branded, one-time channel for counsel whose clients will not install Signal or WhatsApp",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Consumer chat keeps a record. Many privileged exchanges need the opposite: a short-lived delivery, not another transcript. How law firms—especially in criminal defence—can deliver instructions and papers under their own name, without asking a lay client to install another app.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Secure client delivery for lawyers",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Deliver privileged instructions without a Signal or WhatsApp transcript. Branded one-time links for counsel and clients—no app install. See Business.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:

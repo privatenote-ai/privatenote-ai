@@ -1518,6 +1518,16 @@ export const de: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Private Notiz vor dem Öffnen widerrufen",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Widerrufen Sie ungeöffnete PrivateNote-Links und sehen Sie Zugriffsbeleg-Zeitlinien für Zustellereignisse—ohne Geheimnisse in E-Mails zu legen.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Mandatsgeheimnis wahren — ohne dauerhafte Spuren im Chat",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Übermitteln Sie vertrauliche Weisungen und Dateien über einen Ende-zu-Ende-verschlüsselten Link. Mandanten müssen keine App installieren.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "E-Mail hinterlässt dauerhafte Kopien. Auch Messenger wie WhatsApp und Signal können einen später auswertbaren Chatverlauf auf dem Gerät hinterlassen. Wie Kanzleien in Deutschland, Österreich und der Schweiz — insbesondere in der Strafverteidigung — vertrauliche Informationen unter eigener Kanzleiidentität übermitteln können, ohne Mandanten eine weitere App aufzuzwingen.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Mandatsgeheimnis ohne Chat-Verlauf",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Vertrauliche Weisungen und Dateien über einen Ende-zu-Ende-verschlüsselten Link übermitteln. Keine App für Mandanten. Kanzleikonto: PrivateNote Business.",
   blogSocialMediaBansTitle: "Wirken Social-Media-Verbote für Kinder?",
   blogSocialMediaBansSubtitle: "Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:

@@ -216,6 +216,12 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "secure-client-delivery-for-lawyers": [
+    "Protecting privileged communications means thinking about who can later retrieve a written record—not only how it was encrypted during delivery.",
+    "Clients need not install Signal or WhatsApp; they open a branded link in a browser.",
+    "Burn-after-read and expiry avoid a permanent copy remaining by default in a messenger history.",
+    "Business adds firm branding, view-only files, and professional delivery controls.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

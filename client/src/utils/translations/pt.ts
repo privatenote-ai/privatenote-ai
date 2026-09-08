@@ -1862,6 +1862,16 @@ export const pt: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Como revogar uma nota privada antes de a abrir",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revogue links PrivateNote por abrir e consulte cronologias de prova de acesso dos eventos de entrega—sem pôr segredos no e-mail.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Proteja o segredo profissional sem deixar um historial permanente",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Um canal cifrado de utilização única, com a identidade do escritório, acessível diretamente no navegador do cliente.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "As aplicações de mensagens do dia a dia podem deixar um historial duradouro. Em muitas comunicações abrangidas pelo segredo profissional, o objetivo prático é precisamente o contrário: transmitir uma instrução ou um documento sensível sem criar mais um registo permanente.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Segredo profissional sem historial",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canal cifrado de utilização única, com a identidade do escritório, aberto no navegador do cliente. Sem aplicação. Ver Business.",
   blogSocialMediaBansTitle: "As proibições de redes sociais para crianças funcionarão?",
   blogSocialMediaBansSubtitle: "O que a evidência diz",
   blogSocialMediaBansExcerpt:

@@ -1855,6 +1855,16 @@ export const fr: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Révoquer une note privée avant ouverture",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Révoquez les liens PrivateNote non ouverts et consultez les chronologies de preuve d’accès pour les événements de livraison—sans mettre de secrets dans les e-mails.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Transmettez vos instructions sans laisser de trace numérique",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Un canal d’envoi chiffré aux couleurs de votre cabinet, accessible directement depuis le navigateur du client.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Les messageries grand public conservent une trace. Pour beaucoup d’échanges couverts par le secret, l’objectif est inverse : transmettre une instruction, puis cesser d’accumuler des copies. Comment les cabinets, surtout en défense pénale, envoient instructions et pièces sous leur nom, sans imposer une autre application.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Instructions sans historique durable",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canal d’envoi chiffré aux couleurs du cabinet, ouvert dans le navigateur du client. Sans application. Découvrez l’offre Business pour cabinets.",
   blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",
   blogSocialMediaBansSubtitle: "Ce que dit la science",
   blogSocialMediaBansExcerpt:

@@ -17,6 +17,16 @@ export function normalizeLanguageCode(language: string | null | undefined): Supp
   return "en";
 }
 
+/**
+ * BCP 47 tag for Intl and `html lang`.
+ * Serbian UI copy is Latin-only; bare `sr` formats months in Cyrillic.
+ */
+export function intlLocaleForLanguage(language: string): string {
+  const code = language.trim().toLowerCase();
+  if (code === "sr" || code.startsWith("sr-")) return "sr-Latn";
+  return language;
+}
+
 /** Regex fragment for locale home paths: `de|fr|...` */
 export const LOCALE_HOME_PATH_PATTERN = NON_ENGLISH_LANGUAGE_CODES.join("|");
 
