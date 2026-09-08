@@ -35,6 +35,7 @@ import {
   brandingBackgroundStyleForPage,
   brandingCardMarkUrl,
   brandingCtaStyle,
+  brandingNoteTextBorderColor,
   brandingIsPrivateNoteCanvas,
   brandingMobileLane,
   brandingPageBackground,
@@ -529,12 +530,14 @@ const OpenedNoteBrandingPreview: React.FC<{
             </div>
           )}
           <div className="px-4 py-4 sm:px-5">
-            <div className="relative overflow-hidden rounded-xl border border-black/[0.07] bg-white text-left">
-              <div
-                className="absolute inset-y-3 left-0 w-[3px] rounded-full"
-                style={{ backgroundColor: branding?.accentColor || "#2563eb" }}
-                aria-hidden
-              />
+            <div
+              className="overflow-hidden rounded-xl bg-white text-left"
+              style={{
+                borderWidth: 2,
+                borderStyle: "solid",
+                borderColor: brandingNoteTextBorderColor(branding) || "rgba(15, 23, 42, 0.08)",
+              }}
+            >
               <div className="min-h-[5.5rem] px-6 py-5 text-base leading-relaxed text-gray-900">
                 Secret content
               </div>
@@ -786,6 +789,7 @@ export default function AccountBranding() {
   const [openedAccentDraft, setOpenedAccentDraft] = useState(DEFAULT_BRAND_COLOR);
   const [openedTextDraft, setOpenedTextDraft] = useState("#ffffff");
   const [openedPageColorDraft, setOpenedPageColorDraft] = useState("#e2e8f0");
+  const [openedNoteBorderDraft, setOpenedNoteBorderDraft] = useState(DEFAULT_BRAND_COLOR);
   // A null opened scale inherits the reveal page's, so the slider starts where that left off.
   const openedBackgroundZoom =
     openedNoteBranding.backgroundZoom ?? portalLayout.backgroundZoom ?? BRANDING_BACKGROUND_ZOOM_DEFAULT;
@@ -852,6 +856,9 @@ export default function AccountBranding() {
         setOpenedNoteBranding(parsedOpened);
         setOpenedAccentDraft(hexColorForInput(parsedOpened.accentColor, accent));
         setOpenedTextDraft(hexColorForInput(parsedOpened.textColor, text));
+        setOpenedNoteBorderDraft(
+          hexColorForInput(parsedOpened.noteBorderColor, accent),
+        );
         setOpenedPageColorDraft(
           hexColorForInput(
             parsedOpened.backgroundColor,
@@ -1885,6 +1892,17 @@ export default function AccountBranding() {
                     />
                   </div>
                 </div>
+                <ColorField
+                  id="note-border-color"
+                  label="Note text border"
+                  value={openedNoteBranding.noteBorderColor || businessAccentColor}
+                  draft={openedNoteBorderDraft}
+                  onValue={(next) => {
+                    setOpenedNoteBranding((prev) => ({ ...prev, noteBorderColor: next }));
+                    setOpenedNoteBorderDraft(next);
+                  }}
+                  onDraft={setOpenedNoteBorderDraft}
+                />
 
                 {openedNoteBranding.show ? (
                   <>
@@ -2097,6 +2115,7 @@ export default function AccountBranding() {
                           openedTextColor: openedNoteBranding.textColor || undefined,
                           openedBackgroundColor: openedNoteBranding.backgroundColor || undefined,
                           openedBackgroundZoom: openedNoteBranding.backgroundZoom || undefined,
+                          noteBorderColor: openedNoteBranding.noteBorderColor || undefined,
                           openedShowLogo: openedNoteBranding.showLogo,
                           openedShowSenderName: openedNoteBranding.showSenderName,
                           openedShowCompanyName: openedNoteBranding.showCompanyName,

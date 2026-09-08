@@ -1008,6 +1008,7 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       openedTextColor: opened.textColor,
       openedBackgroundColor: opened.backgroundColor,
       openedBackgroundZoom: opened.backgroundZoom,
+      noteBorderColor: opened.noteBorderColor,
     });
   } catch (error) {
     console.warn("[BRANDING] Could not resolve account branding:", error);

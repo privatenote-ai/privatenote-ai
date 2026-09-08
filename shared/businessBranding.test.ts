@@ -13,6 +13,7 @@ import {
   brandingCardPositionFromPercent,
   brandingCardMarkUrl,
   brandingCtaStyle,
+  brandingNoteTextBorderColor,
   brandingHeroStyle,
   brandingHeroUsesLightText,
   brandingIsEmpty,
@@ -114,6 +115,7 @@ describe("parseBusinessBrandingInput", () => {
       openedTextColor: null,
       openedBackgroundColor: null,
       openedBackgroundZoom: null,
+      noteBorderColor: null,
     });
   });
 
@@ -144,6 +146,21 @@ describe("parseBusinessBrandingInput", () => {
     assert.equal(snapshotted?.companyName, undefined);
     assert.equal(snapshotted?.senderRole, undefined);
     assert.equal(snapshotted?.trustMessage, undefined);
+  });
+
+  it("snapshots a note-text border colour even when after-open branding is off", () => {
+    const result = parseBusinessBrandingInput(
+      {
+        accentColor: "#2563eb",
+        noteBorderColor: "#e11d48",
+      },
+      allowed,
+    );
+    assert.equal(result.ok, true);
+    const snapshotted = result.ok === true ? toRevealBranding(result.branding) : undefined;
+    assert.equal(snapshotted?.noteBorderColor, "#e11d48");
+    assert.equal(brandingNoteTextBorderColor(snapshotted), "#e11d48");
+    assert.equal(brandingNoteTextBorderColor({ accentColor: "#2563eb" }), "#2563eb");
   });
 
   it("normalizes whitespace and blank strings in names", () => {

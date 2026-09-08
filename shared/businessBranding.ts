@@ -197,6 +197,8 @@ export type BusinessBranding = {
   openedTextColor?: string | null;
   openedBackgroundColor?: string | null;
   openedBackgroundZoom?: number | null;
+  /** Full border around the opened note text. Falls back to accent when omitted. */
+  noteBorderColor?: string | null;
 };
 
 export const OPENED_NOTE_BACKGROUNDS = [
@@ -225,6 +227,8 @@ export type OpenedNoteBrandingSettings = {
   textColor?: string | null;
   /** `null` inherits the reveal page's scale, so existing snapshots keep their look. */
   backgroundZoom?: number | null;
+  /** Full border around the opened note text. `null` uses the brand accent. */
+  noteBorderColor?: string | null;
 };
 
 export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
@@ -239,6 +243,7 @@ export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
   accentColor: null,
   textColor: null,
   backgroundZoom: null,
+  noteBorderColor: null,
 };
 
 /** Wire shape sent to the reveal page; empty fields are omitted entirely. */
@@ -281,6 +286,8 @@ export type RevealBranding = {
   openedTextColor?: string;
   openedBackgroundColor?: string;
   openedBackgroundZoom?: number;
+  /** Full border around the opened note text. */
+  noteBorderColor?: string;
   /** Legacy alias still accepted when reading stored notes. */
   sharerName?: string;
 };
@@ -343,6 +350,7 @@ export const EMPTY_BUSINESS_BRANDING: BusinessBranding = {
   openedAccentColor: null,
   openedTextColor: null,
   openedBackgroundColor: null,
+  noteBorderColor: null,
 };
 
 /** True when the opened-note view should keep sender branding (opt-in). */
@@ -407,6 +415,7 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
   const accentColor = parseBrandingHexColor(record.accentColor ?? record.openedAccentColor);
   const textColor = parseBrandingHexColor(record.textColor ?? record.openedTextColor);
   const backgroundZoom = parseOpenedBackgroundZoom(record.backgroundZoom ?? record.openedBackgroundZoom);
+  const noteBorderColor = parseBrandingHexColor(record.noteBorderColor);
   return {
     show: record.show === true,
     background,
@@ -419,6 +428,7 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
     accentColor: accentColor.ok ? accentColor.value : null,
     textColor: textColor.ok ? textColor.value : null,
     backgroundZoom,
+    noteBorderColor: noteBorderColor.ok ? noteBorderColor.value : null,
   };
 }
 
@@ -437,6 +447,7 @@ export function stringifyOpenedNoteBrandingSettings(
     ...(settings.accentColor ? { accentColor: settings.accentColor } : {}),
     ...(settings.textColor ? { textColor: settings.textColor } : {}),
     ...(settings.backgroundZoom ? { backgroundZoom: settings.backgroundZoom } : {}),
+    ...(settings.noteBorderColor ? { noteBorderColor: settings.noteBorderColor } : {}),
   });
 }
 
@@ -454,6 +465,7 @@ export function openedSettingsFromBranding(
     | "openedTextColor"
     | "openedBackgroundColor"
     | "openedBackgroundZoom"
+    | "noteBorderColor"
   > | null | undefined,
 ): OpenedNoteBrandingSettings {
   return parseOpenedNoteBrandingSettings({
@@ -468,6 +480,7 @@ export function openedSettingsFromBranding(
     textColor: branding?.openedTextColor,
     backgroundColor: branding?.openedBackgroundColor,
     backgroundZoom: branding?.openedBackgroundZoom,
+    noteBorderColor: branding?.noteBorderColor,
   });
 }
 
@@ -726,6 +739,7 @@ function parseOpenedFields(
       textColor: body.openedTextColor,
       backgroundColor: body.openedBackgroundColor,
       backgroundZoom: body.openedBackgroundZoom,
+      noteBorderColor: body.noteBorderColor,
     }),
   };
 }
@@ -1186,6 +1200,13 @@ export function brandingCtaStyle(
   return style;
 }
 
+/** Color for the full border around opened note text. Falls back to accent. */
+export function brandingNoteTextBorderColor(
+  branding: Pick<RevealBranding, "noteBorderColor" | "accentColor"> | undefined,
+): string | undefined {
+  return branding?.noteBorderColor || branding?.accentColor || undefined;
+}
+
 export function brandingShowsBanner(
   branding: RevealBranding | undefined,
 ): boolean {
@@ -1543,6 +1564,7 @@ export function parseBusinessBrandingInput(
       openedTextColor: opened.settings.textColor,
       openedBackgroundColor: opened.settings.backgroundColor,
       openedBackgroundZoom: opened.settings.backgroundZoom,
+      noteBorderColor: opened.settings.noteBorderColor,
     },
   };
 }
@@ -1553,6 +1575,7 @@ export function brandingIsEmpty(branding: BusinessBranding | null | undefined): 
     !branding.companyName && !branding.senderName && !branding.senderRole &&
     !branding.trustMessage && !branding.logoUrl && !branding.bannerUrl && !branding.cardBannerUrl &&
     !branding.accentColor && !branding.backgroundColor && !branding.textColor &&
+    !branding.noteBorderColor &&
     (!branding.backgroundStyle || branding.backgroundStyle === "neutral")
   );
 }
@@ -1598,6 +1621,7 @@ export function toRevealBranding(
     ...(branding.bannerUrl ? { bannerUrl: branding.bannerUrl } : {}),
     ...(branding.cardBannerUrl ? { cardBannerUrl: branding.cardBannerUrl } : {}),
     ...(branding.accentColor ? { accentColor: branding.accentColor } : {}),
+    ...(branding.noteBorderColor ? { noteBorderColor: branding.noteBorderColor } : {}),
     ...(branding.backgroundColor ? { backgroundColor: branding.backgroundColor } : {}),
     ...(branding.textColor ? { textColor: branding.textColor } : {}),
     ...(branding.backgroundStyle && branding.backgroundStyle !== "neutral"
@@ -1718,5 +1742,6 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     openedTextColor: openedSettings.textColor,
     openedBackgroundColor: openedSettings.backgroundColor,
     openedBackgroundZoom: openedSettings.backgroundZoom,
+    noteBorderColor: openedSettings.noteBorderColor,
   });
 }

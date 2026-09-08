@@ -59,6 +59,7 @@ import {
   brandingUsesPortalSurface,
   applyOpenedNoteBranding,
   parseStoredRevealBranding,
+  brandingNoteTextBorderColor,
 } from '@shared/businessBranding';
 import {
   parseRevealBodyFont,
@@ -112,6 +113,7 @@ interface RevealBranding {
   sharerName?: string;
   companyName?: string;
   accentColor?: string;
+  noteBorderColor?: string;
   backgroundColor?: string;
   textColor?: string;
   bannerUrl?: string;
@@ -1824,6 +1826,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const brandingLine = getBrandingLine(openedBranding, t);
   const accentStyle = brandingCtaStyle(openedBranding);
   const openedPortalSurface = brandingUsesPortalSurface(openedBranding);
+  const noteTextBorderColor =
+    brandingNoteTextBorderColor(openedBranding) ||
+    brandingNoteTextBorderColor(activeRevealBranding);
 
   // Regular note content view (either after password decryption or for non-password notes)
   return wrapRecipient(
@@ -1981,18 +1986,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           )}
           <div className="px-4 py-4 sm:px-6 sm:py-5">
             <div
-              className="relative overflow-hidden rounded-xl border border-black/[0.07] bg-white text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:border-white/10 dark:bg-[#0f141c]"
+              className="overflow-hidden rounded-xl bg-white text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-[#0f141c]"
+              style={{
+                borderWidth: 2,
+                borderStyle: "solid",
+                borderColor: noteTextBorderColor || "rgba(15, 23, 42, 0.08)",
+              }}
             >
-              <div
-                className="absolute inset-y-3 left-0 w-[3px] rounded-full"
-                style={{
-                  backgroundColor:
-                    openedBranding?.accentColor ||
-                    activeRevealBranding?.accentColor ||
-                    "#2563eb",
-                }}
-                aria-hidden
-              />
               <div className="min-h-[7.5rem] px-6 py-6 sm:min-h-[8.5rem] sm:px-8 sm:py-7">
                 <span
                   className={`note-read-content block whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.08rem] sm:text-[1.2rem] leading-[1.7] text-gray-900 dark:text-gray-100 select-text ${revealBodyFontClassName(bodyFont)}`}
