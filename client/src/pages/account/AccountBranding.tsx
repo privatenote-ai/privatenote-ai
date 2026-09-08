@@ -492,28 +492,31 @@ const OpenedNoteBrandingPreview: React.FC<{
             </div>
           )}
           <div className="px-6 py-8 text-base leading-relaxed text-gray-900">Secret content</div>
-        </div>
-        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <button
-            type="button"
-            className="inline-flex min-w-[170px] items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white"
-            style={buttonStyle}
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            Copy Note
-          </button>
-          <button
-            type="button"
-            className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-primary/25 px-5 py-2.5 text-sm font-medium text-primary/80"
-          >
-            Create new note
-          </button>
-        </div>
-        <div className="mt-4 flex justify-center">
-          <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
-            <span aria-hidden>⚠️</span>
-            This note will be deleted after you leave
-          </p>
+          <div className="border-t border-black/[0.06] px-5 py-5">
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <button
+                type="button"
+                className="inline-flex min-w-[170px] items-center justify-center rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white"
+                style={buttonStyle}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Note
+              </button>
+              <button
+                type="button"
+                className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800"
+              >
+                Create new note
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+              <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
+                <span aria-hidden>⚠️</span>
+                This note will be deleted after you leave
+              </p>
+              <p className="m-0 text-xs text-gray-500">Make sure to save this note securely.</p>
+            </div>
+          </div>
         </div>
       </div>
     </RecipientPortal>
@@ -2002,7 +2005,7 @@ export default function AccountBranding() {
                       onViewportChange={setBrandingPreviewViewport}
                       showViewportToggle={false}
                       label="After the note is opened"
-                      hint="Sender identity sits in the note card. The deletion warning sits under the buttons."
+                      hint="Actions stay inside the note card so they stay readable on any page colour."
                     >
                       <OpenedNoteBrandingPreview
                         viewport={brandingPreviewViewport}

@@ -55,7 +55,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   brandingCtaStyle,
   brandingCardMarkUrl,
-  brandingChromeUsesLightText,
   brandingRevealLogoClassName,
   brandingUsesPortalSurface,
   applyOpenedNoteBranding,
@@ -1820,7 +1819,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const brandingLine = getBrandingLine(openedBranding, t);
   const accentStyle = brandingCtaStyle(openedBranding);
   const openedPortalSurface = brandingUsesPortalSurface(openedBranding);
-  const openedChromeIsLight = brandingChromeUsesLightText(openedBranding ?? activeRevealBranding);
 
   // Regular note content view (either after password decryption or for non-password notes)
   return wrapRecipient(
@@ -2135,6 +2133,44 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 ) : null}
             </div>
           ) : null}
+
+          <div className="border-t border-black/[0.06] px-5 py-5 sm:px-7 dark:border-white/10">
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+              <button
+                type="button"
+                onClick={() => void handleCopy()}
+                style={accentStyle}
+                className={`inline-flex min-w-[170px] items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  accentStyle
+                    ? "focus-visible:ring-gray-400"
+                    : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                }`}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                {t.copyNote}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t.createNewNote}
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+              <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+                <span aria-hidden>⚠️</span>
+                {t.noteDeletedWarning}
+              </p>
+              <p className="m-0 min-h-[1.25rem] text-sm text-emerald-600 dark:text-emerald-400">
+                {copied ? `✔ ${t.copiedToClipboard}` : ""}
+              </p>
+              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+                {t.saveNoteSecurely}
+              </p>
+            </div>
+          </div>
         </article>
         )}
 
@@ -2170,46 +2206,48 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             </div>
           ) : null}
 
-        <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-          <button
-            type="button"
-            onClick={() => void handleCopy()}
-            style={accentStyle}
-            className={`inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 min-w-[170px] ${
-              accentStyle
-                ? "focus-visible:ring-gray-400"
-                : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+        {viewerOpen && !messageSheetOpen ? (
+          <div
+            className={`mt-4 overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] px-5 py-5 dark:bg-gray-900 sm:px-7 ${
+              openedPortalSurface
+                ? "border-gray-200/70 dark:border-gray-700/80"
+                : "border-gray-200/90 dark:border-gray-700"
             }`}
           >
-            <Copy className="h-4 w-4 mr-2" />
-            {t.copyNote}
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateNew}
-            className={`inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 min-w-[170px] ${
-              openedChromeIsLight
-                ? "border border-white/70 text-white hover:bg-white/10 focus-visible:ring-white/70"
-                : "border border-primary/25 text-primary/80 hover:bg-primary/6 hover:text-primary focus-visible:ring-primary/60"
-            }`}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t.createNewNote}
-          </button>
-        </div>
-
-        <div className="mt-4 flex flex-col items-center gap-3 text-center">
-          <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
-            <span aria-hidden>⚠️</span>
-            {t.noteDeletedWarning}
-          </p>
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 min-h-[1.25rem]">
-            {copied ? `✔ ${t.copiedToClipboard}` : ""}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t.saveNoteSecurely}
-          </p>
-        </div>
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+              <button
+                type="button"
+                onClick={() => void handleCopy()}
+                style={accentStyle}
+                className={`inline-flex min-w-[170px] items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  accentStyle
+                    ? "focus-visible:ring-gray-400"
+                    : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                }`}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                {t.copyNote}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t.createNewNote}
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+              <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+                <span aria-hidden>⚠️</span>
+                {t.noteDeletedWarning}
+              </p>
+              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+                {t.saveNoteSecurely}
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         {receiptAckRequired && noteContent ? (
           <div className="mt-6 rounded-lg border border-teal-200/80 bg-teal-50/70 px-4 py-3 text-left dark:border-teal-800/50 dark:bg-teal-950/30 sm:mt-7">
