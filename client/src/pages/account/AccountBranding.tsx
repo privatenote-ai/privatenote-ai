@@ -522,7 +522,18 @@ const OpenedNoteBrandingPreview: React.FC<{
               <p className="m-0 text-[11px] text-gray-400">Self-destructs after opening</p>
             </div>
           )}
-          <div className="px-6 py-8 text-base leading-relaxed text-gray-900">Secret content</div>
+          <div className="px-4 py-4 sm:px-5">
+            <div className="relative overflow-hidden rounded-xl border border-black/[0.07] bg-white text-left">
+              <div
+                className="absolute inset-y-3 left-0 w-[3px] rounded-full"
+                style={{ backgroundColor: branding?.accentColor || "#2563eb" }}
+                aria-hidden
+              />
+              <div className="min-h-[5.5rem] px-6 py-5 text-base leading-relaxed text-gray-900">
+                Secret content
+              </div>
+            </div>
+          </div>
           <div className="border-t border-black/[0.06] px-5 py-5">
             <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
               <button
