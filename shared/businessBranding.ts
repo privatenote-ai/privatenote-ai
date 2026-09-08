@@ -1247,8 +1247,9 @@ function withHexAlpha(hex: string, alpha: string): string {
 }
 
 /**
- * Default-page atmosphere. Accents always tint the wash — never the page colour
- * itself — so a solid green page still shows a visible Soft wash / Glow / Mesh.
+ * Default-page atmosphere. Blobs are sized in % of the page so they stay inside
+ * the frame — thumbnails and the area around a centered reveal card all read
+ * as different filters. Accents tint the wash, never replace the page colour.
  */
 function brandFilterBackground(
   filter: BrandingBackgroundFilter,
@@ -1258,27 +1259,28 @@ function brandFilterBackground(
   switch (filter) {
     case "gradient":
       return [
-        `radial-gradient(ellipse 85% 60% at 8% -5%, ${withHexAlpha(accent, "73")} 0%, transparent 58%)`,
-        `radial-gradient(ellipse 75% 55% at 95% 105%, ${withHexAlpha(accent, "59")} 0%, transparent 52%)`,
+        `radial-gradient(ellipse 58% 52% at 8% 10%, ${withHexAlpha(accent, "99")} 0%, transparent 72%)`,
+        `radial-gradient(ellipse 50% 46% at 96% 92%, ${withHexAlpha(accent, "73")} 0%, transparent 70%)`,
         `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
       ].join(", ");
     case "vignette":
       return [
-        `radial-gradient(ellipse 72% 68% at 50% 42%, transparent 35%, ${withHexAlpha(accent, "40")} 100%)`,
+        `radial-gradient(ellipse 62% 58% at 50% 48%, transparent 38%, ${withHexAlpha(accent, "73")} 100%)`,
         `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
       ].join(", ");
     case "glow":
       return [
-        `radial-gradient(circle at 50% 32%, ${withHexAlpha(accent, "66")} 0%, transparent 52%)`,
-        `radial-gradient(ellipse 95% 55% at 50% 110%, ${withHexAlpha(accent, "33")} 0%, transparent 58%)`,
+        `radial-gradient(ellipse 70% 32% at 50% 0%, ${withHexAlpha(accent, "b3")} 0%, transparent 78%)`,
+        `radial-gradient(ellipse 32% 55% at 0% 42%, ${withHexAlpha(accent, "73")} 0%, transparent 72%)`,
+        `radial-gradient(ellipse 32% 55% at 100% 58%, ${withHexAlpha(accent, "59")} 0%, transparent 72%)`,
         `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
       ].join(", ");
     case "mesh":
       return [
-        `radial-gradient(at 12% 18%, ${withHexAlpha(accent, "80")} 0px, transparent 42%)`,
-        `radial-gradient(at 88% 12%, ${withHexAlpha(accent, "59")} 0px, transparent 40%)`,
-        `radial-gradient(at 72% 82%, ${withHexAlpha(accent, "4d")} 0px, transparent 44%)`,
-        `radial-gradient(at 18% 88%, ${withHexAlpha(accent, "40")} 0px, transparent 40%)`,
+        `radial-gradient(ellipse 36% 30% at 18% 20%, ${withHexAlpha(accent, "c7")} 0%, transparent 72%)`,
+        `radial-gradient(ellipse 32% 28% at 84% 16%, ${withHexAlpha(accent, "99")} 0%, transparent 70%)`,
+        `radial-gradient(ellipse 34% 30% at 78% 80%, ${withHexAlpha(accent, "80")} 0%, transparent 72%)`,
+        `radial-gradient(ellipse 30% 26% at 16% 84%, ${withHexAlpha(accent, "66")} 0%, transparent 70%)`,
         `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
       ].join(", ");
     default:

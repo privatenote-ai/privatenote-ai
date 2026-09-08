@@ -216,7 +216,7 @@ export function RecipientPortal({
     : "relative isolate flex min-h-[100dvh] w-full flex-col";
   const pageFillStyle =
     page.kind === "gradient"
-      ? { backgroundColor: page.backgroundColor, backgroundImage: page.background }
+      ? { background: page.background, backgroundColor: page.backgroundColor }
       : page.kind === "color"
         ? { backgroundColor: page.backgroundColor }
         : page.kind === "image"

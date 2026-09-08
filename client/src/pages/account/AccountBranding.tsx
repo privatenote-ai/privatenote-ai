@@ -162,14 +162,14 @@ function filterSwatchStyle(
   filter: BrandingBackgroundFilter,
   accentColor: string,
   backgroundColor: string,
-): { backgroundImage?: string; backgroundColor?: string } {
+): { background?: string; backgroundColor?: string } {
   const page = brandingPageBackground({
     accentColor,
     backgroundColor,
     backgroundStyle: filter,
   });
   if (page.kind === "gradient") {
-    return { backgroundColor: page.backgroundColor, backgroundImage: page.background };
+    return { background: page.background, backgroundColor: page.backgroundColor };
   }
   if (page.kind === "color") return { backgroundColor: page.backgroundColor };
   return { backgroundColor: brandingIsPrivateNoteCanvas(backgroundColor) ? "#ffffff" : backgroundColor };
@@ -198,7 +198,7 @@ function BackgroundFilterPicker({
   return (
     <div>
       <Label className="mb-2 block text-sm">Background filter</Label>
-      <div id={id} className="grid grid-cols-5 gap-1.5">
+      <div id={id} className="grid grid-cols-5 gap-2">
         {options.map((option) => (
           <button
             key={option.id}
@@ -211,7 +211,7 @@ function BackgroundFilterPicker({
             }`}
           >
             <span
-              className="block h-10 w-full"
+              className="block h-16 w-full"
               style={filterSwatchStyle(option.id, accentColor, backgroundColor)}
               aria-hidden
             />
@@ -225,6 +225,9 @@ function BackgroundFilterPicker({
           </button>
         ))}
       </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+        Tints the Default page around the card. Custom photography ignores these.
+      </p>
     </div>
   );
 }

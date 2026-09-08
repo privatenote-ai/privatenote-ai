@@ -565,6 +565,22 @@ describe("brandingPageBackground", () => {
       assert.equal(page.kind === "gradient" && page.background.includes("#7c3aed"), true);
     }
   });
+
+  it("keeps filter blobs bounded so swatches and the live page do not look identical", () => {
+    const backgrounds = (["gradient", "vignette", "glow", "mesh"] as const).map((style) => {
+      const page = brandingPageBackground({
+        accentColor: "#2563eb",
+        backgroundStyle: style,
+      });
+      assert.equal(page.kind, "gradient");
+      return page.kind === "gradient" ? page.background : "";
+    });
+    assert.equal(new Set(backgrounds).size, backgrounds.length);
+    for (const background of backgrounds) {
+      assert.equal(background.includes("radial-gradient(at "), false);
+      assert.match(background, /ellipse \d+%/);
+    }
+  });
 });
 
 describe("brandingBannerStyle", () => {
