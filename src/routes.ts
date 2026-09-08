@@ -19,6 +19,7 @@ import {
   NOTE_FILE_SECRETSTREAM_ABYTES,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
+  noteFileTransfersPerDayForAccount,
 } from "@shared/noteFileLimits";
 import { createNoteFilePresignedPutUrl, readR2PresignConfig } from "./r2Presign";
 import {
@@ -7512,6 +7513,7 @@ export async function reserveAccountFileStorageBytes(
   noteId: string,
   encryptedSize: number,
   storageLimitBytes: number,
+  options?: { maxTransfersPerDay?: number | null },
 ): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
   if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
     return {
@@ -7552,6 +7554,35 @@ export async function reserveAccountFileStorageBytes(
       };
     }
     return { ok: true };
+  }
+
+  const maxTransfersPerDay = options?.maxTransfersPerDay;
+  if (
+    typeof maxTransfersPerDay === "number" &&
+    Number.isFinite(maxTransfersPerDay) &&
+    maxTransfersPerDay > 0
+  ) {
+    const daily = await env.AUTH_DB.prepare(
+      `SELECT COUNT(*) AS transfer_count
+         FROM account_file_storage_reservations
+        WHERE user_id = ?
+          AND date(created_at) = date('now')`,
+    )
+      .bind(userId)
+      .first<{ transfer_count: number | string | null }>();
+    const transferCount = Math.max(0, Number(daily?.transfer_count ?? 0));
+    if (transferCount >= maxTransfersPerDay) {
+      return {
+        ok: false,
+        status: 429,
+        body: {
+          error: "attachment_transfer_daily_limit",
+          message: `Free accounts can start ${maxTransfersPerDay} file, photo, audio, or recording transfers per day. Upgrade for higher limits.`,
+          limit: maxTransfersPerDay,
+          used: transferCount,
+        },
+      };
+    }
   }
 
   await env.AUTH_DB.prepare(
@@ -8574,6 +8605,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         id,
         encryptedTotalSize,
         noteFileTotalStorageBytesForAccount(fileAccountType),
+        { maxTransfersPerDay: noteFileTransfersPerDayForAccount(fileAccountType) },
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
@@ -8728,6 +8760,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
           id,
           encryptedTotalSize,
           noteFileTotalStorageBytesForAccount(fileAccountType),
+          { maxTransfersPerDay: noteFileTransfersPerDayForAccount(fileAccountType) },
         );
         if (!quotaReservation.ok) {
           await discardRequestBody(request);
@@ -8928,6 +8961,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         id,
         encryptedTotalSize,
         noteFileTotalStorageBytesForAccount(fileAccountType),
+        { maxTransfersPerDay: noteFileTransfersPerDayForAccount(fileAccountType) },
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);

@@ -128,6 +128,7 @@ function planHighlights(planId: AccountType): string[] {
   if (planId === "free") {
     return [
       "Unlimited basic encrypted notes · fair use",
+      "Up to 10 file, photo, audio, or recording transfers per day",
       "Burn after reading and password protection",
       "Open notes without creating an account",
       "Open notifications with a free account",
@@ -137,6 +138,7 @@ function planHighlights(planId: AccountType): string[] {
   if (planId === "personal_premium") {
     return [
       "Everything in Free",
+      "Unlimited file, photo, audio, and recording transfers",
       "Proof of access and recipient verification",
       "Sent-notes dashboard and revoke unopened",
       "Larger attachments and longer expiry",
@@ -148,7 +150,7 @@ function planHighlights(planId: AccountType): string[] {
     "Everything in Starter",
     "Company branding on reveal pages",
     "Custom AI prompt templates, saved in this browser",
-    "Largest attachments and payload capacity",
+    "Largest attachments, buffer, and transfer capacity",
     "Highest hosted AI draft allowance",
     "One professional account — no team seats",
   ];
@@ -191,6 +193,10 @@ function comparisonValue(planId: AccountType, key: string): ComparisonCell {
       return flag(features.revealBranding);
     case "attachments":
       return cell(formatBytesLabel(features.attachmentMaxBytes));
+    case "attachmentTransfers":
+      return features.maxAttachmentTransfersPerDay == null
+        ? cell("Unlimited")
+        : cell(`${features.maxAttachmentTransfersPerDay} / day`, "file, photo, audio, recording");
     case "payloadBuffer":
       return cell(
         formatBytesLabel(features.activePayloadBufferBytes),
@@ -248,9 +254,11 @@ const comparisonSections: {
   },
   {
     title: "Capacity and AI",
-    description: "Attachment size, download window, and hosted drafting limits.",
+    description:
+      "Attachment size, daily file/photo/audio/recording transfers, download window, and hosted drafting limits.",
     rows: [
       { key: "attachments", label: "Max attachment size" },
+      { key: "attachmentTransfers", label: "File / photo / audio / recording transfers" },
       { key: "payloadBuffer", label: "Active payload buffer" },
       { key: "fileWindow", label: "Post-open download window" },
       { key: "hostedAi", label: "Hosted AI drafts" },
@@ -302,11 +310,15 @@ function buildFaqs(currency: BillingCurrency) {
   return [
     {
       q: "Do paid plans change the encryption?",
-      a: "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
+      a: "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher capacity, and Business branding — not a different crypto promise.",
+    },
+    {
+      q: "What are the Free plan file and transfer limits?",
+      a: "Free signed-in accounts can attach up to 25 MB per file, keep up to 250 MB of active encrypted attachments, and start up to 10 file, photo, audio, or recording transfers per day. Text-only notes stay unlimited under fair use. Starter and Business raise file size and buffer limits and remove the daily transfer cap.",
     },
     {
       q: "What is the difference between Starter and Business?",
-      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, and higher limits. Business (${businessMonthly}/month) adds company branding on reveal pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
+      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, unlimited attachment transfers, and higher size limits. Business (${businessMonthly}/month) adds company branding on reveal pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
     },
     {
       q: "How does annual billing work?",
@@ -318,7 +330,7 @@ function buildFaqs(currency: BillingCurrency) {
     },
     {
       q: "What happens if I downgrade?",
-      a: "Existing paid-plan notes keep the conditions under which they were created. Starter and Business controls for new notes lock until the subscription is renewed.",
+      a: "Existing paid-plan notes keep the conditions under which they were created. New notes follow your current plan: Free again applies the 10 transfers-per-day and Free size limits, and Starter/Business-only controls lock until you renew.",
     },
   ];
 }
