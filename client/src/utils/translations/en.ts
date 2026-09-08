@@ -1137,6 +1137,7 @@ export const en: Translations = {
   revealSecuredByPrivateNote: "Secured by PrivateNote",
   revealSharedWithYou: "A private note was shared with you",
   revealDeletedAfterOpening: "Deleted after opening",
+  revealDeletedAfterOpeningDesktop: "This note will be deleted after opening",
   revealBrandingSharedByFrom: "{sender} from {company} shared a private note",
   settingsRevealBrandingSection: "Recipient branding",
   revealBrandingSharedBy: "Shared by {sender}",

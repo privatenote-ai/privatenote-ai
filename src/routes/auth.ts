@@ -5143,7 +5143,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       businessSenderName?: string | null;
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
-      businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+      businessBackgroundStyle?: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
       businessPortalLayout?: BrandingPortalLayout | null;
       businessShowBrandingAfterReveal?: boolean;
       businessOpenedBranding?: OpenedNoteBrandingSettings | null;
@@ -5160,7 +5160,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         businessSenderName?: string | null;
         businessSenderRole?: string | null;
         businessTrustMessage?: string | null;
-        businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+        businessBackgroundStyle?: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
         businessPortalLayout?: BrandingPortalLayout | null;
         businessShowBrandingAfterReveal?: boolean;
         businessOpenedBranding?: OpenedNoteBrandingSettings | null;
@@ -5306,7 +5306,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       return jsonResponse({ message: "Branding text is invalid or too long" }, 400, request);
     }
     const normalizedBusinessBackgroundStyle = hasBusinessBackgroundStyle &&
-      ["neutral", "gradient", "banner"].includes(String(body.businessBackgroundStyle))
+      ["neutral", "gradient", "vignette", "glow", "mesh", "banner"].includes(String(body.businessBackgroundStyle))
         ? body.businessBackgroundStyle!
         : hasBusinessBackgroundStyle ? null : undefined;
     if (hasBusinessBackgroundStyle && !normalizedBusinessBackgroundStyle) {

@@ -877,6 +877,7 @@ export const es: Translations = {
   revealSecuredByPrivateNote: "Protegido por PrivateNote",
   revealSharedWithYou: "Te han compartido una nota privada",
   revealDeletedAfterOpening: "Se elimina después de abrirla",
+  revealDeletedAfterOpeningDesktop: "Esta nota se eliminará después de abrirla",
   revealBrandingSharedByFrom: "{sender} de {company} compartió una nota privada",
   revealBrandingSharedBy: "Compartida por {sender}",
   revealBrandingSharedByCompany: "Compartida por {company}",

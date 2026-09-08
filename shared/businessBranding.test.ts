@@ -494,6 +494,31 @@ describe("brandingPageBackground", () => {
     assert.equal(page.kind === "gradient" && page.background.includes("#e11d48"), true);
     assert.equal(brandingUsesPortalSurface(branding), true);
   });
+
+  it("tints Soft wash with the accent even when a page colour is set", () => {
+    // Page colour used to be the gradient source, so green-on-green looked like no filter.
+    const page = brandingPageBackground({
+      accentColor: "#2563eb",
+      backgroundColor: "#84cc16",
+      backgroundStyle: "gradient",
+    });
+    assert.equal(page.kind, "gradient");
+    if (page.kind !== "gradient") return;
+    assert.equal(page.background.includes("#2563eb"), true);
+    assert.equal(page.background.includes("#84cc16"), true);
+  });
+
+  it("builds vignette, soft glow, and mesh filters from the accent", () => {
+    for (const style of ["vignette", "glow", "mesh"] as const) {
+      const page = brandingPageBackground({
+        accentColor: "#7c3aed",
+        backgroundColor: "#f8fafc",
+        backgroundStyle: style,
+      });
+      assert.equal(page.kind, "gradient");
+      assert.equal(page.kind === "gradient" && page.background.includes("#7c3aed"), true);
+    }
+  });
 });
 
 describe("brandingBannerStyle", () => {
@@ -929,9 +954,13 @@ describe("branding page modes", () => {
   it("maps Default / Custom onto the stored backgroundStyle values", () => {
     assert.equal(brandingPageMode("neutral"), "default");
     assert.equal(brandingPageMode("gradient"), "default");
+    assert.equal(brandingPageMode("vignette"), "default");
+    assert.equal(brandingPageMode("glow"), "default");
+    assert.equal(brandingPageMode("mesh"), "default");
     assert.equal(brandingPageMode("banner"), "custom");
     assert.equal(brandingBackgroundStyleForPage("default", false), "neutral");
     assert.equal(brandingBackgroundStyleForPage("default", true), "gradient");
+    assert.equal(brandingBackgroundStyleForPage("default", "mesh"), "mesh");
     assert.equal(brandingBackgroundStyleForPage("custom", true), "banner");
     assert.equal(brandingMobileLane("top-left"), "top");
     assert.equal(brandingMobileLane("right"), "center");

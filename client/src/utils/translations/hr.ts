@@ -1803,6 +1803,7 @@ export const hr: Translations = {
   revealSecuredByPrivateNote: "Osigurano preko PrivateNote",
   revealSharedWithYou: "S vama je podijeljena privatna bilješka",
   revealDeletedAfterOpening: "Briše se nakon otvaranja",
+  revealDeletedAfterOpeningDesktop: "Ova bilješka bit će obrisana nakon otvaranja",
   revealBrandingSharedByFrom: "{sender} iz {company} podijelio je privatnu bilješku",
   revealBrandingSharedBy: "Podijelio {sender}",
   revealBrandingSharedByCompany: "Podijelio {company}",

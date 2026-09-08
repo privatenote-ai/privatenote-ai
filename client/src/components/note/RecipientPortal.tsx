@@ -401,7 +401,7 @@ type RevealHandoffCardProps = {
   title?: ReactNode;
   subtitle?: string;
   action: ReactNode;
-  footnote?: string;
+  footnote?: ReactNode;
   compact?: boolean;
 };
 
@@ -470,7 +470,7 @@ export function RevealHandoffStack({
         </div>
       ) : null}
 
-      <div className={`${compact ? "mt-4" : "mt-10 sm:mt-12"} w-full`}>{action}</div>
+      <div className={`${compact ? "mt-4" : "mt-8 sm:mt-9"} w-full`}>{action}</div>
       {footnote ? (
         <p className={`m-0 ${compact ? "mt-3 text-xs text-gray-500" : "mt-4 text-sm text-gray-600/70 dark:text-gray-300/60 sm:mt-5"}`}>
           {footnote}

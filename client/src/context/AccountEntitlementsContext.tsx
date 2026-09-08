@@ -45,7 +45,7 @@ export type AccountEntitlementSnapshot = {
   businessSenderRole: string | null;
   businessTrustMessage: string | null;
   businessBannerUrl: string | null;
-  businessBackgroundStyle: "neutral" | "gradient" | "banner";
+  businessBackgroundStyle: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
   businessPortalLayout: BrandingPortalLayout;
   businessOpenedBranding: OpenedNoteBrandingSettings;
   hostedAiUsage: {
@@ -141,7 +141,7 @@ export function AccountEntitlementsProvider({
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
       businessBannerUrl?: string | null;
-      businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+      businessBackgroundStyle?: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
       businessPortalLayout?: BrandingPortalLayout | null;
       businessOpenedBranding?: OpenedNoteBrandingSettings | null;
       businessShowBrandingAfterReveal?: boolean;

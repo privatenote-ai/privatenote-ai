@@ -995,7 +995,7 @@ async function resolveAccountRevealBranding(env: Env, request: Request) {
       accentColor: row.business_accent_color,
       backgroundColor: row.business_background_color,
       textColor: row.business_text_color,
-      backgroundStyle: (row.business_background_style ?? "neutral") as "neutral" | "gradient" | "banner",
+      backgroundStyle: (row.business_background_style ?? "neutral") as "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner",
       ...layout,
       showBrandingAfterReveal: opened.show,
       openedBackground: opened.background,

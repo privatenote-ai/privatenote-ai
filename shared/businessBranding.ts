@@ -43,8 +43,23 @@ export const BRANDING_CARD_BANNER_MAX_BYTES = 3 * 1024 * 1024;
 export const BRANDING_CARD_BANNER_SIZE_LABEL =
   `${BRANDING_CARD_BANNER_RECOMMENDED_PX.width}×${BRANDING_CARD_BANNER_RECOMMENDED_PX.height}` as const;
 
-export type BrandingBackgroundStyle = "neutral" | "gradient" | "banner";
-/** UI page mode. `banner` is Custom; `neutral` / `gradient` are Default. */
+export type BrandingBackgroundStyle =
+  | "neutral"
+  | "gradient"
+  | "vignette"
+  | "glow"
+  | "mesh"
+  | "banner";
+/** Default-page atmosphere. `banner` is Custom photography and is not a filter. */
+export const BRANDING_BACKGROUND_FILTERS = [
+  "neutral",
+  "gradient",
+  "vignette",
+  "glow",
+  "mesh",
+] as const;
+export type BrandingBackgroundFilter = (typeof BRANDING_BACKGROUND_FILTERS)[number];
+/** UI page mode. Filters share Default; `banner` is Custom. */
 export type BrandingPageMode = "default" | "custom";
 export const BRANDING_MOBILE_LANES = ["top", "center", "bottom"] as const;
 export type BrandingMobileLane = (typeof BRANDING_MOBILE_LANES)[number];
@@ -175,7 +190,15 @@ export type BusinessBranding = {
   openedBackgroundZoom?: number | null;
 };
 
-export const OPENED_NOTE_BACKGROUNDS = ["same", "neutral", "gradient", "banner"] as const;
+export const OPENED_NOTE_BACKGROUNDS = [
+  "same",
+  "neutral",
+  "gradient",
+  "vignette",
+  "glow",
+  "mesh",
+  "banner",
+] as const;
 export type OpenedNoteBackground = (typeof OPENED_NOTE_BACKGROUNDS)[number];
 
 export type OpenedNoteBrandingSettings = {
@@ -480,8 +503,13 @@ export function applyOpenedNoteBranding(
     delete next.backgroundStyle;
     delete next.bannerUrl;
     if (gate.openedBackgroundColor) next.backgroundColor = gate.openedBackgroundColor;
-  } else if (background === "gradient") {
-    next.backgroundStyle = "gradient";
+  } else if (
+    background === "gradient" ||
+    background === "vignette" ||
+    background === "glow" ||
+    background === "mesh"
+  ) {
+    next.backgroundStyle = background;
     delete next.bannerUrl;
     if (gate.openedBackgroundColor) next.backgroundColor = gate.openedBackgroundColor;
   } else if (background === "banner") {
@@ -666,7 +694,7 @@ function parseOpenedFields(
     backgroundRaw !== "" &&
     !OPENED_NOTE_BACKGROUNDS.includes(backgroundRaw as OpenedNoteBackground)
   ) {
-    return { ok: false, message: "openedBackground must be same, neutral, gradient, or banner" };
+    return { ok: false, message: "openedBackground must be same, neutral, gradient, vignette, glow, mesh, or banner" };
   }
   const showLogo = parseOptionalBoolean(body.openedShowLogo);
   const showSenderName = parseOptionalBoolean(body.openedShowSenderName);
@@ -697,7 +725,12 @@ function parseBackgroundStyle(
   raw: unknown,
 ): { ok: true; value: BrandingBackgroundStyle } | { ok: false } {
   if (raw === undefined || raw === null || raw === "") return { ok: true, value: "neutral" };
-  return raw === "neutral" || raw === "gradient" || raw === "banner"
+  return raw === "neutral" ||
+    raw === "gradient" ||
+    raw === "vignette" ||
+    raw === "glow" ||
+    raw === "mesh" ||
+    raw === "banner"
     ? { ok: true, value: raw }
     : { ok: false };
 }
@@ -717,12 +750,29 @@ export function brandingPageMode(
   return style === "banner" ? "custom" : "default";
 }
 
+/** Atmosphere applied on the Default page. Custom photography is never a filter. */
+export function brandingBackgroundFilter(
+  style: BrandingBackgroundStyle | null | undefined,
+): BrandingBackgroundFilter {
+  if (
+    style === "gradient" ||
+    style === "vignette" ||
+    style === "glow" ||
+    style === "mesh"
+  ) {
+    return style;
+  }
+  return "neutral";
+}
+
 export function brandingBackgroundStyleForPage(
   mode: BrandingPageMode,
-  gradient: boolean,
+  filter: BrandingBackgroundFilter | boolean = "neutral",
 ): BrandingBackgroundStyle {
   if (mode === "custom") return "banner";
-  return gradient ? "gradient" : "neutral";
+  // Older call sites passed a gradient boolean.
+  if (typeof filter === "boolean") return filter ? "gradient" : "neutral";
+  return filter;
 }
 
 export function brandingMobileLane(position: BrandingCardPosition): BrandingMobileLane {
@@ -1166,17 +1216,56 @@ function gradientWashColor(branding: RevealBranding): string {
     : "#eef2ff";
 }
 
-function brandGradientBackground(accent: string, wash: string): string {
-  return [
-    `radial-gradient(ellipse 80% 55% at 12% -8%, ${accent}3d 0%, transparent 58%)`,
-    `radial-gradient(ellipse 70% 50% at 92% 108%, ${accent}2e 0%, transparent 52%)`,
-    `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
-  ].join(", ");
+/** Append a 2-digit hex alpha to a #rrggbb colour. */
+function withHexAlpha(hex: string, alpha: string): string {
+  const normalized = hex.startsWith("#") ? hex : `#${hex}`;
+  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) return `${normalized}${alpha}`;
+  return normalized;
+}
+
+/**
+ * Default-page atmosphere. Accents always tint the wash — never the page colour
+ * itself — so a solid green page still shows a visible Soft wash / Glow / Mesh.
+ */
+function brandFilterBackground(
+  filter: BrandingBackgroundFilter,
+  accent: string,
+  wash: string,
+): string {
+  switch (filter) {
+    case "gradient":
+      return [
+        `radial-gradient(ellipse 85% 60% at 8% -5%, ${withHexAlpha(accent, "73")} 0%, transparent 58%)`,
+        `radial-gradient(ellipse 75% 55% at 95% 105%, ${withHexAlpha(accent, "59")} 0%, transparent 52%)`,
+        `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
+      ].join(", ");
+    case "vignette":
+      return [
+        `radial-gradient(ellipse 72% 68% at 50% 42%, transparent 35%, ${withHexAlpha(accent, "40")} 100%)`,
+        `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
+      ].join(", ");
+    case "glow":
+      return [
+        `radial-gradient(circle at 50% 32%, ${withHexAlpha(accent, "66")} 0%, transparent 52%)`,
+        `radial-gradient(ellipse 95% 55% at 50% 110%, ${withHexAlpha(accent, "33")} 0%, transparent 58%)`,
+        `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
+      ].join(", ");
+    case "mesh":
+      return [
+        `radial-gradient(at 12% 18%, ${withHexAlpha(accent, "80")} 0px, transparent 42%)`,
+        `radial-gradient(at 88% 12%, ${withHexAlpha(accent, "59")} 0px, transparent 40%)`,
+        `radial-gradient(at 72% 82%, ${withHexAlpha(accent, "4d")} 0px, transparent 44%)`,
+        `radial-gradient(at 18% 88%, ${withHexAlpha(accent, "40")} 0px, transparent 40%)`,
+        `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`,
+      ].join(", ");
+    default:
+      return `linear-gradient(180deg, ${wash} 0%, ${wash} 100%)`;
+  }
 }
 
 /**
  * Full-viewport recipient background. Custom images are atmospheric; copy never
- * sits on the photograph. Gradient and solid colour are generated from the
+ * sits on the photograph. Filters and solid colour are generated from the
  * stored brand colours.
  */
 export function brandingPageBackground(
@@ -1186,14 +1275,13 @@ export function brandingPageBackground(
   if (brandingShowsBanner(branding) && branding.bannerUrl) {
     return { kind: "image", url: branding.bannerUrl };
   }
-  const gradientSource =
-    branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)
-      ? branding.backgroundColor
-      : branding.accentColor;
-  if (branding.backgroundStyle === "gradient" && gradientSource) {
+  const filter = brandingBackgroundFilter(branding.backgroundStyle);
+  const wash = gradientWashColor(branding);
+  const accent = branding.accentColor ?? "#2563eb";
+  if (filter !== "neutral") {
     return {
       kind: "gradient",
-      background: brandGradientBackground(gradientSource, gradientWashColor(branding)),
+      background: brandFilterBackground(filter, accent, wash),
     };
   }
   if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
@@ -1265,9 +1353,14 @@ export function brandingHeroStyle(
   branding: RevealBranding | undefined,
 ): BrandingHeroStyle | undefined {
   if (!branding) return undefined;
-  if (branding.backgroundStyle === "gradient" && branding.accentColor) {
+  const filter = brandingBackgroundFilter(branding.backgroundStyle);
+  if (filter !== "neutral") {
     return {
-      background: brandGradientBackground(branding.accentColor, gradientWashColor(branding)),
+      background: brandFilterBackground(
+        filter,
+        branding.accentColor ?? "#2563eb",
+        gradientWashColor(branding),
+      ),
     };
   }
   if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
@@ -1389,7 +1482,7 @@ export function parseBusinessBrandingInput(
   const backgroundStyle = parseBackgroundStyle(body.backgroundStyle);
   if (!backgroundStyle.ok) {
     return { ok: false, code: "invalid_background_style", status: 400,
-      message: "Background style must be neutral, gradient, or banner" };
+      message: "Background style must be neutral, gradient, vignette, glow, mesh, or banner" };
   }
   const layout = parsePortalLayoutFields(body);
   if (!layout.ok) {

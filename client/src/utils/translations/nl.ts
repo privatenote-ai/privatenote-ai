@@ -870,6 +870,7 @@ export const nl: Translations = {
   revealSecuredByPrivateNote: "Beveiligd door PrivateNote",
   revealSharedWithYou: "Er is een privénotitie met je gedeeld",
   revealDeletedAfterOpening: "Verwijderd na openen",
+  revealDeletedAfterOpeningDesktop: "Deze notitie wordt verwijderd na openen",
   revealBrandingSharedByFrom: "{sender} van {company} heeft een privénotitie gedeeld",
   revealBrandingSharedBy: "Gedeeld door {sender}",
   revealBrandingSharedByCompany: "Gedeeld door {company}",

@@ -877,6 +877,7 @@ export const de: Translations = {
   revealSecuredByPrivateNote: "Gesichert durch PrivateNote",
   revealSharedWithYou: "Eine private Notiz wurde mit Ihnen geteilt",
   revealDeletedAfterOpening: "Wird nach dem Öffnen gelöscht",
+  revealDeletedAfterOpeningDesktop: "Diese Notiz wird nach dem Öffnen gelöscht",
   revealBrandingSharedByFrom: "{sender} von {company} hat eine private Notiz geteilt",
   revealBrandingSharedBy: "Geteilt von {sender}",
   revealBrandingSharedByCompany: "Geteilt von {company}",

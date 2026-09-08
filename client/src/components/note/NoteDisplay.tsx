@@ -117,9 +117,9 @@ interface RevealBranding {
   bannerUrl?: string;
   cardBannerUrl?: string;
   cardImage?: "logo" | "banner";
-  backgroundStyle?: "neutral" | "gradient" | "banner";
+  backgroundStyle?: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
   showBrandingAfterReveal?: boolean;
-  openedBackground?: "same" | "neutral" | "gradient" | "banner";
+  openedBackground?: "same" | "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
   openedShowLogo?: boolean;
   openedShowSenderName?: boolean;
   openedShowCompanyName?: boolean;
@@ -392,22 +392,54 @@ const NoteAccessProblem: React.FC<{
 const BrandingIdentity: React.FC<{
   branding?: RevealBranding;
   brandingLine: string | null;
-  lightText: boolean;
-}> = ({ branding, brandingLine, lightText }) => {
+  lightText?: boolean;
+  /** Compact identity block for the opened note card header. */
+  inCard?: boolean;
+}> = ({ branding, brandingLine, lightText = false, inCard = false }) => {
   const markUrl = brandingCardMarkUrl(branding);
   const hasLogo = Boolean(markUrl);
+  const sender = branding?.senderName?.trim() || branding?.sharerName?.trim();
+  const role = branding?.senderRole?.trim();
+  const company = branding?.companyName?.trim();
+  const meta = [role, company].filter(Boolean).join(" · ");
   const hasTrustMessage = Boolean(branding?.trustMessage?.trim());
-  if (!brandingLine && !hasLogo && !hasTrustMessage) return null;
+  if (!brandingLine && !hasLogo && !hasTrustMessage && !sender && !company) return null;
 
   const logo = markUrl ? (
     <img
       src={markUrl}
       alt={branding?.companyName ? `${branding.companyName} logo` : "Sender logo"}
-      className="max-h-14 w-auto object-contain sm:max-h-16"
+      className={
+        inCard
+          ? brandingRevealLogoClassName(branding)
+          : "max-h-14 w-auto object-contain sm:max-h-16"
+      }
       loading="lazy"
       referrerPolicy="no-referrer"
     />
   ) : null;
+
+  if (inCard) {
+    return (
+      <div className="flex w-full flex-col items-center gap-2 text-center">
+        {logo}
+        {sender ? (
+          <p className="m-0 text-base font-semibold text-gray-900 dark:text-gray-50">{sender}</p>
+        ) : brandingLine ? (
+          <p className="m-0 text-sm font-medium text-gray-800 dark:text-gray-100">{brandingLine}</p>
+        ) : null}
+        {meta ? <p className="m-0 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">{meta}</p> : null}
+        {!sender && !meta && company ? (
+          <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{company}</p>
+        ) : null}
+        {branding?.trustMessage ? (
+          <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+            {branding.trustMessage}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2.5">
@@ -468,20 +500,20 @@ const RevealHero: React.FC<RevealHeroProps> = ({
         onClick={(ev) => void onReveal(ev)}
         disabled={isRevealing || !isRevealButtonReady}
         style={buttonStyle}
-        className={`inline-flex w-full max-w-sm items-center justify-center rounded-md px-5 py-3 text-base font-semibold transition-all duration-200 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`inline-flex w-full max-w-[15rem] items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
           buttonStyle
-            ? "hover:shadow-[0_0_18px_rgba(15,23,42,0.18)] focus-visible:ring-gray-400"
-            : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)] focus-visible:ring-primary"
+            ? "hover:shadow-[0_0_12px_rgba(15,23,42,0.12)] focus-visible:ring-gray-400"
+            : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_12px_rgba(59,130,246,0.16)] focus-visible:ring-primary"
         }`}
       >
         {isRevealing ? (
           <>
-            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-t-2 border-b-2 border-current" />
+            <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-t-2 border-b-2 border-current" />
             {t.revealing ?? "Revealing..."}
           </>
         ) : (
           <>
-            <Unlock className="mr-2 h-4 w-4" />
+            <Unlock className="mr-1.5 h-3.5 w-3.5" />
             {t.revealNote ?? "Reveal Note"}
           </>
         )}
@@ -497,7 +529,17 @@ const RevealHero: React.FC<RevealHeroProps> = ({
         brandingLine={brandingLine}
         logo={logo}
         action={action}
-        footnote={t.revealDeletedAfterOpening ?? "Deleted after opening"}
+        footnote={
+          <>
+            <span className="sm:hidden">
+              {t.revealDeletedAfterOpening ?? "Deleted after opening"}
+            </span>
+            <span className="hidden sm:inline">
+              {t.revealDeletedAfterOpeningDesktop ??
+                "This note will be deleted after opening"}
+            </span>
+          </>
+        }
       />
     );
   }
@@ -1784,22 +1826,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   return wrapRecipient(
     <section className={`w-full mx-auto ${viewerOpen ? "max-w-6xl" : "max-w-3xl"}`}>
       <section className={openedPortalSurface ? "relative isolate pb-2 text-center" : NOTE_VIEW_HERO_SECTION}>
-        <div className={`text-center ${viewerOpen ? "mb-4" : openedPortalSurface ? "mb-5" : "mb-8 sm:mb-10"}`}>
-          {viewerOpen || openedPortalSurface ? null : <h1 className="page-title text-primary">{t.privateNote}</h1>}
-          <p className={`m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100 ${viewerOpen || openedPortalSurface ? "" : "mt-4"}`}>
-            <span aria-hidden>⚠️</span>
-            {t.noteDeletedWarning}
-          </p>
-          {openedBranding ? (
-            <div className={viewerOpen ? "mt-3" : "mt-6"}>
-              <BrandingIdentity
-                branding={openedBranding}
-                brandingLine={brandingLine}
-                lightText={false}
-              />
-            </div>
-          ) : null}
-        </div>
+        {viewerOpen || openedPortalSurface || openedBranding ? null : (
+          <div className="mb-8 text-center sm:mb-10">
+            <h1 className="page-title text-primary">{t.privateNote}</h1>
+          </div>
+        )}
 
         {canImportNoteLabels && importedLabelsPack && noteContent ? (
           <div className="mb-5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-left dark:border-amber-800/50 dark:bg-amber-950/30">
@@ -1843,25 +1874,47 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         ) : null}
 
         {viewerOpen && !messageSheetOpen ? (
-          <button
-            type="button"
-            onClick={() => setMessageSheetOpen(true)}
-            className={`flex w-full items-center gap-3 rounded-2xl border bg-[rgb(252,251,248)] px-5 py-3 text-left dark:bg-gray-900 ${
-              openedPortalSurface
-                ? "border-gray-200/70 dark:border-gray-700/80"
-                : "border-gray-200/90 dark:border-gray-700"
-            }`}
-            aria-expanded={false}
-          >
-            <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-sm text-gray-600 dark:text-gray-300">
-              {noteContent.trim().split(/\n/)[0] || (t.revealNoteSheetLabel ?? "Note content")}
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">
-              {t.secureViewerShowMessage ?? "Message"}
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-            </span>
-          </button>
+          <>
+            {openedBranding ? (
+              <div
+                className={`mb-4 overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] px-5 py-5 dark:bg-gray-900 sm:px-7 ${
+                  openedPortalSurface
+                    ? "border-gray-200/70 dark:border-gray-700/80"
+                    : "border-gray-200/90 dark:border-gray-700"
+                }`}
+                style={
+                  openedBranding.accentColor
+                    ? { borderTopColor: openedBranding.accentColor, borderTopWidth: 3 }
+                    : undefined
+                }
+              >
+                <BrandingIdentity
+                  branding={openedBranding}
+                  brandingLine={brandingLine}
+                  inCard
+                />
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setMessageSheetOpen(true)}
+              className={`flex w-full items-center gap-3 rounded-2xl border bg-[rgb(252,251,248)] px-5 py-3 text-left dark:bg-gray-900 ${
+                openedPortalSurface
+                  ? "border-gray-200/70 dark:border-gray-700/80"
+                  : "border-gray-200/90 dark:border-gray-700"
+              }`}
+              aria-expanded={false}
+            >
+              <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-sm text-gray-600 dark:text-gray-300">
+                {noteContent.trim().split(/\n/)[0] || (t.revealNoteSheetLabel ?? "Note content")}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">
+                {t.secureViewerShowMessage ?? "Message"}
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </button>
+          </>
         ) : (
         <article
           className={`overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] dark:bg-gray-900 ${
@@ -1870,33 +1923,59 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               : "border-gray-200/90 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.45)] dark:border-gray-700 dark:shadow-black/40"
           }`}
           style={
-            activeRevealBranding?.accentColor
-              ? { borderTopColor: activeRevealBranding.accentColor, borderTopWidth: 3 }
+            (openedBranding?.accentColor || activeRevealBranding?.accentColor)
+              ? {
+                  borderTopColor: openedBranding?.accentColor || activeRevealBranding?.accentColor,
+                  borderTopWidth: 3,
+                }
               : undefined
           }
           aria-label={t.revealNoteSheetLabel ?? "Note content"}
         >
-          <header className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-3 sm:px-7 dark:border-white/10">
-            <p className="m-0 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-              <Lock className="h-3.5 w-3.5" aria-hidden />
-              {t.privateNote}
-            </p>
-            {viewerOpen ? (
-              <button
-                type="button"
-                onClick={() => setMessageSheetOpen(false)}
-                className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                aria-expanded={true}
-              >
-                {t.secureViewerHideMessage ?? "Hide"}
-                <ChevronUp className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            ) : (
-              <p className="m-0 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
-                {t.revealTrustSelfDestructs ?? "Self-destructs after opening"}
+          {openedBranding ? (
+            <header className="border-b border-black/[0.06] px-5 py-5 sm:px-7 dark:border-white/10">
+              <BrandingIdentity
+                branding={openedBranding}
+                brandingLine={brandingLine}
+                inCard
+              />
+              {viewerOpen ? (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setMessageSheetOpen(false)}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    aria-expanded={true}
+                  >
+                    {t.secureViewerHideMessage ?? "Hide"}
+                    <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+                  </button>
+                </div>
+              ) : null}
+            </header>
+          ) : (
+            <header className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-3 sm:px-7 dark:border-white/10">
+              <p className="m-0 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                <Lock className="h-3.5 w-3.5" aria-hidden />
+                {t.privateNote}
               </p>
-            )}
-          </header>
+              {viewerOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setMessageSheetOpen(false)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  aria-expanded={true}
+                >
+                  {t.secureViewerHideMessage ?? "Hide"}
+                  <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              ) : (
+                <p className="m-0 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+                  {t.revealTrustSelfDestructs ?? "Self-destructs after opening"}
+                </p>
+              )}
+            </header>
+          )}
           <div className="px-5 py-7 sm:px-8 sm:py-9">
             <span className={`note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.08rem] sm:text-[1.2rem] leading-[1.7] text-gray-900 dark:text-gray-100 select-text ${revealBodyFontClassName(bodyFont)}`}>
               {noteContent.trimEnd()}
@@ -2119,11 +2198,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </button>
         </div>
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 flex flex-col items-center gap-3 text-center">
+          <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+            <span aria-hidden>⚠️</span>
+            {t.noteDeletedWarning}
+          </p>
           <p className="text-sm text-emerald-600 dark:text-emerald-400 min-h-[1.25rem]">
             {copied ? `✔ ${t.copiedToClipboard}` : ""}
           </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {t.saveNoteSecurely}
           </p>
         </div>

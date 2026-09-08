@@ -31,6 +31,7 @@ import {
   BRANDING_BACKGROUND_ZOOM_DEFAULT,
   BRANDING_BACKGROUND_ZOOM_MAX,
   BRANDING_BACKGROUND_ZOOM_MIN,
+  brandingBackgroundFilter,
   brandingBackgroundStyleForPage,
   brandingCardMarkUrl,
   brandingCtaStyle,
@@ -50,6 +51,8 @@ import {
   parseOpenedNoteBrandingSettings,
   brandingPortalLayout,
   applyOpenedNoteBranding,
+  type BrandingBackgroundFilter,
+  type BrandingBackgroundStyle,
   type BrandingCardPosition,
   type BrandingMobileLane,
   type BrandingOverlay,
@@ -71,7 +74,7 @@ type BrandingAutosavePayload = {
   businessSenderName: string;
   businessSenderRole: string;
   businessTrustMessage: string;
-  businessBackgroundStyle: "neutral" | "gradient" | "banner";
+  businessBackgroundStyle: BrandingBackgroundStyle;
   businessPortalLayout: BrandingPortalLayout;
   businessOpenedBranding: OpenedNoteBrandingSettings;
 };
@@ -153,21 +156,41 @@ function ColorField({
   );
 }
 
-function GradientWashToggle({
+function BackgroundFilterPicker({
   id,
-  checked,
-  onCheckedChange,
+  value,
+  onChange,
 }: {
   id: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
+  value: BrandingBackgroundFilter;
+  onChange: (next: BrandingBackgroundFilter) => void;
 }) {
+  const options: Array<{ id: BrandingBackgroundFilter; label: string }> = [
+    { id: "neutral", label: "None" },
+    { id: "gradient", label: "Soft wash" },
+    { id: "vignette", label: "Vignette" },
+    { id: "glow", label: "Soft glow" },
+    { id: "mesh", label: "Mesh" },
+  ];
   return (
-    <div className="flex h-10 shrink-0 items-center gap-2">
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
-      <Label htmlFor={id} className="text-sm text-gray-800 dark:text-gray-100">
-        Gradient wash
-      </Label>
+    <div>
+      <Label className="mb-2 block text-sm">Background filter</Label>
+      <div id={id} className="flex flex-wrap gap-1.5">
+        {options.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
+            className={`rounded-md border px-2.5 py-1.5 text-xs font-medium ${
+              value === option.id
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:text-gray-300"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -273,7 +296,12 @@ const BrandingPreview: React.FC<{
           brandingLine={brandingLine}
           logo={logo}
           action={action}
-          footnote="Deleted after opening"
+          footnote={
+            <>
+              <span className="sm:hidden">Deleted after opening</span>
+              <span className="hidden sm:inline">This note will be deleted after opening</span>
+            </>
+          }
         />
       ) : (
         <section className="mx-auto w-full max-w-5xl">
@@ -402,16 +430,12 @@ const OpenedNoteBrandingPreview: React.FC<{
 }> = ({ branding, viewport }) => {
   const usesPortal = brandingUsesPortalSurface(branding);
   const sender = branding?.senderName?.trim();
+  const role = branding?.senderRole?.trim();
   const company = branding?.companyName?.trim();
-  const brandingLine = sender && company
-    ? `${sender} from ${company} shared a private note`
-    : sender
-      ? `Shared by ${sender}`
-      : company
-        ? `Shared by ${company}`
-        : null;
+  const meta = [role, company].filter(Boolean).join(" · ");
   const markUrl = brandingCardMarkUrl(branding);
   const buttonStyle = brandingCtaStyle(branding);
+  const hasIdentity = Boolean(markUrl || sender || company || branding?.trustMessage);
 
   return (
     <RecipientPortal
@@ -428,27 +452,46 @@ const OpenedNoteBrandingPreview: React.FC<{
       surface={usesPortal ? "wide" : "plain"}
     >
       <div className="text-center">
-        <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
-          <span aria-hidden>⚠️</span>
-          This note will be deleted after you leave
-        </p>
-        {markUrl || brandingLine || branding?.trustMessage ? (
-          <div className="mt-5 flex flex-col items-center gap-1.5">
-            {markUrl ? (
-              <img src={markUrl} alt="" className="max-h-10 max-w-36 object-contain" />
-            ) : null}
-            {brandingLine ? (
-              <p className="m-0 text-sm font-medium text-gray-700">{brandingLine}</p>
-            ) : null}
-            {branding?.trustMessage ? (
-              <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600">
-                {branding.trustMessage}
+        <div
+          className="overflow-hidden rounded-2xl border border-gray-200/90 bg-[rgb(252,251,248)] text-left shadow-sm"
+          style={
+            branding?.accentColor
+              ? { borderTopColor: branding.accentColor, borderTopWidth: 3 }
+              : undefined
+          }
+        >
+          {hasIdentity ? (
+            <div className="flex flex-col items-center gap-2 border-b border-black/[0.06] px-5 py-5 text-center">
+              {markUrl ? (
+                <img
+                  src={markUrl}
+                  alt=""
+                  className={brandingRevealLogoClassName(branding, { preview: true })}
+                />
+              ) : null}
+              {sender ? (
+                <p className="m-0 text-sm font-semibold text-gray-900">{sender}</p>
+              ) : null}
+              {meta ? <p className="m-0 text-xs text-gray-500">{meta}</p> : null}
+              {!sender && company ? (
+                <p className="m-0 text-sm font-medium text-gray-700">{company}</p>
+              ) : null}
+              {branding?.trustMessage ? (
+                <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600">
+                  {branding.trustMessage}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-3">
+              <p className="m-0 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                <Lock className="h-3.5 w-3.5" aria-hidden />
+                Private Note
               </p>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="mt-5 rounded-2xl border border-gray-200/90 bg-[rgb(252,251,248)] px-6 py-8 text-left text-base leading-relaxed text-gray-900 shadow-sm">
-          Secret content
+              <p className="m-0 text-[11px] text-gray-400">Self-destructs after opening</p>
+            </div>
+          )}
+          <div className="px-6 py-8 text-base leading-relaxed text-gray-900">Secret content</div>
         </div>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <button
@@ -465,6 +508,12 @@ const OpenedNoteBrandingPreview: React.FC<{
           >
             Create new note
           </button>
+        </div>
+        <div className="mt-4 flex justify-center">
+          <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900">
+            <span aria-hidden>⚠️</span>
+            This note will be deleted after you leave
+          </p>
         </div>
       </div>
     </RecipientPortal>
@@ -675,7 +724,7 @@ export default function AccountBranding() {
   const [businessTrustMessage, setBusinessTrustMessage] = useState("");
   const [businessBannerUrl, setBusinessBannerUrl] = useState<string | null>(null);
   const [businessBackgroundStyle, setBusinessBackgroundStyle] =
-    useState<"neutral" | "gradient" | "banner">("neutral");
+    useState<BrandingBackgroundStyle>("neutral");
   const [portalLayout, setPortalLayout] = useState<BrandingPortalLayout>({
     ...DEFAULT_BRANDING_PORTAL_LAYOUT,
   });
@@ -689,11 +738,9 @@ export default function AccountBranding() {
   // A null opened scale inherits the reveal page's, so the slider starts where that left off.
   const openedBackgroundZoom =
     openedNoteBranding.backgroundZoom ?? portalLayout.backgroundZoom ?? BRANDING_BACKGROUND_ZOOM_DEFAULT;
-  // `neutral` and `gradient` are both the Default opened page; the wash is a toggle on top.
+  // Filters share the Default opened page; Custom is the photograph.
   const openedPageIsDefault =
-    openedNoteBranding.background === "neutral" ||
-    openedNoteBranding.background === "gradient" ||
-    openedNoteBranding.background === "same";
+    openedNoteBranding.background !== "banner";
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -724,7 +771,7 @@ export default function AccountBranding() {
         businessSenderRole?: string | null;
         businessTrustMessage?: string | null;
         businessBannerUrl?: string | null;
-        businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+        businessBackgroundStyle?: BrandingBackgroundStyle;
         businessPortalLayout?: BrandingPortalLayout | string | null;
         businessOpenedBranding?: OpenedNoteBrandingSettings | string | null;
       }>("/api/auth/account/summary", "GET");
@@ -1410,7 +1457,7 @@ export default function AccountBranding() {
                         setBusinessBackgroundStyle(
                           brandingBackgroundStyleForPage(
                             "default",
-                            businessBackgroundStyle === "gradient",
+                            brandingBackgroundFilter(businessBackgroundStyle),
                           ),
                         );
                       }}
@@ -1464,7 +1511,7 @@ export default function AccountBranding() {
                           Color
                         </button>
                       </div>
-                      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+                      <div className="space-y-4">
                         {!brandingIsPrivateNoteCanvas(businessBackgroundColor) ? (
                           <ColorField
                             id="business-background-color"
@@ -1475,11 +1522,13 @@ export default function AccountBranding() {
                             onDraft={setBusinessBackgroundColorDraft}
                           />
                         ) : null}
-                        <GradientWashToggle
-                          id="business-gradient-wash"
-                          checked={businessBackgroundStyle === "gradient"}
-                          onCheckedChange={(checked) =>
-                            setBusinessBackgroundStyle(checked ? "gradient" : "neutral")
+                        <BackgroundFilterPicker
+                          id="business-background-filter"
+                          value={brandingBackgroundFilter(businessBackgroundStyle)}
+                          onChange={(filter) =>
+                            setBusinessBackgroundStyle(
+                              brandingBackgroundStyleForPage("default", filter),
+                            )
                           }
                         />
                       </div>
@@ -1784,11 +1833,12 @@ export default function AccountBranding() {
                             onClick={() =>
                               setOpenedNoteBranding((prev) => ({
                                 ...prev,
-                                // Re-picking Default keeps an existing gradient wash rather than clearing it.
+                                // Re-picking Default keeps an existing filter rather than clearing it.
                                 background:
-                                  choice.id === "neutral" &&
-                                  (prev.background === "neutral" || prev.background === "gradient")
-                                    ? prev.background
+                                  choice.id === "neutral" && prev.background !== "banner"
+                                    ? prev.background === "same"
+                                      ? "neutral"
+                                      : prev.background
                                     : choice.id,
                                 ...(choice.id === "neutral" && !prev.backgroundColor
                                   ? {
@@ -1815,7 +1865,7 @@ export default function AccountBranding() {
                         ))}
                       </div>
                       {openedPageIsDefault ? (
-                        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+                        <div className="space-y-4">
                           <ColorField
                             id="opened-page-color"
                             label="Page color"
@@ -1827,13 +1877,17 @@ export default function AccountBranding() {
                             }}
                             onDraft={setOpenedPageColorDraft}
                           />
-                          <GradientWashToggle
-                            id="opened-gradient-wash"
-                            checked={openedNoteBranding.background === "gradient"}
-                            onCheckedChange={(checked) =>
+                          <BackgroundFilterPicker
+                            id="opened-background-filter"
+                            value={brandingBackgroundFilter(
+                              openedNoteBranding.background === "same"
+                                ? "neutral"
+                                : openedNoteBranding.background,
+                            )}
+                            onChange={(filter) =>
                               setOpenedNoteBranding((prev) => ({
                                 ...prev,
-                                background: checked ? "gradient" : "neutral",
+                                background: filter,
                               }))
                             }
                           />
@@ -1948,7 +2002,7 @@ export default function AccountBranding() {
                       onViewportChange={setBrandingPreviewViewport}
                       showViewportToggle={false}
                       label="After the note is opened"
-                      hint="The message sheet stays in the centre of the page."
+                      hint="Sender identity sits in the note card. The deletion warning sits under the buttons."
                     >
                       <OpenedNoteBrandingPreview
                         viewport={brandingPreviewViewport}
