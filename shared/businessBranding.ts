@@ -172,6 +172,7 @@ export type BusinessBranding = {
   openedAccentColor?: string | null;
   openedTextColor?: string | null;
   openedBackgroundColor?: string | null;
+  openedBackgroundZoom?: number | null;
 };
 
 export const OPENED_NOTE_BACKGROUNDS = ["same", "neutral", "gradient", "banner"] as const;
@@ -190,6 +191,8 @@ export type OpenedNoteBrandingSettings = {
   backgroundColor?: string | null;
   accentColor?: string | null;
   textColor?: string | null;
+  /** `null` inherits the reveal page's scale, so existing snapshots keep their look. */
+  backgroundZoom?: number | null;
 };
 
 export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
@@ -203,6 +206,7 @@ export const DEFAULT_OPENED_NOTE_BRANDING: OpenedNoteBrandingSettings = {
   backgroundColor: null,
   accentColor: null,
   textColor: null,
+  backgroundZoom: null,
 };
 
 /** Wire shape sent to the reveal page; empty fields are omitted entirely. */
@@ -244,6 +248,7 @@ export type RevealBranding = {
   openedAccentColor?: string;
   openedTextColor?: string;
   openedBackgroundColor?: string;
+  openedBackgroundZoom?: number;
   /** Legacy alias still accepted when reading stored notes. */
   sharerName?: string;
 };
@@ -334,6 +339,18 @@ export function openedSettingsFromAccountColumns(
   return { ...DEFAULT_OPENED_NOTE_BRANDING, show: flagOn };
 }
 
+/**
+ * Scale for the after-open photograph. Returns `null` for anything missing or
+ * out of range, which means "inherit the reveal page's scale" rather than 100%.
+ */
+function parseOpenedBackgroundZoom(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === "") return null;
+  const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw.trim()) : NaN;
+  if (!Number.isInteger(value)) return null;
+  if (value < BRANDING_BACKGROUND_ZOOM_MIN || value > BRANDING_BACKGROUND_ZOOM_MAX) return null;
+  return value;
+}
+
 export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandingSettings {
   let source: unknown = raw;
   if (typeof raw === "string") {
@@ -355,6 +372,7 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
   const backgroundColor = parseBrandingHexColor(record.backgroundColor ?? record.openedBackgroundColor);
   const accentColor = parseBrandingHexColor(record.accentColor ?? record.openedAccentColor);
   const textColor = parseBrandingHexColor(record.textColor ?? record.openedTextColor);
+  const backgroundZoom = parseOpenedBackgroundZoom(record.backgroundZoom ?? record.openedBackgroundZoom);
   return {
     show: record.show === true,
     background,
@@ -366,6 +384,7 @@ export function parseOpenedNoteBrandingSettings(raw: unknown): OpenedNoteBrandin
     backgroundColor: backgroundColor.ok ? backgroundColor.value : null,
     accentColor: accentColor.ok ? accentColor.value : null,
     textColor: textColor.ok ? textColor.value : null,
+    backgroundZoom,
   };
 }
 
@@ -383,6 +402,7 @@ export function stringifyOpenedNoteBrandingSettings(
     ...(settings.backgroundColor ? { backgroundColor: settings.backgroundColor } : {}),
     ...(settings.accentColor ? { accentColor: settings.accentColor } : {}),
     ...(settings.textColor ? { textColor: settings.textColor } : {}),
+    ...(settings.backgroundZoom ? { backgroundZoom: settings.backgroundZoom } : {}),
   });
 }
 
@@ -399,6 +419,7 @@ export function openedSettingsFromBranding(
     | "openedAccentColor"
     | "openedTextColor"
     | "openedBackgroundColor"
+    | "openedBackgroundZoom"
   > | null | undefined,
 ): OpenedNoteBrandingSettings {
   return parseOpenedNoteBrandingSettings({
@@ -412,6 +433,7 @@ export function openedSettingsFromBranding(
     accentColor: branding?.openedAccentColor,
     textColor: branding?.openedTextColor,
     backgroundColor: branding?.openedBackgroundColor,
+    backgroundZoom: branding?.openedBackgroundZoom,
   });
 }
 
@@ -434,6 +456,7 @@ export function applyOpenedNoteBranding(
   delete next.openedAccentColor;
   delete next.openedTextColor;
   delete next.openedBackgroundColor;
+  delete next.openedBackgroundZoom;
 
   if (gate.openedShowLogo === false) {
     delete next.logoUrl;
@@ -462,6 +485,8 @@ export function applyOpenedNoteBranding(
   } else if (background === "banner") {
     if (gate.openedBannerUrl) next.bannerUrl = gate.openedBannerUrl;
     if (next.bannerUrl) next.backgroundStyle = "banner";
+    // Absent scale keeps inheriting the reveal page's, which is what older snapshots expect.
+    if (next.bannerUrl && gate.openedBackgroundZoom) next.backgroundZoom = gate.openedBackgroundZoom;
   }
   return next;
 }
@@ -661,6 +686,7 @@ function parseOpenedFields(
       accentColor: body.openedAccentColor,
       textColor: body.openedTextColor,
       backgroundColor: body.openedBackgroundColor,
+      backgroundZoom: body.openedBackgroundZoom,
     }),
   };
 }
@@ -1418,6 +1444,7 @@ export function parseBusinessBrandingInput(
       openedAccentColor: opened.settings.accentColor,
       openedTextColor: opened.settings.textColor,
       openedBackgroundColor: opened.settings.backgroundColor,
+      openedBackgroundZoom: opened.settings.backgroundZoom,
     },
   };
 }
@@ -1521,6 +1548,9 @@ export function toRevealBranding(
     ...(branding.showBrandingAfterReveal === true && branding.openedBackgroundColor
       ? { openedBackgroundColor: branding.openedBackgroundColor }
       : {}),
+    ...(branding.showBrandingAfterReveal === true && branding.openedBackgroundZoom
+      ? { openedBackgroundZoom: branding.openedBackgroundZoom }
+      : {}),
   };
 }
 
@@ -1588,5 +1618,6 @@ export function parseStoredRevealBranding(raw: unknown): RevealBranding | undefi
     openedAccentColor: openedSettings.accentColor,
     openedTextColor: openedSettings.textColor,
     openedBackgroundColor: openedSettings.backgroundColor,
+    openedBackgroundZoom: openedSettings.backgroundZoom,
   });
 }

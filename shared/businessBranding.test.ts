@@ -113,6 +113,7 @@ describe("parseBusinessBrandingInput", () => {
       openedAccentColor: null,
       openedTextColor: null,
       openedBackgroundColor: null,
+      openedBackgroundZoom: null,
     });
   });
 
@@ -716,6 +717,55 @@ describe("opened-note branding", () => {
     assert.equal(opened?.textColor, "#f8fafc");
     assert.equal(opened?.openedBannerUrl, undefined);
     assert.equal(opened?.openedAccentColor, undefined);
+  });
+
+  it("scales the opened photograph independently of the reveal page", () => {
+    const gate = {
+      bannerUrl: "https://acme.example/reveal.jpg",
+      backgroundStyle: "banner" as const,
+      backgroundZoom: 150,
+      showBrandingAfterReveal: true,
+      openedBackground: "banner" as const,
+      openedBannerUrl: "https://acme.example/opened.jpg",
+    };
+    // Without its own scale the opened photo keeps inheriting the reveal scale.
+    assert.equal(applyOpenedNoteBranding(gate)?.backgroundZoom, 150);
+    assert.equal(
+      applyOpenedNoteBranding({ ...gate, openedBackgroundZoom: 120 })?.backgroundZoom,
+      120,
+    );
+    assert.equal(
+      applyOpenedNoteBranding({ ...gate, openedBackgroundZoom: 120 })?.openedBackgroundZoom,
+      undefined,
+    );
+    // A solid-colour opened page has no photograph to scale.
+    assert.equal(
+      applyOpenedNoteBranding({
+        ...gate,
+        openedBackground: "neutral",
+        openedBackgroundZoom: 120,
+      })?.backgroundZoom,
+      150,
+    );
+  });
+
+  it("keeps the opened scale within range through storage JSON", () => {
+    const roundTrip = (backgroundZoom: number | null) =>
+      parseOpenedNoteBrandingSettings(
+        stringifyOpenedNoteBrandingSettings({
+          ...DEFAULT_OPENED_NOTE_BRANDING,
+          show: true,
+          background: "banner",
+          backgroundZoom,
+        }),
+      ).backgroundZoom;
+    assert.equal(roundTrip(140), 140);
+    assert.equal(roundTrip(null), null);
+    // Out of range and non-integer values fall back to inheriting, not to 100%.
+    assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: 400 }).backgroundZoom, null);
+    assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: 99 }).backgroundZoom, null);
+    assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: 120.5 }).backgroundZoom, null);
+    assert.equal(parseOpenedNoteBrandingSettings({ backgroundZoom: "130" }).backgroundZoom, 130);
   });
 
   it("can switch the opened page to a solid colour without moving the message", () => {

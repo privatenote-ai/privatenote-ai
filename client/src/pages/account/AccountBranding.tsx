@@ -28,6 +28,7 @@ import {
   BRANDING_CARD_BANNER_SIZE_LABEL,
   BRANDING_LOGO_MAX_BYTES,
   BRANDING_LOGO_RECOMMENDED_PX,
+  BRANDING_BACKGROUND_ZOOM_DEFAULT,
   BRANDING_BACKGROUND_ZOOM_MAX,
   BRANDING_BACKGROUND_ZOOM_MIN,
   brandingBackgroundStyleForPage,
@@ -665,6 +666,9 @@ export default function AccountBranding() {
   const [openedAccentDraft, setOpenedAccentDraft] = useState(DEFAULT_BRAND_COLOR);
   const [openedTextDraft, setOpenedTextDraft] = useState("#ffffff");
   const [openedPageColorDraft, setOpenedPageColorDraft] = useState("#e2e8f0");
+  // A null opened scale inherits the reveal page's, so the slider starts where that left off.
+  const openedBackgroundZoom =
+    openedNoteBranding.backgroundZoom ?? portalLayout.backgroundZoom ?? BRANDING_BACKGROUND_ZOOM_DEFAULT;
   const [savingBranding, setSavingBranding] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [removingLogo, setRemovingLogo] = useState(false);
@@ -1749,8 +1753,8 @@ export default function AccountBranding() {
                       <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                         {([
                           { id: "same" as const, label: "Same as reveal", hint: "Keep the page behind the note" },
-                          { id: "neutral" as const, label: "Color", hint: "Solid page colour" },
-                          { id: "banner" as const, label: "Photograph", hint: "New background image" },
+                          { id: "neutral" as const, label: "Default", hint: "Centered note, your colours" },
+                          { id: "banner" as const, label: "Custom", hint: "Photograph behind the note" },
                         ]).map((choice) => (
                           <button
                             key={choice.id}
@@ -1808,6 +1812,10 @@ export default function AccountBranding() {
                                 src={openedNoteBranding.bannerUrl || businessBannerUrl || ""}
                                 alt=""
                                 className="h-full w-full object-cover"
+                                style={{
+                                  transform: `scale(${openedBackgroundZoom / 100})`,
+                                  transformOrigin: `${portalLayout.focalX}% ${portalLayout.focalY}%`,
+                                }}
                               />
                             ) : (
                               <div className="flex h-full items-center justify-center text-xs text-white/60">
@@ -1846,6 +1854,27 @@ export default function AccountBranding() {
                               </p>
                             ) : null}
                           </div>
+                          {openedNoteBranding.bannerUrl || businessBannerUrl ? (
+                            <div>
+                              <Label htmlFor="opened-background-zoom" className="mb-2 block text-sm">
+                                Scale {openedBackgroundZoom}%
+                              </Label>
+                              <input
+                                id="opened-background-zoom"
+                                type="range"
+                                min={BRANDING_BACKGROUND_ZOOM_MIN}
+                                max={BRANDING_BACKGROUND_ZOOM_MAX}
+                                value={openedBackgroundZoom}
+                                onChange={(event) =>
+                                  setOpenedNoteBranding((prev) => ({
+                                    ...prev,
+                                    backgroundZoom: Number(event.target.value),
+                                  }))
+                                }
+                                className="w-full accent-primary"
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
@@ -1900,6 +1929,7 @@ export default function AccountBranding() {
                           openedAccentColor: openedNoteBranding.accentColor || undefined,
                           openedTextColor: openedNoteBranding.textColor || undefined,
                           openedBackgroundColor: openedNoteBranding.backgroundColor || undefined,
+                          openedBackgroundZoom: openedNoteBranding.backgroundZoom || undefined,
                           openedShowLogo: openedNoteBranding.showLogo,
                           openedShowSenderName: openedNoteBranding.showSenderName,
                           openedShowCompanyName: openedNoteBranding.showCompanyName,
