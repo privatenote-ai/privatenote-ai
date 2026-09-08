@@ -62,9 +62,14 @@ export type SessionCookieKind = "prod" | "preview";
 
 /**
  * Common local dev ports for loopback only ({@link isLocalLoopbackDevUrl}).
- * http and https (Vite TLS / Turnstile) both allowed.
+ * http and https (Vite TLS / Turnstile) both allowed. Vite increments from 5173
+ * when the default port is already taken.
  */
-const LOCAL_DEV_PORTS = new Set(["3000", "4173", "5000", "5173", "5174"]);
+function isAllowedLocalDevPort(port: string): boolean {
+  if (port === "3000" || port === "4173" || port === "5000") return true;
+  const n = Number(port);
+  return Number.isInteger(n) && n >= 5173 && n <= 5199;
+}
 
 export function normalizeOrigin(origin: string): string {
   return origin.replace(/\/$/, "");
@@ -85,7 +90,7 @@ function isLocalLoopbackDevUrl(url: URL): boolean {
   const host = url.hostname;
   if (host !== "localhost" && host !== "127.0.0.1" && host !== "[::1]") return false;
   const port = url.port || (url.protocol === "https:" ? "443" : "80");
-  return LOCAL_DEV_PORTS.has(port);
+  return isAllowedLocalDevPort(port);
 }
 
 function isLocalDevUrl(url: URL): boolean {
