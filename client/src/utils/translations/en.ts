@@ -131,18 +131,6 @@ export const en: Translations = {
   takePhotoCropReset: "Reset crop",
   takePhotoCropping: "Cropping…",
   takePhotoCropFailed: "Could not crop the photo. Try again.",
-  takePhotoContinueToBlur: "Blur details",
-  takePhotoBlurTitle: "Blur details",
-  takePhotoBlurDescription:
-    "Paint over tattoos, birthmarks, badges, or background details you want airbrushed out before encryption.",
-  takePhotoBlurBrushLabel: "Brush",
-  takePhotoBlurBrushSmall: "S",
-  takePhotoBlurBrushMedium: "M",
-  takePhotoBlurBrushLarge: "L",
-  takePhotoBlurReset: "Reset blur",
-  takePhotoBlurSaving: "Saving…",
-  takePhotoBlurFailed: "Could not apply blur. Try again.",
-  takePhotoBackToCrop: "Back to crop",
   composeActionOptions: "Options",
   composeActionFile: "File",
   composeActionPhoto: "Photo",
@@ -2129,7 +2117,7 @@ export const en: Translations = {
     "Notes are read-once for maximum privacy. After someone opens the link, the note is destroyed and cannot be viewed again. If it is never opened, it is deleted when the expiration time passes. Once a note is destroyed or expired, it cannot be recovered.",
   homeFaq_takePhoto_question: "Can I take a photo and send it privately?",
   homeFaq_takePhoto_answer:
-    "Yes. Use Take photo to capture from your camera. The image is encrypted in your browser like a file attachment before upload. You can crop and blur details first, and location metadata is removed by default for common photo formats. Sending photos requires a free account; recipients do not. They can still save or screenshot what they open.",
+    "Yes. Use Take photo to capture from your camera. The image is encrypted in your browser like a file attachment before upload. You can crop first, and location metadata is removed by default for common photo formats. Sending photos requires a free account; recipients do not. They can still save or screenshot what they open.",
   homeFaq_video_question: "Can I record a video message?",
   homeFaq_video_answer:
     "Yes. Use Record and choose Video. The clip is encrypted in your browser like a file attachment, then sent as a disappearing note. Recording voice or video is available on Free with a signed-in account. Starter and Business allow longer recordings and larger files. Recipients can still download or save the video after they open the link.",
