@@ -23,7 +23,9 @@ import {
   brandingPortalLayout,
   brandingShowsBanner,
   brandingUsesPortalSurface,
+  brandingChromeInk,
   brandingChromeUsesLightText,
+  brandingLogoTileTone,
   brandingLogoIsSolo,
   brandingRevealLogoClassName,
   parseBrandingAccentColor,
@@ -496,6 +498,28 @@ describe("brandingHeroStyle", () => {
 
   it("keeps dark copy on a light background color", () => {
     assert.equal(brandingHeroUsesLightText({ backgroundColor: "#f8fafc" }), false);
+  });
+});
+
+describe("brandingChromeInk", () => {
+  it("keeps the PrivateNote mark blue on a white or pale page", () => {
+    assert.equal(brandingChromeInk({ backgroundColor: "#ffffff" }), "#0000ff");
+    assert.equal(brandingChromeInk({ backgroundColor: "#f8fafc" }), "#0000ff");
+    assert.equal(brandingLogoTileTone({ backgroundColor: "#f8fafc" }), "brand");
+    assert.equal(brandingChromeUsesLightText({ backgroundColor: "#f8fafc" }), false);
+  });
+
+  it("flips chrome to white when the page matches the logo mark", () => {
+    const branding = { backgroundColor: "#0000ff", backgroundStyle: "neutral" } as const;
+    assert.equal(brandingChromeInk(branding), "#ffffff");
+    assert.equal(brandingLogoTileTone(branding), "inverse");
+    assert.equal(brandingChromeUsesLightText(branding), true);
+  });
+
+  it("flips chrome to white when the page is the default brand blue", () => {
+    const branding = { backgroundColor: "#2563eb", backgroundStyle: "neutral" } as const;
+    assert.equal(brandingChromeInk(branding), "#ffffff");
+    assert.equal(brandingLogoTileTone(branding), "inverse");
   });
 });
 

@@ -1180,6 +1180,39 @@ export function contrastingTextOn(hex: string): "#ffffff" | "#111827" {
   return brandingRelativeLuminance(hex) > 0.55 ? "#111827" : "#ffffff";
 }
 
+/** Wordmark + logo tile in CSS (`--primary: 240 100% 50%`). */
+export const PRIVATENOTE_MARK_COLOR = "#0000ff";
+
+const CHROME_INK_MIN_CONTRAST = 3;
+
+/**
+ * Colour for the PrivateNote wordmark and language control on the recipient
+ * page. Keeps the brand blue when it still reads; otherwise flips to white or
+ * ink so a page colour that matches the mark cannot hide the chrome.
+ */
+export function brandingChromeInk(
+  branding: RevealBranding | undefined,
+): "#ffffff" | "#111827" | typeof PRIVATENOTE_MARK_COLOR {
+  const page = brandingPageBackground(branding);
+  if (page.kind === "image") return "#ffffff";
+  const fill = page.kind === "color" ? page.backgroundColor : "#ffffff";
+  if (contrastRatio(fill, PRIVATENOTE_MARK_COLOR) >= CHROME_INK_MIN_CONTRAST) {
+    return PRIVATENOTE_MARK_COLOR;
+  }
+  return contrastingTextOn(fill);
+}
+
+/** White tile when the brand-blue mark would disappear into the page colour. */
+export function brandingLogoTileTone(
+  branding: RevealBranding | undefined,
+): "brand" | "inverse" {
+  const page = brandingPageBackground(branding);
+  if (page.kind !== "color") return "brand";
+  return contrastRatio(page.backgroundColor, PRIVATENOTE_MARK_COLOR) >= CHROME_INK_MIN_CONTRAST
+    ? "brand"
+    : "inverse";
+}
+
 function contrastRatio(a: string, b: string): number {
   const lighter = Math.max(brandingRelativeLuminance(a), brandingRelativeLuminance(b));
   const darker = Math.min(brandingRelativeLuminance(a), brandingRelativeLuminance(b));
@@ -1437,14 +1470,7 @@ export function brandingHeroUsesLightText(branding: RevealBranding | undefined):
 
 /** Chrome (PrivateNote mark, language, footer) over the page background. */
 export function brandingChromeUsesLightText(branding: RevealBranding | undefined): boolean {
-  const page = brandingPageBackground(branding);
-  if (page.kind === "image") return true;
-  if (page.kind === "color") return contrastingTextOn(page.backgroundColor) === "#ffffff";
-  if (page.kind === "gradient") {
-    const wash = branding ? gradientWashColor(branding) : "#f8fafc";
-    return contrastingTextOn(wash) === "#ffffff";
-  }
-  return false;
+  return brandingChromeInk(branding) === "#ffffff";
 }
 
 /**

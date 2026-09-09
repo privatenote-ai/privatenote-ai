@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type React
 import { Check, ChevronDown, Languages, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
+  brandingChromeInk,
   brandingChromeUsesLightText,
+  brandingLogoTileTone,
   brandingLogoIsSolo,
   brandingCardMarkIsBanner,
   brandingOverlayOpacity,
@@ -114,6 +116,8 @@ export function RecipientPortal({
   const resolvedSurface = resolveSurface(pageBranding, surface);
   const useCard = resolvedSurface === "card" || resolvedSurface === "wide";
   const lightChrome = brandingChromeUsesLightText(pageBranding);
+  const chromeInk = brandingChromeInk(pageBranding);
+  const logoTile = brandingLogoTileTone(pageBranding);
   const languageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
   const languageControl = Boolean(onLanguageChange) && !preview;
@@ -206,12 +210,17 @@ export function RecipientPortal({
     }
   };
 
-  const chromeText = lightChrome
-    ? "text-white"
-    : "text-primary dark:text-blue-300";
+  const brandedFill = page.kind === "color" || page.kind === "image";
+  const chromeText = brandedFill
+    ? ""
+    : lightChrome
+      ? "text-white"
+      : "text-primary dark:text-blue-300";
   const footerMuted = lightChrome
     ? "text-white/80"
-    : "text-gray-600/80 dark:text-gray-300/75";
+    : brandedFill
+      ? "text-gray-600/80"
+      : "text-gray-600/80 dark:text-gray-300/75";
 
   const shellClass = preview
     ? "absolute inset-0 isolate flex flex-col overflow-hidden"
@@ -271,11 +280,12 @@ export function RecipientPortal({
         <a
           href="/"
           className={`inline-flex items-center gap-2 ${chromeText} ${preview ? "pointer-events-none" : ""}`}
+          style={brandedFill ? { color: chromeInk } : undefined}
           aria-label="PrivateNote.ai"
           tabIndex={preview ? -1 : undefined}
           onClick={preview ? (event) => event.preventDefault() : undefined}
         >
-          <Logo size={28} className="shrink-0" />
+          <Logo size={28} className="shrink-0" tile={logoTile} />
           <span className="text-lg font-bold tracking-tight sm:text-xl">
             privateNote
             <span className="ml-0.5 align-super text-[0.65em] font-semibold">.ai</span>
@@ -288,7 +298,9 @@ export function RecipientPortal({
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-none ${
                 lightChrome
                   ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
-                  : "border-gray-200 bg-white/80 text-gray-800 hover:bg-white dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
+                  : brandedFill
+                    ? "border-gray-200 bg-white/80 text-gray-800 hover:bg-white"
+                    : "border-gray-200 bg-white/80 text-gray-800 hover:bg-white dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
               }`}
               aria-label={`${t.language ?? "Language"}: ${languageLabel}`}
             >
@@ -314,7 +326,9 @@ export function RecipientPortal({
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-none ${
               lightChrome
                 ? "border-white/25 bg-white/10 text-white"
-                : "border-gray-200 bg-white/80 text-gray-800 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
+                : brandedFill
+                  ? "border-gray-200 bg-white/80 text-gray-800"
+                  : "border-gray-200 bg-white/80 text-gray-800 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
             }`}
           >
             <Languages className="h-3.5 w-3.5 opacity-80" aria-hidden />
