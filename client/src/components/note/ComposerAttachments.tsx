@@ -1,15 +1,8 @@
-import { Camera, ChevronDown, File, FolderArchive, Loader2, Mic, Paperclip, Plus, X } from "lucide-react";
+import { Camera, ChevronDown, File, FolderArchive, Loader2, Mic, Paperclip, X } from "lucide-react";
 import { formatNoteFileSize } from "@shared/noteFileLimits";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { isVoiceMessageFile } from "@/utils/voiceMessageRecording";
 import { cn } from "@/lib/utils";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -183,28 +176,19 @@ type ComposerAddActionsProps = {
   canAdd: boolean;
   addDisabledReason?: string;
   isPreparingFolder: boolean;
-  recordDisabled: boolean;
   showFolder: boolean;
   fileInputId?: string;
-  addSheetOpen: boolean;
-  onAddSheetOpenChange: (open: boolean) => void;
   onAddFile: () => void;
   onAddFolder: () => void;
   onTakePhoto: () => void;
   onRecord: () => void;
   labels: {
-    add: string;
-    addToTransfer: string;
     attach: string;
-    addFileHint: string;
     takePhoto: string;
-    takePhotoHint: string;
     record: string;
-    recordHint: string;
     files: string;
     folder: string;
     zipping: string;
-    cancel: string;
   };
   attachActionButtonClass: string;
 };
@@ -214,11 +198,8 @@ export function ComposerAddActions({
   canAdd,
   addDisabledReason,
   isPreparingFolder,
-  recordDisabled,
   showFolder,
   fileInputId,
-  addSheetOpen,
-  onAddSheetOpenChange,
   onAddFile,
   onAddFolder,
   onTakePhoto,
@@ -233,101 +214,9 @@ export function ComposerAddActions({
     folder: labels.folder,
     zipping: labels.zipping,
   };
-
-  if (isMobile) {
-    return (
-      <>
-        <button
-          type="button"
-          disabled={disabled}
-          title={addDisabledReason}
-          onClick={() => onAddSheetOpenChange(true)}
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          {labels.add}
-        </button>
-        <Drawer open={addSheetOpen} onOpenChange={onAddSheetOpenChange}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>{labels.addToTransfer}</DrawerTitle>
-              <DrawerDescription>{addDisabledReason || labels.addFileHint}</DrawerDescription>
-            </DrawerHeader>
-            <div className="flex flex-col gap-1 px-4 pb-6">
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  onAddSheetOpenChange(false);
-                  window.setTimeout(() => onAddFile(), 0);
-                }}
-                className="flex items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                <Paperclip className="h-5 w-5 text-primary" aria-hidden />
-                <span>
-                  {labels.attach}
-                  <span className="mt-0.5 block text-xs font-normal text-gray-500 dark:text-gray-400">
-                    {labels.addFileHint}
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  onAddSheetOpenChange(false);
-                  window.setTimeout(() => onTakePhoto(), 0);
-                }}
-                className="flex items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                <Camera className="h-5 w-5 text-primary" aria-hidden />
-                <span>
-                  {labels.takePhoto}
-                  <span className="mt-0.5 block text-xs font-normal text-gray-500 dark:text-gray-400">
-                    {labels.takePhotoHint}
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                disabled={disabled || recordDisabled}
-                onClick={() => {
-                  onAddSheetOpenChange(false);
-                  window.setTimeout(() => onRecord(), 0);
-                }}
-                className="flex items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                <Mic className="h-5 w-5 text-primary" aria-hidden />
-                <span>
-                  {labels.record}
-                  <span className="mt-0.5 block text-xs font-normal text-gray-500 dark:text-gray-400">
-                    {labels.recordHint}
-                  </span>
-                </span>
-              </button>
-              {showFolder ? (
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => {
-                    onAddSheetOpenChange(false);
-                    window.setTimeout(() => onAddFolder(), 0);
-                  }}
-                  className="flex items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-100 dark:hover:bg-gray-800"
-                >
-                  <FolderArchive className="h-5 w-5 text-primary" aria-hidden />
-                  {labels.folder}
-                </button>
-              ) : null}
-            </div>
-          </DrawerContent>
-        </Drawer>
-      </>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
+  const actionClass = `${attachActionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`;
+  const actions = (
+    <>
       <ComposerAttachControl
         disabled={disabled}
         isPreparingFolder={isPreparingFolder}
@@ -337,27 +226,25 @@ export function ComposerAddActions({
         onAddFile={onAddFile}
         onAddFolder={onAddFolder}
         labels={attachLabels}
-        buttonClassName={attachActionButtonClass}
+        buttonClassName={actionClass}
       />
       <button
         type="button"
         disabled={disabled}
         title={addDisabledReason}
         onClick={onTakePhoto}
-        className={`${attachActionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
+        className={actionClass}
       >
-        <Camera className="h-4 w-4" aria-hidden />
-        {labels.takePhoto}
+        <Camera className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="max-w-full truncate">{labels.takePhoto}</span>
       </button>
-      <button
-        type="button"
-        disabled={disabled || recordDisabled}
-        onClick={onRecord}
-        className={`${attachActionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
-      >
-        <Mic className="h-4 w-4" aria-hidden />
-        {labels.record}
+      <button type="button" disabled={disabled} onClick={onRecord} className={actionClass}>
+        <Mic className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="max-w-full truncate">{labels.record}</span>
       </button>
-    </div>
+    </>
   );
+
+  if (isMobile) return actions;
+  return <div className="flex flex-wrap items-center gap-2">{actions}</div>;
 }

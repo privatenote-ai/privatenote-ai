@@ -513,7 +513,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     useState<AttachmentRecipientPermission>("download");
   const [applyBranding, setApplyBranding] = useState(true);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
     "personal_premium" | "business_premium" | null
   >(null);
@@ -659,12 +658,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     return true;
   };
 
+  const demandSignInToAttach = () => {
+    if (canAttachFiles) return false;
+    toast({
+      title: t.signInToAttachFiles,
+      description: t.signInToAttachFilesHint,
+    });
+    return true;
+  };
+
   const handleVoiceMessageRecorded = (file: File) => {
-    tryAppendFiles([file]);
+    if (!tryAppendFiles([file])) return;
+    demandSignInToAttach();
   };
 
   const handlePhotoCaptured = (file: File) => {
-    tryAppendFiles([file]);
+    if (!tryAppendFiles([file])) return;
+    demandSignInToAttach();
   };
 
   const secondaryActionButtonClass =
@@ -672,7 +682,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const attachActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 max-lg:flex-col max-lg:gap-1 lg:flex-row lg:gap-1.5 lg:px-5";
   const composeToolButtonClass =
-    "max-lg:h-auto max-lg:min-h-[3.55rem] max-lg:flex-1 max-lg:px-1 max-lg:py-2";
+    "max-lg:h-auto max-lg:min-h-[3.55rem] max-lg:flex-1 max-lg:px-1 max-lg:py-2 max-lg:text-[11px]";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -752,11 +762,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const handleRecordMessageClick = () => {
-    if (!canAttachFiles) {
-      saveAuthRedirectDraft();
-      window.location.href = attachFileSignInHref;
-      return;
-    }
     if (!isVoiceRecordingSupported()) {
       toast({
         title: t.recordMessageUnsupportedTitle ?? "Recording unavailable",
@@ -771,11 +776,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const handleTakePhotoClick = () => {
-    if (!canAttachFiles) {
-      saveAuthRedirectDraft();
-      window.location.href = attachFileSignInHref;
-      return;
-    }
     if (!isCameraCaptureSupported()) {
       toast({
         title: t.takePhotoUnsupportedTitle ?? "Camera unavailable",
@@ -857,12 +857,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const selectedFileIsVoice = selectedFiles.some((file) => isVoiceMessageFile(file));
   const selectedFileIsVideo = selectedFiles.some((file) => isVideoMessageFile(file));
   const attachFileButtonLabel = isFileTransferMode ? t.sftAttachFile : t.attachFile;
-  const recordMessageButtonLabel = !canAttachFiles
-    ? (t.signInToRecordMessage ?? t.signInToAttachFiles ?? t.recordMessage ?? "Record message")
-    : (t.recordMessage ?? "Record message");
-  const takePhotoButtonLabel = !canAttachFiles
-    ? (t.signInToTakePhoto ?? t.signInToAttachFiles ?? t.takePhoto ?? "Take photo")
-    : (t.takePhoto ?? "Take photo");
+  const recordMessageButtonLabel = t.recordMessage ?? "Record";
+  const takePhotoButtonLabel = t.takePhoto ?? "Take photo";
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -3490,6 +3486,22 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       }}
                       buttonClassName="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
                     />
+                    <button
+                      type="button"
+                      onClick={handleTakePhotoClick}
+                      className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                    >
+                      <Camera className="h-4 w-4 shrink-0" aria-hidden />
+                      {takePhotoButtonLabel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRecordMessageClick}
+                      className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                    >
+                      <Mic className="h-4 w-4 shrink-0" aria-hidden />
+                      {recordMessageButtonLabel}
+                    </button>
                   </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     {t.sftNeedHigherLimits}{" "}
@@ -3502,7 +3514,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </p>
                 </>
               ) : isFileTransferMode && hasAttachments ? (
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <input
                     ref={fileInputRef}
                     id={canAttachFiles ? fileTransferFileInputId : undefined}
@@ -3512,6 +3524,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     tabIndex={-1}
                     onChange={handleAttachFileSelected}
                   />
+                  <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -3521,7 +3534,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         setShowAdvancedOptions(!showAdvancedOptions);
                       }
                     }}
-                    className={`${secondaryActionButtonClass} ${composeToolButtonClass} sm:flex-none`}
+                    className={`${secondaryActionButtonClass} ${composeToolButtonClass} lg:flex-none`}
                     aria-label={
                       customizeSheetExperiment || !showAdvancedOptions
                         ? t.customize
@@ -3535,13 +3548,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   >
                     {customizeSheetExperiment || !showAdvancedOptions ? (
                       <>
-                        <Settings className="h-5 w-5 shrink-0 lg:mr-1.5 lg:h-4 lg:w-4" />
-                        <span className="hidden lg:inline">{t.customize}</span>
+                        <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" />
+                        <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                          {t.customize}
+                        </span>
+                        <span className="hidden truncate lg:inline">{t.customize}</span>
                       </>
                     ) : (
                       <>
-                        <ChevronUp className="h-5 w-5 shrink-0 lg:mr-1.5 lg:h-4 lg:w-4" />
-                        <span className="hidden lg:inline">{t.hideOptions}</span>
+                        <ChevronUp className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" />
+                        <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
+                          {t.hideOptions}
+                        </span>
+                        <span className="hidden truncate lg:inline">{t.hideOptions}</span>
                       </>
                     )}
                   </button>
@@ -3550,34 +3569,23 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     canAdd={canAddMoreAttachments}
                     addDisabledReason={addDisabledReason}
                     isPreparingFolder={isPreparingFolder}
-                    recordDisabled={!isPremiumUser}
                     showFolder={!isMobile && canAttachFiles}
                     fileInputId={canAttachFiles ? fileTransferFileInputId : undefined}
-                    addSheetOpen={addSheetOpen}
-                    onAddSheetOpenChange={setAddSheetOpen}
                     onAddFile={handleAttachFileClick}
                     onAddFolder={handleAttachFolderClick}
                     onTakePhoto={handleTakePhotoClick}
                     onRecord={handleRecordMessageClick}
                     labels={{
-                      add: t.addToTransferShort ?? "Add",
-                      addToTransfer: t.addToTransfer ?? "Add to this transfer",
                       attach: t.attach ?? "Attach",
-                      addFileHint: t.addFileHint ?? "Choose files or a folder",
-                      takePhoto: t.takePhoto ?? "Take photo",
-                      takePhotoHint: t.takePhotoHint ?? "Use the camera",
+                      takePhoto: takePhotoButtonLabel,
                       record: recordMessageButtonLabel,
-                      recordHint: !isPremiumUser
-                        ? (t.recordMessageFormatPremiumHint ??
-                          "Upgrade to Premium to record voice or video-style messages in PrivateNote.")
-                        : (t.recordMessageHint ?? "Record a voice message"),
                       files: t.sftSelectFile,
                       folder: t.sftSelectFolder ?? "Folder",
                       zipping: t.sftZippingFolder,
-                      cancel: t.cancel ?? "Cancel",
                     }}
                     attachActionButtonClass={`${attachActionButtonClass} ${composeToolButtonClass}`}
                   />
+                  </div>
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -3634,7 +3642,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         <>
                           <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
                           <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                            {t.composeActionOptions ?? "Options"}
+                            {t.customize}
                           </span>
                           <span className="hidden truncate lg:inline">{t.customize}</span>
                         </>
@@ -3653,31 +3661,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       canAdd={canAddMoreAttachments}
                       addDisabledReason={addDisabledReason}
                       isPreparingFolder={isPreparingFolder}
-                      recordDisabled={!isPremiumUser}
                       showFolder={!isMobile && canAttachFiles}
                       fileInputId={canAttachFiles ? noteFileInputId : undefined}
-                      addSheetOpen={addSheetOpen}
-                      onAddSheetOpenChange={setAddSheetOpen}
                       onAddFile={handleAttachFileClick}
                       onAddFolder={handleAttachFolderClick}
                       onTakePhoto={handleTakePhotoClick}
                       onRecord={handleRecordMessageClick}
                       labels={{
-                        add: t.addToTransferShort ?? "Add",
-                        addToTransfer: t.addToTransfer ?? "Add to this transfer",
                         attach: t.attach ?? "Attach",
-                        addFileHint: t.addFileHint ?? "Choose files or a folder",
-                        takePhoto: t.takePhoto ?? "Take photo",
-                        takePhotoHint: t.takePhotoHint ?? "Use the camera",
+                        takePhoto: takePhotoButtonLabel,
                         record: recordMessageButtonLabel,
-                        recordHint: !isPremiumUser
-                          ? (t.recordMessageFormatPremiumHint ??
-                            "Upgrade to Premium to record voice or video-style messages in PrivateNote.")
-                          : (t.recordMessageHint ?? "Record a voice message"),
                         files: t.sftSelectFile,
                         folder: t.sftSelectFolder ?? "Folder",
                         zipping: t.sftZippingFolder,
-                        cancel: t.cancel ?? "Cancel",
                       }}
                       attachActionButtonClass={`${attachActionButtonClass} ${composeToolButtonClass}`}
                     />
