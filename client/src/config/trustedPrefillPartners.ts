@@ -22,7 +22,7 @@ export interface TrustedPartner {
   id: string;
   /** Display name shown in the banner and stored in analytics. */
   displayName: string;
-  /** Rams-themed banner + logo when set (passwords.lu uses dot-grid mark). */
+  /** Partner mark on the create-note notice (passwords.lu uses the dot-grid logo). */
   branding?: TrustedPartnerBranding;
 }
 

@@ -20,6 +20,7 @@ import {
   type BrandingCardPosition,
   type RevealBranding,
 } from "@shared/businessBranding";
+import { stripTrustedPartnerRevealBanner } from "@shared/trustedPrefillPartners";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,13 +150,14 @@ export function RecipientPortal({
   previewViewport = "desktop",
   onCardPlace,
 }: RecipientPortalProps) {
-  const page = brandingPageBackground(branding);
-  const layout = brandingPortalLayout(branding);
-  const overlayOpacity = brandingOverlayOpacity(branding);
+  const pageBranding = stripTrustedPartnerRevealBanner(branding) ?? branding;
+  const page = brandingPageBackground(pageBranding);
+  const layout = brandingPortalLayout(pageBranding);
+  const overlayOpacity = brandingOverlayOpacity(pageBranding);
   const zoom = layout.backgroundZoom ?? 100;
-  const resolvedSurface = resolveSurface(branding, surface);
+  const resolvedSurface = resolveSurface(pageBranding, surface);
   const useCard = resolvedSurface === "card" || resolvedSurface === "wide";
-  const lightChrome = brandingChromeUsesLightText(branding);
+  const lightChrome = brandingChromeUsesLightText(pageBranding);
   const languageLabel =
     LANGUAGE_OPTIONS.find((option) => option.code === language)?.nativeName ?? "English";
   const languageControl = Boolean(onLanguageChange) && !preview;

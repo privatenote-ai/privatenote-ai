@@ -101,6 +101,7 @@ import {
 import { getAccountEntitlements } from "./accountEntitlements";
 import { recordNoteCreatedActivity } from "./noteCreationActivity";
 import { parseStoredRevealBranding, parseStoredPortalLayoutJson, openedSettingsFromAccountColumns, publicBrandingAssetPath, toRevealBranding } from "@shared/businessBranding";
+import { resolveRevealBrandingForNoteCreate } from "@shared/trustedPrefillPartners";
 import { mayStoreRevealBodyFont, parseRevealBodyFont } from "@shared/revealBodyFont";
 import { parseAttachmentRecipientPermission } from "@shared/attachmentRecipientPermission";
 import { normalizeReceiptAckStatement } from "@shared/receiptAcknowledgment";
@@ -9507,10 +9508,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     // snapshot is always rebuilt from the authenticated Business account.
     if (requestBody?.revealBranding != null) {
       const trustedBranding = await resolveAccountRevealBranding(env, request);
+      const createReferrer =
+        typeof requestBody?.referrer === "string" ? requestBody.referrer : null;
       if (trustedBranding) {
-        requestBody.revealBranding = fillRevealBrandingIdentityGaps(
-          trustedBranding,
-          parseStoredRevealBranding(requestBody.revealBranding),
+        requestBody.revealBranding = resolveRevealBrandingForNoteCreate(
+          fillRevealBrandingIdentityGaps(
+            trustedBranding,
+            parseStoredRevealBranding(requestBody.revealBranding),
+          ),
+          createReferrer,
         );
       } else {
         const session = await getSessionFromRequest(env, request, { rotate: false });
@@ -9518,8 +9524,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         const allowed = session?.id
           ? (await getAccountEntitlements(env, session.id)).capabilities.revealBranding
           : false;
-        if (parsedClientBranding && allowed) requestBody.revealBranding = parsedClientBranding;
-        else delete requestBody.revealBranding;
+        if (parsedClientBranding && allowed) {
+          requestBody.revealBranding = resolveRevealBrandingForNoteCreate(
+            parsedClientBranding,
+            createReferrer,
+          );
+        } else delete requestBody.revealBranding;
       }
     }
 

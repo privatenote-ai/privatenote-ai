@@ -645,6 +645,10 @@ function hostedBrandingPublicPath(pathname: string): string | null | undefined {
   return undefined;
 }
 
+/** Same-origin static marks shipped under `client/public/images/partners/`. */
+const PARTNER_STATIC_ASSET =
+  /^\/images\/partners\/[A-Za-z0-9._-]+\.(?:svg|png|jpe?g|webp)$/;
+
 /**
  * Accepts same-origin hosted branding paths, or absolute `https:` URLs.
  *
@@ -664,10 +668,12 @@ export function parseBrandingLogoUrl(
   if (trimmed.startsWith("//") || trimmed.includes("\\")) return { ok: false };
 
   if (trimmed.startsWith("/")) {
-    const hosted = hostedBrandingPublicPath(trimmed.split(/[?#]/, 1)[0] ?? trimmed);
-    if (hosted === undefined) return { ok: false };
+    const pathOnly = trimmed.split(/[?#]/, 1)[0] ?? trimmed;
+    const hosted = hostedBrandingPublicPath(pathOnly);
+    if (hosted) return { ok: true, value: hosted };
     if (hosted === null) return { ok: false };
-    return { ok: true, value: hosted };
+    if (PARTNER_STATIC_ASSET.test(pathOnly)) return { ok: true, value: pathOnly };
+    return { ok: false };
   }
 
   let url: URL;

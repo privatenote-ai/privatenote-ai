@@ -65,6 +65,7 @@ import {
   parseStoredRevealBranding,
   brandingNoteTextBorderColor,
 } from '@shared/businessBranding';
+import { stripTrustedPartnerRevealBanner } from '@shared/trustedPrefillPartners';
 import {
   parseRevealBodyFont,
   revealBodyFontClassName,
@@ -1657,11 +1658,12 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     window.location.href = '/';
   };
 
-  const portalSurface = brandingUsesPortalSurface(activeRevealBranding);
+  const pageRevealBranding = stripTrustedPartnerRevealBanner(activeRevealBranding) ?? activeRevealBranding;
+  const portalSurface = brandingUsesPortalSurface(pageRevealBranding);
   const wrapRecipient = (
     node: ReactNode,
     surface?: RecipientPortalSurface,
-    branding = activeRevealBranding,
+    branding = pageRevealBranding,
   ) => (
     <RecipientPortal
       branding={branding}
