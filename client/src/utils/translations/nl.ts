@@ -5,11 +5,11 @@ export const nl: Translations = {
   writeNote: "Schrijf een notitie",
   sharePassword: "Deel een wachtwoord",
   shareFile: "Deel een bestand",
-  sftHeroTitle: "Veilig bestanden delen met versleuteling in je browser",
-  sftHeroPrefix: "De",
-  sftHeroAccent: "privémanier",
-  sftHeroSuffix: "om bestanden te delen",
-  sftHeroSubtitle: "Geen bestandsscans. Geen toegang tot je gegevens. Versleuteling gebeurt in je browser.",
+  sftHeroTitle: "Veilige bestandsoverdracht. Versleuteld vóór upload.",
+  sftHeroPrefix: "Veilige bestandsoverdracht.",
+  sftHeroAccent: "Versleuteld vóór upload.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Je bestanden worden rechtstreeks in je browser versleuteld voordat ze je apparaat verlaten. Wij kunnen de inhoud niet lezen en scannen ze nooit.",
   sftSeoHeading: "Versleuteld bestanden delen zonder je inhoud bloot te leggen",
   sftSeoBody1:
     "PrivateNote verstuurt bestanden via verlopende versleutelde links. Bestanden worden in je browser versleuteld vóór het uploaden, dus de server slaat alleen versleutelde tekst op — nooit de originele inhoud.",
@@ -492,7 +492,7 @@ export const nl: Translations = {
   closeNavigationMenu: "Menu sluiten",
   homeHeroLine1: "Jouw berichten,",
   homeHeroLine2: "Uw privacy",
-  homeHeroSubtitle: "Deel gecodeerde notities die zichzelf vernietigen na het lezen. Geen advertenties, geen profilering, geen onnodige gegevensverzameling – alleen privé, eenmalige berichten.",
+  homeHeroSubtitle: "Deel wachtwoorden, gevoelige berichten en bestanden via end-to-end versleutelde links die na opening verdwijnen. Geen accounts voor ontvangers. Geen advertenties. Geen profilering.",
   whyPrivateNote: "Waarom PrivateNote",
   shareSensitiveHeading: "Deel gevoelige notities met vertrouwen.",
   shareSensitiveBody: "PrivateNote houdt uw berichten privé door deze in de browser te coderen en de notitie te laten verdwijnen nadat deze is gelezen. Geen accounts, geen wrijving en geen advertenties die u volgen.",
@@ -1552,6 +1552,16 @@ export const nl: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Hoe je een privénotitie intrekt vóór openen",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Trek ongeopende PrivateNote-links in en bekijk bewijs-van-toegang-tijdlijnen voor leveringsgebeurtenissen—zonder secrets in e-mail te zetten.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Bescherm het beroepsgeheim zonder een blijvende chatgeschiedenis",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Een eenmalig versleuteld kanaal in de huisstijl van het kantoor, voor cliënten die geen extra app willen installeren.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Gewone berichtenapps kunnen blijvende kopieën achterlaten. Bij veel communicatie die onder het beroepsgeheim valt, is het praktische doel juist het tegenovergestelde: een instructie of gevoelig document overbrengen zonder er opnieuw een permanent chatarchief van te maken.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Beroepsgeheim zonder chatgeschiedenis",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Eenmalig versleuteld kanaal in de huisstijl van het kantoor, te openen in de browser van de cliënt. Geen extra app. Zie Business.",
   blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",
   blogSocialMediaBansSubtitle: "Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:
@@ -1691,7 +1701,7 @@ export const nl: Translations = {
   homeFaq_encryptionKey_question: "Is de encryptiesleutel op uw server opgeslagen?",
   homeFaq_encryptionKey_answer: "Nee. Voor standaardnotities slaat onze server de gecodeerde notitie en metagegevens op, niet de bruikbare decoderingssleutel. De sleutel bevindt zich in het gedeelte van de link na `#`. Browsers bewaren alles na `#` op het apparaat wanneer een pagina wordt geladen (ze sturen het niet naar onze servers), dus we ontvangen nooit uw decoderingssleutel.",
   homeFaq_metadata_question: "Welke metadata bewaar je?",
-  homeFaq_metadata_answer: "We slaan gecodeerde notitiepayloads op en de instellingen die nodig zijn voor verval- en leeslimieten, niet uw platte tekst. We houden ook geaggregeerde servicestatistieken bij: dagelijkse tellers zoals gemaakte of bekeken notities, wachtwoordbeveiliging en gebruik van de AI-modus, grove land- en UI-taal en vergelijkbare operationele totalen. Deze statistieken bevatten nooit notitie-inhoud en worden niet gedeeld met advertenties of externe analyseproviders. Beperkte beveiligings- en misbruikpreventielogboeken (bijvoorbeeld metagegevens op IP-niveau en snelheidsbeperking) worden gedurende een korte periode bewaard, zoals beschreven in ons Privacybeleid.",
+  homeFaq_metadata_answer: "We slaan gecodeerde notitiepayloads op en de instellingen die nodig zijn voor verval- en leeslimieten, niet uw platte tekst. We houden ook geaggregeerde servicestatistieken bij: dagelijkse tellers zoals gemaakte of bekeken notities, wachtwoordbeveiliging en gebruik van de AI-modus, grove land- en UI-taal, paginabezoeken, zichtbare tijd, grove klik-/scroll-heatmaps en vergelijkbare operationele totalen. Deze statistieken bevatten nooit notitie-inhoud, notitie-ID’s of sessie-opnamen en worden niet gedeeld met advertenties of externe analyseproviders. Beperkte beveiligings- en misbruikpreventielogboeken (bijvoorbeeld metagegevens op IP-niveau en snelheidsbeperking) worden gedurende een korte periode bewaard, zoals beschreven in ons Privacybeleid.",
   homeFaq_euStorage_question: "Worden PrivateNote.ai-gegevens opgeslagen in de EU?",
   homeFaq_euStorage_answer: "Ja. Authenticatiegegevens, gecodeerde notities en operationele gegevens worden opgeslagen in de infrastructuur van het EU-rechtsgebied. Een deel van het netwerkverkeer passeert mogelijk nog steeds beveiligings- en leveringssystemen voordat het de opslag bereikt.",
   homeFaq_recover_question: "Kan ik een notitie herstellen nadat die is vernietigd of verlopen?",

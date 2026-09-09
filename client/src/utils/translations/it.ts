@@ -5,10 +5,10 @@ export const it: Translations = {
   writeNote: "Scrivi una nota",
   sharePassword: "Condividi una password",
   shareFile: "Condividi un file",
-  sftHeroPrefix: "Il",
-  sftHeroAccent: "modo privato",
-  sftHeroSuffix: "di condividere file",
-  sftHeroSubtitle: "Nessuna scansione dei file. Nessun accesso al loro contenuto. Tutto viene cifrato nel tuo browser prima dell’invio.",
+  sftHeroPrefix: "Trasferimento file sicuro.",
+  sftHeroAccent: "Cifrato prima dell’upload.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "I tuoi file vengono cifrati direttamente nel browser prima di lasciare il dispositivo. Non possiamo leggere il loro contenuto e non li scansiamo mai.",
   sftFeatureEncryptionTitle: "Crittografia nel browser",
   sftFeatureEncryptionText: "I file vengono cifrati su questo dispositivo prima dell’invio. PrivateNote conserva solo testo cifrato, mai il contenuto leggibile dei file.",
   sftFeatureFolderTitle: "Trasferimento di cartelle",
@@ -477,7 +477,7 @@ export const it: Translations = {
   closeNavigationMenu: "Chiudi menù",
   homeHeroLine1: "I tuoi messaggi,",
   homeHeroLine2: "la tua privacy",
-  homeHeroSubtitle: "Condividi note cifrate che scompaiono dopo la lettura. Niente pubblicità, niente profilazione, niente raccolta inutile: solo messaggi privati, monouso.",
+  homeHeroSubtitle: "Condividi password, messaggi sensibili e file tramite link cifrati end-to-end che scompaiono dopo l'apertura. Nessun account per i destinatari. Niente pubblicità. Zero profilazione.",
   whyPrivateNote: "Perché PrivateNote",
   shareSensitiveHeading: "Condividi note sensibili con sicurezza.",
   shareSensitiveBody: "PrivateNote protegge i tuoi messaggi cifrandoli nel browser e cancellando la nota dopo la lettura. Nessun account, nessun attrito inutile, nessuna pubblicità che ti segue.",
@@ -1520,7 +1520,7 @@ export const it: Translations = {
   homeFaq_encryptionKey_question: "La chiave di cifratura è archiviata sul vostro server?",
   homeFaq_encryptionKey_answer: "No. Per le note standard, il nostro server memorizza la nota e i metadati cifrati, non la chiave di decifratura utilizzabile. La chiave si trova nella parte del link dopo \"#\". Durante il caricamento di una pagina, i browser mantengono sul dispositivo tutto ciò che segue \"#\" e non lo inviano ai nostri server: per questo non riceviamo mai la tua chiave di decifratura.",
   homeFaq_metadata_question: "Quali metadati memorizzi?",
-  homeFaq_metadata_answer: "Archiviamo i payload cifrati delle note e le impostazioni necessarie per scadenze e limiti di lettura, non il testo in chiaro. Conserviamo anche statistiche aggregate di prima parte sul servizio: contatori giornalieri come note create o visualizzate, uso della protezione con password e della modalità IA, paese approssimativo, lingua dell’interfaccia e totali operativi simili. Queste statistiche non includono mai il contenuto delle note e non vengono condivise con fornitori pubblicitari o strumenti di analisi di terze parti. I log limitati per sicurezza e prevenzione degli abusi, ad esempio metadati a livello IP e rate limiting, vengono conservati per un breve periodo come descritto nella nostra Informativa sulla privacy.",
+  homeFaq_metadata_answer: "Archiviamo i payload cifrati delle note e le impostazioni necessarie per scadenze e limiti di lettura, non il testo in chiaro. Conserviamo anche statistiche aggregate di prima parte sul servizio: contatori giornalieri come note create o visualizzate, uso della protezione con password e della modalità IA, paese approssimativo, lingua dell’interfaccia, visite di pagina, tempo visibile, heatmap clic/scorrimento e totali operativi simili. Queste statistiche non includono mai il contenuto delle note, gli ID delle note né registrazioni di sessione e non vengono condivise con fornitori pubblicitari o strumenti di analisi di terze parti. I log limitati per sicurezza e prevenzione degli abusi, ad esempio metadati a livello IP e rate limiting, vengono conservati per un breve periodo come descritto nella nostra Informativa sulla privacy.",
   homeFaq_euStorage_question: "I dati di PrivateNote.ai sono archiviati nell'UE?",
   homeFaq_euStorage_answer: "Sì. I dati di autenticazione, le note cifrate e i log operativi sono archiviati in infrastruttura soggetta alla giurisdizione dell’UE. Parte del traffico di rete può comunque passare attraverso sistemi di sicurezza e distribuzione prima di raggiungere l’archiviazione.",
   homeFaq_recover_question: "Posso recuperare una nota dopo che è stata distrutta o è scaduta?",
@@ -1808,7 +1808,7 @@ export const it: Translations = {
   documentMetaAccountActivityDescription: "Attività recente relativa all'account e alle note.",
   documentMetaAccountPreferencesTitle: "Preferenze",
   documentMetaAccountPreferencesDescription: "Impostazioni di tema, lingua e notifica.",
-  sftHeroTitle: "Trasferimento sicuro di file con cifratura nel browser",
+  sftHeroTitle: "Trasferimento file sicuro. Cifrato prima dell’upload.",
   sftSeoHeading: "Condivisione di file cifrata senza esporre i tuoi file",
   sftSeoBody1:
     "PrivateNote invia file tramite link cifrati che scadono. I file vengono cifrati nel browser prima dell’invio, quindi il server conserva solo testo cifrato, mai il contenuto originale.",
@@ -1936,6 +1936,16 @@ export const it: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Come revocare una nota privata prima dell’apertura",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoca i link PrivateNote non aperti e consulta le timeline di prova di accesso per gli eventi di consegna—senza mettere segreti nelle email.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Proteggere il segreto professionale senza lasciare una cronologia permanente",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Un canale cifrato monouso, con l’identità dello studio, accessibile direttamente dal browser del cliente.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Le comuni app di messaggistica lasciano una cronologia. Per molte comunicazioni coperte dal segreto professionale, l’esigenza pratica è opposta: trasmettere un’informazione sensibile senza trasformarla in un’altra conversazione permanente.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Segreto professionale senza cronologia",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canale cifrato monouso, con l’identità dello studio, aperto nel browser del cliente. Senza applicazione. Vedi Business.",
   blogSocialMediaBansTitle: "I divieti sui social media per i minori funzioneranno?",
   blogSocialMediaBansSubtitle: "Cosa dice l'evidenza",
   blogSocialMediaBansExcerpt:

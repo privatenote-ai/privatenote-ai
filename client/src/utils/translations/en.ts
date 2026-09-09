@@ -5,12 +5,12 @@ export const en: Translations = {
   writeNote: "Write a Note",
   sharePassword: "Share a Password",
   shareFile: "Share a File",
-  sftHeroTitle: "Secure file transfer with browser-side encryption",
-  sftHeroPrefix: "The",
-  sftHeroAccent: "private way",
-  sftHeroSuffix: "to share files",
+  sftHeroTitle: "Secure File Transfer. Encrypted Before Upload.",
+  sftHeroPrefix: "Secure File Transfer.",
+  sftHeroAccent: "Encrypted Before Upload.",
+  sftHeroSuffix: "",
   sftHeroSubtitle:
-    "No file scanning. No access to your file contents. Encryption happens in your browser before upload.",
+    "Your files are encrypted directly in your browser before leaving your device. We can’t read their contents, and we never scan them.",
   sftSeoHeading: "Encrypted file sharing without exposing your files",
   sftSeoBody1:
     "PrivateNote sends files through expiring encrypted links. Files are encrypted in your browser before upload, so the server stores only ciphertext — never the original contents.",
@@ -580,7 +580,7 @@ export const en: Translations = {
   homeHeroLine1: "Your Messages,",
   homeHeroLine2: "Your Privacy",
   homeHeroSubtitle:
-    "Share encrypted, read-once notes and files that disappear after opening. No ads, no profiling, and no unnecessary data collection.",
+    "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
   whyPrivateNote: "Why PrivateNote",
   shareSensitiveHeading: "Share sensitive notes with confidence.",
   shareSensitiveBody:
@@ -1943,6 +1943,16 @@ export const en: Translations = {
   blogHowToSendNudesSafelyMetaTitle: "How to Send Nudes Safely: Adult Guide",
   blogHowToSendNudesSafelyMetaDescription:
     "Learn how to send intimate photos more safely: remove identifying details and metadata, avoid cloud copies, use encryption, and reduce sextortion risk.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Privileged Communications Without a Lasting Chat Transcript",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "A branded, one-time channel for counsel whose clients will not install Signal or WhatsApp",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Consumer chat keeps a record. Many privileged exchanges need the opposite: a short-lived delivery, not another transcript. How law firms—especially in criminal defence—can deliver instructions and papers under their own name, without asking a lay client to install another app.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Secure client delivery for lawyers",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Deliver privileged instructions without a Signal or WhatsApp transcript. Branded one-time links for counsel and clients—no app install. See Business.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:
@@ -2109,7 +2119,7 @@ export const en: Translations = {
     "No. For standard notes, our server stores the encrypted note and metadata, not the usable decryption key. The key is in the part of the link after `#`. Browsers keep everything after `#` on the device when loading a page—they do not send it to our servers—so we never receive your decryption key.",
   homeFaq_metadata_question: "What metadata do you store?",
   homeFaq_metadata_answer:
-    "We store encrypted note payloads and the settings needed for expiration and read limits—not your plaintext. We also keep aggregated, first-party service statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, and similar operational totals. Those statistics never include note content and are not shared with advertising or third-party analytics providers. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
+    "We store encrypted note payloads and the settings needed for expiration and read limits—not your plaintext. We also keep aggregated, first-party service statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, page visits, time a page stays visible in the foreground, coarse click/scroll heatmaps, and similar operational totals. Those statistics never include note content, note IDs, or session recordings, and are not shared with advertising or third-party analytics providers. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
   homeFaq_euStorage_question: "Is PrivateNote.ai data stored in the EU?",
   homeFaq_euStorage_answer:
     "Yes. Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure. Some network traffic may still pass through security and delivery systems before reaching storage.",

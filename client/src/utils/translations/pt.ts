@@ -5,10 +5,10 @@ export const pt: Translations = {
   writeNote: "Escreva uma nota",
   sharePassword: "Compartilhe uma senha",
   shareFile: "Compartilhar um arquivo",
-  sftHeroPrefix: "O",
-  sftHeroAccent: "maneira privada",
-  sftHeroSuffix: "para compartilhar arquivos",
-  sftHeroSubtitle: "Sem verificação de arquivos. Sem acesso aos seus dados. A criptografia acontece no seu navegador.",
+  sftHeroPrefix: "Transferência segura de arquivos.",
+  sftHeroAccent: "Criptografado antes do upload.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Seus arquivos são criptografados diretamente no navegador antes de sair do seu dispositivo. Não podemos ler o conteúdo e nunca os verificamos.",
   sftFeatureEncryptionTitle: "Criptografia do lado do navegador",
   sftFeatureEncryptionText: "Os arquivos são criptografados neste dispositivo antes do upload. A PrivateNote armazena apenas texto cifrado — nunca o conteúdo legível dos arquivos.",
   sftFeatureFolderTitle: "Transferência de pasta",
@@ -477,7 +477,7 @@ export const pt: Translations = {
   closeNavigationMenu: "Fechar menu",
   homeHeroLine1: "Suas mensagens,",
   homeHeroLine2: "Sua privacidade",
-  homeHeroSubtitle: "Compartilhe notas criptografadas que se autodestroem após a leitura. Sem anúncios, sem criação de perfil, sem coleta de dados desnecessária — apenas mensagens privadas e únicas.",
+  homeHeroSubtitle: "Compartilhe senhas, mensagens sensíveis e arquivos por meio de links criptografados de ponta a ponta que desaparecem após a abertura. Sem contas para destinatários. Sem anúncios. Zero criação de perfil.",
   whyPrivateNote: "Por que PrivateNote",
   shareSensitiveHeading: "Compartilhe notas confidenciais com confiança.",
   shareSensitiveBody: "PrivateNote mantém suas mensagens privadas criptografando-as no navegador e deixando a nota desaparecer após ser lida. Sem contas, sem atrito e sem anúncios seguindo você.",
@@ -1462,7 +1462,7 @@ export const pt: Translations = {
   homeFaq_encryptionKey_question: "A chave de criptografia está armazenada no seu servidor?",
   homeFaq_encryptionKey_answer: "Não. Para notas padrão, nosso servidor armazena a nota criptografada e os metadados, não a chave de descriptografia utilizável. A chave está na parte do link após `#`. Os navegadores mantêm tudo após `#` no dispositivo ao carregar uma página – eles não a enviam para nossos servidores – portanto, nunca recebemos sua chave de descriptografia.",
   homeFaq_metadata_question: "Quais metadados você armazena?",
-  homeFaq_metadata_answer: "Armazenamos cargas úteis de notas criptografadas e as configurações necessárias para expiração e limites de leitura - não seu texto simples. Também mantemos estatísticas agregadas de serviços primários: contadores diários, como notas criadas ou visualizadas, proteção por senha e uso do modo AI, país aproximado e idioma da interface do usuário e totais operacionais semelhantes. Essas estatísticas nunca incluem conteúdo de notas e não são compartilhadas com publicidade ou provedores de análise terceirizados. Os registros limitados de segurança e prevenção de abusos (por exemplo, metadados em nível de IP e limitação de taxa) são retidos por um curto período, conforme descrito em nossa Política de Privacidade.",
+  homeFaq_metadata_answer: "Armazenamos cargas úteis de notas criptografadas e as configurações necessárias para expiração e limites de leitura - não seu texto simples. Também mantemos estatísticas agregadas de serviços primários: contadores diários, como notas criadas ou visualizadas, proteção por senha e uso do modo AI, país aproximado e idioma da interface, visitas de página, tempo visível, heatmaps grosseiros de cliques/rolagem e totais operacionais semelhantes. Essas estatísticas nunca incluem conteúdo de notas, IDs de notas nem gravações de sessão e não são compartilhadas com publicidade ou provedores de análise terceirizados. Os registros limitados de segurança e prevenção de abusos (por exemplo, metadados em nível de IP e limitação de taxa) são retidos por um curto período, conforme descrito em nossa Política de Privacidade.",
   homeFaq_euStorage_question: "Os dados de PrivateNote.ai são armazenados na UE?",
   homeFaq_euStorage_answer: "Sim. Os dados de autenticação, as notas encriptadas e os registos operacionais são armazenados na infraestrutura da jurisdição da UE. Algum tráfego de rede ainda pode passar pelos sistemas de segurança e entrega antes de chegar ao armazenamento.",
   homeFaq_recover_question: "Posso recuperar uma nota depois de destruída ou expirada?",
@@ -1751,7 +1751,7 @@ export const pt: Translations = {
   documentMetaAccountPreferencesTitle: "Preferências",
   documentMetaAccountPreferencesDescription: "Configurações de tema, idioma e notificação.",
 
-  sftHeroTitle: "Transferência segura de arquivos com criptografia no navegador",
+  sftHeroTitle: "Transferência segura de arquivos. Criptografado antes do upload.",
   sftSeoHeading: "Compartilhe arquivos criptografados sem expor o conteúdo",
   sftSeoBody1:
     "O PrivateNote envia arquivos por links criptografados que expiram. Os arquivos são criptografados no seu navegador antes do upload, então o servidor armazena apenas texto cifrado — nunca o conteúdo original.",
@@ -1943,6 +1943,16 @@ export const pt: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Como revogar uma nota privada antes de a abrir",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revogue links PrivateNote por abrir e consulte cronologias de prova de acesso dos eventos de entrega—sem pôr segredos no e-mail.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Proteja o segredo profissional sem deixar um historial permanente",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Um canal cifrado de utilização única, com a identidade do escritório, acessível diretamente no navegador do cliente.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "As aplicações de mensagens do dia a dia podem deixar um historial duradouro. Em muitas comunicações abrangidas pelo segredo profissional, o objetivo prático é precisamente o contrário: transmitir uma instrução ou um documento sensível sem criar mais um registo permanente.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Segredo profissional sem historial",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canal cifrado de utilização única, com a identidade do escritório, aberto no navegador do cliente. Sem aplicação. Ver Business.",
   blogSocialMediaBansTitle: "As proibições de redes sociais para crianças funcionarão?",
   blogSocialMediaBansSubtitle: "O que a evidência diz",
   blogSocialMediaBansExcerpt:

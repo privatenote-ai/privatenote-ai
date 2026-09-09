@@ -10,6 +10,7 @@ import {
 export {
   getUserLanguage,
   LANGUAGE_OPTIONS,
+  intlLocaleForLanguage,
   normalizeLanguageCode,
   SUPPORTED_LANGUAGES,
   type LanguageOption,

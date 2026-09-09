@@ -77,6 +77,16 @@ function formatFileWindowLabel(seconds: number): string {
   return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
 }
 
+function planStory(planId: AccountType): string {
+  if (planId === "free") return "Send securely";
+  if (planId === "personal_premium") return "Verify & control";
+  return "Brand & professionalize";
+}
+
+function isDowngradeCta(planId: AccountType, currentPlan?: AccountType | null): boolean {
+  return currentPlan === "business_premium" && planId === "personal_premium";
+}
+
 function planCta(
   planId: AccountType,
   options?: {
@@ -85,7 +95,7 @@ function planCta(
     signedIn?: boolean;
   },
 ): string {
-  if (options?.isCurrent) return "Current plan";
+  if (options?.isCurrent) return "Your current plan";
   if (planId === "free") {
     return options?.signedIn ? "Included" : "Start free";
   }
@@ -93,7 +103,7 @@ function planCta(
   const current = options?.currentPlan ?? null;
   if (planId === "personal_premium") {
     if (options?.signedIn && (!current || current === "free")) return "Upgrade to Starter";
-    if (current === "business_premium") return "Switch to Starter";
+    if (current === "business_premium") return "Downgrade to Starter";
     return "Choose Starter";
   }
 
@@ -396,7 +406,8 @@ function PlanCard({
   signedIn?: boolean;
 }) {
   const plan = PLAN_CATALOG[planId];
-  const highlighted = planId === HIGHLIGHTED_PLAN && !isCurrent;
+  const downgrade = isDowngradeCta(planId, currentPlan);
+  const highlighted = planId === HIGHLIGHTED_PLAN && !isCurrent && !downgrade;
   const annualSavings = annualPlanSavingsPercent(planId, currency);
   const isFree = planId === "free";
   const displayAmount = planAmountFor(planId, currency, interval);
@@ -407,16 +418,26 @@ function PlanCard({
       : `Billed annually · about ${annualSavings}% less than monthly. Cancel anytime before renewal.`;
   const ctaLabel = planCta(planId, { isCurrent, currentPlan, signedIn });
   const primaryCta =
-    !isCurrent && (highlighted || ctaLabel === "Upgrade to Business");
+    !isCurrent && !downgrade && (highlighted || ctaLabel === "Upgrade to Business");
 
   const buttonClassName = [
-    "mt-6 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
+    "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
     isCurrent
       ? "border border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100"
       : primaryCta
         ? "bg-primary text-primary-foreground hover:bg-primary/90"
         : "border border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
   ].join(" ");
+  const ctaContent = isCurrent ? (
+    <>
+      <Check className="h-4 w-4" aria-hidden />
+      {ctaLabel}
+    </>
+  ) : checkoutBusy ? (
+    "Opening checkout…"
+  ) : (
+    ctaLabel
+  );
 
   return (
     <article
@@ -441,7 +462,8 @@ function PlanCard({
       <h2 className="pr-28 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
         {plan.label}
       </h2>
-      <p className="mt-3 min-h-[3.25rem] text-base leading-7 text-gray-600 dark:text-gray-400">
+      <p className="mt-1 text-sm font-medium text-primary">{planStory(planId)}</p>
+      <p className="mt-3 min-h-[5.25rem] text-base leading-7 text-gray-600 dark:text-gray-400">
         {plan.tagline}
       </p>
       <div className="mt-6">
@@ -474,7 +496,7 @@ function PlanCard({
       ) : null}
       {isCurrent || (signedIn && planId === "free" && currentPlan && currentPlan !== "free") ? (
         <button type="button" className={buttonClassName} disabled>
-          {ctaLabel}
+          {ctaContent}
         </button>
       ) : onCheckout && planId !== "free" ? (
         <button
@@ -483,11 +505,11 @@ function PlanCard({
           disabled={checkoutBusy}
           onClick={() => onCheckout(planId)}
         >
-          {checkoutBusy ? "Opening checkout…" : ctaLabel}
+          {ctaContent}
         </button>
       ) : (
         <Link href={href} className={buttonClassName}>
-          {ctaLabel}
+          {ctaContent}
         </Link>
       )}
       <p className="mt-7 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
@@ -661,11 +683,11 @@ export default function Premium() {
     <MarketingDocShell className="mx-auto max-w-7xl">
       <section className="text-center">
         <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-          Simple plans for secure notes.
+          Simple plans for secure sharing.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
-          Free for sending secrets without an account. Starter when you need to know who opened
-          it. Business when the reveal should carry your brand.
+          Send encrypted notes, passwords, and files for free. Upgrade when you need verified
+          recipients, proof of access, higher limits, or your own branding.
         </p>
         {currentPlan ? (
           <p className="mx-auto mt-4 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-sm font-medium text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">

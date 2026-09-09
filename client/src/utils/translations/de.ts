@@ -5,11 +5,11 @@ export const de: Translations = {
   writeNote: "Notiz schreiben",
   sharePassword: "Passwort teilen",
   shareFile: "Datei teilen",
-  sftHeroTitle: "Sichere Dateiübertragung mit Verschlüsselung im Browser",
-  sftHeroPrefix: "Der",
-  sftHeroAccent: "private Weg",
-  sftHeroSuffix: "zum Teilen von Dateien",
-  sftHeroSubtitle: "Kein Dateiscanning. Kein Zugriff auf Ihre Dateiinhalte. Die Verschlüsselung erfolgt vor dem Hochladen in Ihrem Browser.",
+  sftHeroTitle: "Sichere Dateiübertragung. Verschlüsselt vor dem Upload.",
+  sftHeroPrefix: "Sichere Dateiübertragung.",
+  sftHeroAccent: "Verschlüsselt vor dem Upload.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Ihre Dateien werden direkt in Ihrem Browser verschlüsselt, bevor sie Ihr Gerät verlassen. Wir können ihren Inhalt nicht lesen und scannen sie nie.",
   sftSeoHeading: "Verschlüsselte Dateien teilen, ohne Inhalte offenzulegen",
   sftSeoBody1:
     "PrivateNote sendet Dateien über ablaufende, verschlüsselte Links. Dateien werden vor dem Hochladen in Ihrem Browser verschlüsselt, sodass der Server nur Chiffretext speichert — nie die ursprünglichen Inhalte.",
@@ -492,7 +492,7 @@ export const de: Translations = {
   closeNavigationMenu: "Menü schließen",
   homeHeroLine1: "Ihre Nachrichten,",
   homeHeroLine2: "Ihre Privatsphäre",
-  homeHeroSubtitle: "Teilen Sie verschlüsselte Notizen und Dateien, die nach dem Öffnen verschwinden. Keine Werbung, kein Profiling und keine unnötige Datensammlung.",
+  homeHeroSubtitle: "Teilen Sie Passwörter, sensible Nachrichten und Dateien über Ende-zu-Ende-verschlüsselte Links, die nach dem Öffnen verschwinden. Keine Empfängerkonten. Keine Werbung. Kein Profiling.",
   whyPrivateNote: "Warum PrivateNote",
   shareSensitiveHeading: "Vertrauliche Informationen teilen, ohne dauerhafte Spuren zu hinterlassen.",
   shareSensitiveBody: "PrivateNote verschlüsselt Ihre Nachricht im Browser, bevor sie hochgeladen wird, und löscht sie nach dem Öffnen oder Ablauf. Keine Konten für Empfänger, keine unnötige Reibung und keine Werbung, die Ihnen folgt.",
@@ -1602,6 +1602,16 @@ export const de: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Private Notiz vor dem Öffnen widerrufen",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Widerrufen Sie ungeöffnete PrivateNote-Links und sehen Sie Zugriffsbeleg-Zeitlinien für Zustellereignisse—ohne Geheimnisse in E-Mails zu legen.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Mandatsgeheimnis wahren — ohne dauerhafte Spuren im Chat",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Übermitteln Sie vertrauliche Weisungen und Dateien über einen Ende-zu-Ende-verschlüsselten Link. Mandanten müssen keine App installieren.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "E-Mail hinterlässt dauerhafte Kopien. Auch Messenger wie WhatsApp und Signal können einen später auswertbaren Chatverlauf auf dem Gerät hinterlassen. Wie Kanzleien in Deutschland, Österreich und der Schweiz — insbesondere in der Strafverteidigung — vertrauliche Informationen unter eigener Kanzleiidentität übermitteln können, ohne Mandanten eine weitere App aufzuzwingen.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Mandatsgeheimnis ohne Chat-Verlauf",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Vertrauliche Weisungen und Dateien über einen Ende-zu-Ende-verschlüsselten Link übermitteln. Keine App für Mandanten. Kanzleikonto: PrivateNote Business.",
   blogSocialMediaBansTitle: "Wirken Social-Media-Verbote für Kinder?",
   blogSocialMediaBansSubtitle: "Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:
@@ -1691,7 +1701,7 @@ export const de: Translations = {
   homeFaq_encryptionKey_question: "Wird der Verschlüsselungsschlüssel auf Ihrem Server gespeichert?",
   homeFaq_encryptionKey_answer: "Nein. Bei Standardnotizen speichern wir die verschlüsselte Notiz und die notwendigen Metadaten, nicht den nutzbaren Entschlüsselungsschlüssel. Der Schlüssel steht im Linkteil nach `#`. Browser behalten alles nach `#` beim Laden einer Seite auf dem Gerät und senden diesen Teil nicht an unsere Server. Deshalb erhalten wir Ihren Entschlüsselungsschlüssel nicht.",
   homeFaq_metadata_question: "Welche Metadaten speichern Sie?",
-  homeFaq_metadata_answer: "Wir speichern verschlüsselte Notizdaten und die Einstellungen, die für Ablauf und Leselimits nötig sind — nicht Ihren Klartext. Zusätzlich erfassen wir aggregierte First-Party-Statistiken zum Betrieb des Dienstes, etwa tägliche Zähler für erstellte oder gelesene Notizen, Nutzung von Passwortschutz und KI-Modus, grobe Länder- und UI-Sprachangaben sowie ähnliche Betriebskennzahlen. Diese Statistiken enthalten nie Notizinhalte und werden nicht an Werbe- oder Drittanbieter-Analytics weitergegeben. Begrenzte Sicherheits- und Missbrauchsschutz-Logs, zum Beispiel IP-bezogene Metadaten und Rate-Limiting-Daten, werden nur kurzzeitig gespeichert, wie in unserer Datenschutzerklärung beschrieben.",
+  homeFaq_metadata_answer: "Wir speichern verschlüsselte Notizdaten und die Einstellungen, die für Ablauf und Leselimits nötig sind — nicht Ihren Klartext. Zusätzlich erfassen wir aggregierte First-Party-Statistiken zum Betrieb des Dienstes, etwa tägliche Zähler für erstellte oder gelesene Notizen, Nutzung von Passwortschutz und KI-Modus, grobe Länder- und UI-Sprachangaben, Seitenbesuche, sichtbare Verweildauer, grobe Klick-/Scroll-Heatmaps sowie ähnliche Betriebskennzahlen. Diese Statistiken enthalten nie Notizinhalte, Notiz-IDs oder Session-Aufzeichnungen und werden nicht an Werbe- oder Drittanbieter-Analytics weitergegeben. Begrenzte Sicherheits- und Missbrauchsschutz-Logs, zum Beispiel IP-bezogene Metadaten und Rate-Limiting-Daten, werden nur kurzzeitig gespeichert, wie in unserer Datenschutzerklärung beschrieben.",
   homeFaq_euStorage_question: "Werden PrivateNote.ai-Daten in der EU gespeichert?",
   homeFaq_euStorage_answer: "Ja. Authentifizierungsdaten, verschlüsselte Notizen und Betriebsdaten werden in Infrastruktur unter EU-Rechtsraum gespeichert. Ein Teil des Netzwerkverkehrs kann weiterhin Sicherheits- und Auslieferungssysteme durchlaufen, bevor er den Speicher erreicht.",
   homeFaq_recover_question: "Kann ich eine zerstörte oder abgelaufene Notiz wiederherstellen?",

@@ -33,6 +33,7 @@ import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
 import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 import { PREMIUM_PAGE_PUBLIC } from "@shared/premiumPagePublic";
+import { NativePageAnalytics } from "@/components/NativePageAnalytics";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
@@ -417,6 +418,7 @@ function App() {
           <AccountEntitlementsProvider>
             <ThemePreferenceRoot />
             <Router />
+            <NativePageAnalytics />
             <DeferredToaster />
           </AccountEntitlementsProvider>
         </AuthProvider>

@@ -7,6 +7,7 @@ import { parseNoteOpensAtFromBody } from "@shared/noteMetaEligibility";
 import { isValidReceiptAckTokenHash } from "@shared/noteReceiptAck";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
+import { parsePageEngagementFlush } from "@shared/pageEngagement";
 import {
   normalizeAccountType,
   planFeaturesFor,
@@ -8094,6 +8095,11 @@ function verifyCsrfOrigin(request: Request): Response | null {
   if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
     return null;
   }
+  const path = new URL(request.url).pathname;
+  // Allow-listed, unauthenticated counters only — sendBeacon cannot omit cookies.
+  if (path === "/api/analytics/event") {
+    return null;
+  }
   const cookies = request.headers.get("Cookie") || "";
   const hasSessionCookie =
     cookies.includes(SESSION_COOKIE_PROD_NAME + "=") || cookies.includes(SESSION_COOKIE_PREVIEW_NAME + "=");
@@ -8101,7 +8107,6 @@ function verifyCsrfOrigin(request: Request): Response | null {
     return null;
   }
 
-  const path = new URL(request.url).pathname;
   const originHeader = request.headers.get("Origin");
   let allowedOrigin: string | null = null;
 
@@ -10306,7 +10311,12 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // No auth required — only accepts a fixed allow-list of event types.
   if (pathname === "/api/analytics/event" && method === "POST") {
     try {
-      const body = await request.json().catch(() => ({})) as { event?: unknown; page?: unknown };
+      const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+      const engagement = parsePageEngagementFlush(body);
+      if (engagement) {
+        storage.trackPageEngagement(engagement).catch(() => {});
+        return jsonResponse({ ok: true }, 200, request);
+      }
       const allowed = ["wrong_password", "qr_share"] as const;
       type AllowedEvent = typeof allowed[number];
       const event = typeof body?.event === "string" && (allowed as readonly string[]).includes(body.event)
@@ -10925,6 +10935,38 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
     } catch (error) {
       console.error("Error fetching aggregate analytics:", error);
       return jsonResponse({ message: "Failed to fetch aggregate metrics" }, 500, request);
+    }
+  }
+
+  if (pathname === "/api/admin/analytics/engagement" && method === "GET") {
+    const authError = requireAdmin(request, env);
+    if (authError) return authError;
+
+    try {
+      const startParam = url.searchParams.get("startDate");
+      const endParam = url.searchParams.get("endDate");
+      if (!startParam || !endParam) {
+        return jsonResponse(
+          { message: "startDate and endDate are required (YYYY-MM-DD, UTC day boundaries)" },
+          400,
+          request,
+        );
+      }
+      const start = parseAnalyticsUtcDayParam(startParam);
+      const end = parseAnalyticsUtcDayParam(endParam);
+      if (!start || !end) {
+        return jsonResponse({ message: "startDate and endDate must be YYYY-MM-DD" }, 400, request);
+      }
+      const maxDays = 366;
+      const spanDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+      if (spanDays < 1 || spanDays > maxDays) {
+        return jsonResponse({ message: "Date range must be 1–366 UTC days" }, 400, request);
+      }
+      const result = await storage.getAggregatedPageEngagement(start, end);
+      return jsonResponse(result, 200, request);
+    } catch (error) {
+      console.error("Error fetching engagement analytics:", error);
+      return jsonResponse({ message: "Failed to fetch engagement analytics" }, 500, request);
     }
   }
 

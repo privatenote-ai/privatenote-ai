@@ -40,6 +40,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "revoke-unopened-note-proof-of-access": "2026-08-09T14:00:00.000Z",
   "delayed-reveal-scheduled-secret-links": "2026-08-06T12:00:00.000Z",
   "how-to-send-nudes-safely": "2026-09-03T12:00:00.000Z",
+  "secure-client-delivery-for-lawyers": "2026-09-08T12:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -81,6 +82,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "revoke-unopened-note-proof-of-access": 6,
   "delayed-reveal-scheduled-secret-links": 6,
   "how-to-send-nudes-safely": 7,
+  "secure-client-delivery-for-lawyers": 7,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -116,6 +118,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -37,
+      title: t.blogSecureClientDeliveryForLawyersTitle,
+      excerpt: t.blogSecureClientDeliveryForLawyersExcerpt,
+      author: "PrivateNote.ai",
+      slug: "secure-client-delivery-for-lawyers",
+      publishedAt: at("secure-client-delivery-for-lawyers"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity]),
+      content: "",
+      coverImage: "/images/blog-send-sensitive-documents-securely-hero.jpg",
+      published: true,
+      createdAt: at("secure-client-delivery-for-lawyers"),
+      updatedAt: at("secure-client-delivery-for-lawyers"),
+    },
     {
       id: -36,
       title: t.blogHowToSendNudesSafelyTitle,

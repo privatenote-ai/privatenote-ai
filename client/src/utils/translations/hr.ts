@@ -5,10 +5,10 @@ export const hr: Translations = {
   writeNote: "Napišite bilješku",
   sharePassword: "Podijelite lozinku",
   shareFile: "Podijelite datoteku",
-  sftHeroPrefix: "Privatan",
-  sftHeroAccent: "privatan način",
-  sftHeroSuffix: "za dijeljenje datoteka",
-  sftHeroSubtitle: "Nema skeniranja datoteka. Nema pristupa vašim podacima. Šifriranje se događa u vašem pregledniku.",
+  sftHeroPrefix: "Siguran prijenos datoteka.",
+  sftHeroAccent: "Šifrirano prije prijenosa.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Datoteke se šifriraju izravno u pregledniku prije nego što napuste vaš uređaj. Ne možemo čitati njihov sadržaj i nikad ih ne skeniramo.",
   sftFeatureEncryptionTitle: "Enkripcija na strani preglednika",
   sftFeatureEncryptionText: "Datoteke su šifrirane na ovom uređaju prije prijenosa. PrivateNote pohranjuje samo šifrirani tekst — nikad čitljiv sadržaj datoteke.",
   sftFeatureFolderTitle: "Prijenos mape",
@@ -477,7 +477,7 @@ export const hr: Translations = {
   closeNavigationMenu: "Zatvori izbornik",
   homeHeroLine1: "Vaše poruke,",
   homeHeroLine2: "Vaša privatnost",
-  homeHeroSubtitle: "Podijelite šifrirane bilješke koje se same uništavaju nakon čitanja. Bez oglasa, bez profiliranja, bez nepotrebnog prikupljanja podataka — samo privatne, jednokratne poruke.",
+  homeHeroSubtitle: "Podijelite lozinke, osjetljive poruke i datoteke putem end-to-end šifriranih poveznica koje nestaju nakon otvaranja. Bez računa za primatelje. Bez oglasa. Nula profiliranja.",
   whyPrivateNote: "Zašto PrivateNote",
   shareSensitiveHeading: "Podijelite osjetljive bilješke s povjerenjem.",
   shareSensitiveBody: "PrivateNote čuva privatnost vaših poruka šifriranjem u pregledniku i dopuštanjem da bilješka nestane nakon što se pročita. Bez računa, bez trvenja i bez reklama koje vas prate.",
@@ -1462,7 +1462,7 @@ export const hr: Translations = {
   homeFaq_encryptionKey_question: "Je li ključ za šifriranje pohranjen na vašem poslužitelju?",
   homeFaq_encryptionKey_answer: "Ne. Za standardne bilješke naš poslužitelj pohranjuje šifriranu bilješku i metapodatke, a ne upotrebljivi ključ za dešifriranje. Ključ je u dijelu poveznice iza `#`. Preglednici čuvaju sve nakon \"#\" na uređaju prilikom učitavanja stranice—oni to ne šalju našim poslužiteljima—tako da nikada ne primimo vaš ključ za dešifriranje.",
   homeFaq_metadata_question: "Koje metapodatke pohranjujete?",
-  homeFaq_metadata_answer: "Pohranjujemo šifrirane sadržaje bilješki i postavke potrebne za istek i ograničenja čitanja—ne vaš otvoreni tekst. Također čuvamo agregirane statistike usluga prve strane: dnevne brojače kao što su stvorene ili pregledane bilješke, zaštita lozinkom i upotreba načina AI, gruba zemlja i jezik korisničkog sučelja i slični operativni ukupni iznosi. Ta statistika nikada ne uključuje sadržaj bilješki i ne dijeli se s oglašivačima ili pružateljima analitičkih usluga trećih strana. Ograničeni sigurnosni zapisi i zapisnici za sprječavanje zlouporabe (na primjer metapodaci na razini IP-a i ograničenje brzine) zadržavaju se kratko razdoblje, kao što je opisano u našim Pravilima o privatnosti.",
+  homeFaq_metadata_answer: "Pohranjujemo šifrirane sadržaje bilješki i postavke potrebne za istek i ograničenja čitanja—ne vaš otvoreni tekst. Također čuvamo agregirane statistike usluga prve strane: dnevne brojače kao što su stvorene ili pregledane bilješke, zaštita lozinkom i upotreba načina AI, gruba zemlja i jezik korisničkog sučelja, posjeti stranicama, vidljivo vrijeme, grube klik/skrol heat mape i slični operativni ukupni iznosi. Ta statistika nikada ne uključuje sadržaj bilješki, ID-ove bilješki niti snimke sesija i ne dijeli se s oglašivačima ili pružateljima analitičkih usluga trećih strana. Ograničeni sigurnosni zapisi i zapisnici za sprječavanje zlouporabe (na primjer metapodaci na razini IP-a i ograničenje brzine) zadržavaju se kratko razdoblje, kao što je opisano u našim Pravilima o privatnosti.",
   homeFaq_euStorage_question: "Jesu li podaci PrivateNote.ai pohranjeni u EU?",
   homeFaq_euStorage_answer: "Da. Podaci o autentifikaciji, šifrirane bilješke i operativni zapisi pohranjuju se u infrastrukturu nadležnosti EU-a. Dio mrežnog prometa još uvijek može proći kroz sigurnosne sustave i sustave isporuke prije nego što stigne do pohrane.",
   homeFaq_recover_question: "Mogu li povratiti novčanicu nakon što je uništena ili istekla?",
@@ -1751,7 +1751,7 @@ export const hr: Translations = {
   documentMetaAccountPreferencesTitle: "Postavke",
   documentMetaAccountPreferencesDescription: "Postavke teme, jezika i obavijesti.",
 
-  sftHeroTitle: "Siguran prijenos datoteka sa šifriranjem u pregledniku",
+  sftHeroTitle: "Siguran prijenos datoteka. Šifrirano prije prijenosa.",
   sftSeoHeading: "Dijelite šifrirane datoteke bez izlaganja sadržaja",
   sftSeoBody1:
     "PrivateNote šalje datoteke putem privremenih šifriranih veza. Datoteke se šifriraju u vašem pregledniku prije učitavanja, pa poslužitelj pohranjuje samo šifrirani tekst — nikad izvorni sadržaj.",
@@ -1943,6 +1943,16 @@ export const hr: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Kako opozvati privatnu bilješku prije otvaranja",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Opozovite neotvorene PrivateNote linkove i pregledajte vremenske crte dokaza pristupa za događaje isporuke—bez stavljanja tajni u e-poštu.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Zaštitite odvjetničku tajnu bez trajne povijesti poruka",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Sigurna dostava uputa i dokumenata klijentima — bez instaliranja dodatnih aplikacija.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Povjerljiva komunikacija između odvjetnika i klijenta zaslužuje više od šifriranja tijekom prijenosa. Važno je i koje kopije ostaju nakon dostave, tko im kasnije može pristupiti i koliko dugo ostaju dostupne.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Odvjetnička tajna bez povijesti poruka",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Sigurna dostava uputa i dokumenata klijentima — bez instaliranja dodatnih aplikacija. Pogledajte Business.",
   blogSocialMediaBansTitle: "Hoće li zabrane društvenih mreža za djecu djelovati?",
   blogSocialMediaBansSubtitle: "Što kaže evidencija",
   blogSocialMediaBansExcerpt:

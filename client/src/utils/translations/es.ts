@@ -5,11 +5,11 @@ export const es: Translations = {
   writeNote: "Escribir una nota",
   sharePassword: "Compartir contraseña",
   shareFile: "Compartir un archivo",
-  sftHeroTitle: "Transferencia segura de archivos con cifrado en el navegador",
-  sftHeroPrefix: "La",
-  sftHeroAccent: "forma privada",
-  sftHeroSuffix: "de compartir archivos",
-  sftHeroSubtitle: "Sin análisis de archivos. Sin acceso a tus datos. Todo se cifra en tu navegador antes de subir.",
+  sftHeroTitle: "Transferencia segura de archivos. Cifrado antes de subir.",
+  sftHeroPrefix: "Transferencia segura de archivos.",
+  sftHeroAccent: "Cifrado antes de subir.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Tus archivos se cifran directamente en el navegador antes de salir de tu dispositivo. No podemos leer su contenido y nunca los analizamos.",
   sftSeoHeading: "Comparte archivos cifrados sin exponer su contenido",
   sftSeoBody1:
     "PrivateNote envía archivos mediante enlaces cifrados que caducan. Los archivos se cifran en tu navegador antes de subirlos, así que el servidor solo almacena texto cifrado, nunca el contenido original.",
@@ -492,7 +492,7 @@ export const es: Translations = {
   closeNavigationMenu: "Cerrar menú",
   homeHeroLine1: "Tus mensajes,",
   homeHeroLine2: "tu privacidad",
-  homeHeroSubtitle: "Comparte notas cifradas que se autodestruyen después de leerlas. Sin anuncios, sin perfilado ni recopilación innecesaria de datos — solo mensajes privados de un solo uso.",
+  homeHeroSubtitle: "Comparte contraseñas, mensajes sensibles y archivos mediante enlaces cifrados de extremo a extremo que desaparecen al abrirlos. Sin cuentas para destinatarios. Sin anuncios. Cero perfilado.",
   whyPrivateNote: "Por qué PrivateNote",
   shareSensitiveHeading: "Comparte notas sensibles con confianza.",
   shareSensitiveBody: "PrivateNote cifra tus mensajes en el navegador y hace que la nota desaparezca después de leerla. Sin cuenta obligatoria, sin fricción y sin anuncios que te sigan.",
@@ -1606,6 +1606,16 @@ export const es: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Cómo revocar una nota privada antes de abrirla",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoca enlaces PrivateNote sin abrir y consulta cronologías de prueba de acceso de los eventos de entrega—sin poner secretos en el correo.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Proteja el secreto profesional sin dejar un historial permanente",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Un canal cifrado de un solo uso, con la identidad de su despacho y accesible directamente desde el navegador del cliente.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "El correo y las mensajerías pueden dejar copias duraderas. En muchos intercambios sujetos al secreto profesional, el objetivo práctico es el contrario: transmitir una instrucción o una pieza sensible sin convertirla en otro historial permanente.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Secreto profesional sin historial",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canal cifrado de un solo uso, con la identidad del despacho, abierto en el navegador del cliente. Sin aplicación. Véase Business.",
   blogSocialMediaBansTitle: "¿Funcionarán las prohibiciones de redes sociales para menores?",
   blogSocialMediaBansSubtitle: "Lo que dice la evidencia",
   blogSocialMediaBansExcerpt:
@@ -1704,7 +1714,7 @@ export const es: Translations = {
   homeFaq_encryptionKey_question: "¿Se guarda la clave de cifrado en el servidor?",
   homeFaq_encryptionKey_answer: "No. En las notas estándar guardamos la nota cifrada y metadatos, no la clave de descifrado. La clave va en la parte del enlace después de `#`. Los navegadores no envían lo que va después de `#` al cargar la página, así que nunca recibimos tu clave.",
   homeFaq_metadata_question: "¿Qué metadatos almacenan?",
-  homeFaq_metadata_answer: "Almacenamos cargas útiles cifradas y los ajustes necesarios para la caducidad y los límites de lectura—no tu texto en claro. También conservamos estadísticas agregadas de servicio de primera parte: contadores diarios como notas creadas o vistas, uso de protección por contraseña y modo de IA, país aproximado e idioma de la interfaz, y totales operativos similares. Esas estadísticas nunca incluyen el contenido de la nota y no se comparten con proveedores de publicidad ni analítica de terceros. Los registros limitados de seguridad y prevención de abuso (por ejemplo metadatos de IP y limitación de tasa) se conservan durante un período breve, según se describe en nuestra Política de privacidad.",
+  homeFaq_metadata_answer: "Almacenamos cargas útiles cifradas y los ajustes necesarios para la caducidad y los límites de lectura—no tu texto en claro. También conservamos estadísticas agregadas de servicio de primera parte: contadores diarios como notas creadas o vistas, uso de protección por contraseña y modo de IA, país aproximado e idioma de la interfaz, visitas de página, tiempo visible, mapas de calor de clics/desplazamiento, y totales operativos similares. Esas estadísticas nunca incluyen el contenido de la nota, IDs de nota ni grabaciones de sesión y no se comparten con proveedores de publicidad ni analítica de terceros. Los registros limitados de seguridad y prevención de abuso (por ejemplo metadatos de IP y limitación de tasa) se conservan durante un período breve, según se describe en nuestra Política de privacidad.",
   homeFaq_euStorage_question: "¿Los datos de PrivateNote.ai se almacenan en la UE?",
   homeFaq_euStorage_answer: "Sí. Los datos de autenticación, las notas cifradas y los registros operativos se almacenan en infraestructura bajo jurisdicción de la UE. Parte del tráfico de red aún puede pasar por sistemas de seguridad y entrega antes de llegar al almacenamiento.",
   homeFaq_recover_question: "¿Puedo recuperar una nota destruida o caducada?",

@@ -17,6 +17,14 @@ import {
   mergeDailyMetrics,
   normalizeDailyMetrics,
 } from "@shared/analyticsMetrics";
+import {
+  applyEngagementFlush,
+  createEmptyDailyPageEngagement,
+  mergeDailyPageEngagement,
+  type AggregatedPageEngagement,
+  type DailyPageEngagement,
+  type PageEngagementFlush,
+} from "@shared/pageEngagement";
 import { KVNoteStorage } from "./kv-storage";
 import type { KVNamespace } from "@cloudflare/workers-types";
 
@@ -33,6 +41,7 @@ interface AnalyticsContext {
 }
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
+const ANALYTICS_ENGAGEMENT_PREFIX = "analytics:engagement:";
 
 export type AggregatedAnalyticsResult = {
   metrics: DailyMetrics;
@@ -76,6 +85,8 @@ export interface IStorage {
   trackAccountLogin(): Promise<void>;
   trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void>;
   trackPageView(page: 'file-share' | 'password-share'): Promise<void>;
+  trackPageEngagement(flush: PageEngagementFlush): Promise<void>;
+  getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement>;
   getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]>;
   getAggregatedDailyMetrics(startDate: Date, endDate: Date): Promise<AggregatedAnalyticsResult>;
 }
@@ -400,6 +411,14 @@ class MemStorage {
   async trackAccountLogin(): Promise<void> { /* MemStorage no-op */ }
   async trackClientEvent(_event: 'wrong_password' | 'qr_share'): Promise<void> { /* MemStorage no-op */ }
   async trackPageView(_page: 'file-share' | 'password-share'): Promise<void> { /* MemStorage no-op */ }
+  async trackPageEngagement(_flush: PageEngagementFlush): Promise<void> { /* MemStorage no-op */ }
+  async getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement> {
+    return {
+      startDateUtc: getAnalyticsDateKeyUtc(startDate),
+      endDateUtc: getAnalyticsDateKeyUtc(endDate),
+      engagement: createEmptyDailyPageEngagement(),
+    };
+  }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
     return Array.from(this.analytics.values()).filter(data => {
@@ -683,6 +702,47 @@ class KVAnalyticsStorage {
     await this.saveDailyMetrics(today, metrics);
   }
 
+  private getEngagementKey(date: Date): string {
+    return `${ANALYTICS_ENGAGEMENT_PREFIX}${getAnalyticsDateKeyUtc(date)}`;
+  }
+
+  private async loadDailyEngagement(date: Date): Promise<DailyPageEngagement> {
+    const stored = await this.kv.get<DailyPageEngagement>(this.getEngagementKey(date), { type: "json" });
+    return stored ? mergeDailyPageEngagement(createEmptyDailyPageEngagement(), stored) : createEmptyDailyPageEngagement();
+  }
+
+  private async saveDailyEngagement(date: Date, engagement: DailyPageEngagement): Promise<void> {
+    await this.kv.put(this.getEngagementKey(date), JSON.stringify(engagement));
+  }
+
+  async trackPageEngagement(flush: PageEngagementFlush): Promise<void> {
+    const today = new Date();
+    const current = await this.loadDailyEngagement(today);
+    await this.saveDailyEngagement(today, applyEngagementFlush(current, flush));
+  }
+
+  async getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement> {
+    let cursor = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+    const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+    let merged = createEmptyDailyPageEngagement();
+    let hasAny = false;
+
+    while (cursor <= end) {
+      const daily = await this.kv.get<DailyPageEngagement>(this.getEngagementKey(cursor), { type: "json" });
+      if (daily) {
+        merged = mergeDailyPageEngagement(merged, daily);
+        hasAny = true;
+      }
+      cursor = addDaysUtc(cursor, 1);
+    }
+
+    return {
+      startDateUtc: getAnalyticsDateKeyUtc(startDate),
+      endDateUtc: getAnalyticsDateKeyUtc(endDate),
+      engagement: hasAny ? merged : createEmptyDailyPageEngagement(),
+    };
+  }
+
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {
     if (metricsType !== AnalyticsMetricsType.DAILY) {
       return [];
@@ -848,6 +908,14 @@ export class CompositeStorage implements IStorage {
 
   async trackPageView(page: 'file-share' | 'password-share'): Promise<void> {
     return this.analyticsStorage.trackPageView(page);
+  }
+
+  async trackPageEngagement(flush: PageEngagementFlush): Promise<void> {
+    return this.analyticsStorage.trackPageEngagement(flush);
+  }
+
+  async getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement> {
+    return this.analyticsStorage.getAggregatedPageEngagement(startDate, endDate);
   }
 
   async getAnalyticsData(startDate: Date, endDate: Date, metricsType: AnalyticsMetricsType): Promise<AnalyticsData[]> {

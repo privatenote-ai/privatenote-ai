@@ -7,6 +7,7 @@ import { type BlogPost } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogCategoryPath, blogPostPath, localizedPath } from "@/utils/localizedPath";
+import { formatLocalizedLongDate } from "@/utils/formatLocalizedDate";
 import type { SupportedLanguage } from "@/utils/translation";
 import { buildFeaturedBlogPost, buildStaticBlogPosts } from "@/utils/staticBlogPosts";
 import { cn } from "@/lib/utils";
@@ -27,8 +28,7 @@ function blogPostHref(slug: string, language: SupportedLanguage) {
 }
 
 function formatBlogDate(language: string, publishedAt: Date | string | null | undefined) {
-  if (!publishedAt) return "";
-  return new Intl.DateTimeFormat(language, { dateStyle: "long" }).format(new Date(publishedAt));
+  return formatLocalizedLongDate(language, publishedAt);
 }
 
 function BlogMetadataRow({

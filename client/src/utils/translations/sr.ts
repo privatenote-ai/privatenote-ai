@@ -5,10 +5,10 @@ export const sr: Translations = {
   writeNote: "Napišite poruku",
   sharePassword: "Podelite lozinku",
   shareFile: "Podelite podatke",
-  sftHeroPrefix: "Privatan",
-  sftHeroAccent: "način",
-  sftHeroSuffix: "da delite podatke",
-  sftHeroSubtitle: "Nema skeniranja datoteka. Nema pristupa vašim podacima. Šifrovanje se dešava u vašem pretraživaču.",
+  sftHeroPrefix: "Bezbedan prenos datoteka.",
+  sftHeroAccent: "Šifrovano pre otpremanja.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Fajlovi se šifruju direktno u pregledaču pre nego što napuste vaš uređaj. Ne možemo čitati njihov sadržaj i nikad ih ne skeniramo.",
   sftFeatureEncryptionTitle: "Šifrovanje na strani pretraživača",
   sftFeatureEncryptionText: "Datoteke su šifrovane na ovom uređaju pre otpremanja. PrivateNote stores only ciphertext — never readable file contents.",
   sftFeatureFolderTitle: "Prenos fascikle",
@@ -477,7 +477,7 @@ export const sr: Translations = {
   closeNavigationMenu: "Zatvori meni",
   homeHeroLine1: "Vaše poruke,",
   homeHeroLine2: "Vaša privatnost",
-  homeHeroSubtitle: "Delite šifrovane poruke koje se samouništavaju nakon čitanja. Bez oglasa, bez profilisanja, bez nepotrebnog prikupljanja podataka — samo privatne, jednokratne poruke.",
+  homeHeroSubtitle: "Delite lozinke, osetljive poruke i fajlove putem end-to-end šifrovanih linkova koji nestaju nakon otvaranja. Bez naloga za primaoca. Bez oglasa. Nula profilisanja.",
   whyPrivateNote: "Zašto PrivateNote",
   shareSensitiveHeading: "Delite osetljive poruke sa poverenjem.",
   shareSensitiveBody: "PrivateNote čuva vaše poruke privatnim tako što ih šifruje u pregledaču i briše poruku nakon čitanja. Bez naloga, bez komplikacija i bez oglasa koji vas prate.",
@@ -1462,7 +1462,7 @@ export const sr: Translations = {
   homeFaq_encryptionKey_question: "Da li je ključ za šifrovanje uskladišten na vašem serveru?",
   homeFaq_encryptionKey_answer: "Ne. Za standardne poruke, naš server čuva šifrovanu poruku i metapodatke, a ne upotrebljivi ključ za dešifrovanje. Ključ se nalazi u delu linka posle `#`. Pregledači čuvaju sve posle `#` na uređaju kada učitavaju stranicu—ne šalju ga na naše servere—tako da nikada ne dobijemo vaš ključ za dešifrovanje.",
   homeFaq_metadata_question: "Koje metapodatke čuvate?",
-  homeFaq_metadata_answer: "Čuvamo šifrovane poruke i podešavanja potrebna za istek i ograničenja čitanja — ne vaš otvoreni tekst. Takođe vodimo agregiranu statistiku usluga: dnevne brojače kao što su poruke kreirane ili pregledane, zaštita lozinkom i korišćenje režima AI, zemlja i jezik korisničkog interfejsa i slični operativni ukupni iznosi. Te statistike nikada ne uključuju sadržaj poruka i ne dele se sa oglašavanjem ili nezavisnim dobavljačima analitike. Ograničena evidencija bezbednosti i sprečavanja zloupotrebe (na primer metapodaci na nivou IP-a i ograničenje brzine) se čuvaju na kratak period, kao što je opisano u našoj politici privatnosti.",
+  homeFaq_metadata_answer: "Čuvamo šifrovane poruke i podešavanja potrebna za istek i ograničenja čitanja — ne vaš otvoreni tekst. Takođe vodimo agregiranu statistiku usluga: dnevne brojače kao što su poruke kreirane ili pregledane, zaštita lozinkom i korišćenje režima AI, zemlja i jezik korisničkog interfejsa, posete stranicama, vidljivo vreme, grube klik/skrol heat mape i slični operativni ukupni iznosi. Te statistike nikada ne uključuju sadržaj poruka, ID poruka niti snimke sesija i ne dele se sa oglašavanjem ili nezavisnim dobavljačima analitike. Ograničena evidencija bezbednosti i sprečavanja zloupotrebe (na primer metapodaci na nivou IP-a i ograničenje brzine) se čuvaju na kratak period, kao što je opisano u našoj politici privatnosti.",
   homeFaq_euStorage_question: "Da li se PrivateNote.ai podaci čuvaju u EU?",
   homeFaq_euStorage_answer: "Da. Podaci za autentifikaciju, šifrovane poruke i operativni zapisi se čuvaju u infrastrukturi u nadležnosti EU. Deo mrežnog saobraćaja možda i dalje prolazi kroz sisteme bezbednosti i isporuke pre nego što stigne do skladišta.",
   homeFaq_recover_question: "Mogu li da povratim poruku nakon što je uništena ili istekla?",
@@ -1751,7 +1751,7 @@ export const sr: Translations = {
   documentMetaAccountPreferencesTitle: "Preferences",
   documentMetaAccountPreferencesDescription: "Podešavanja teme, jezika i obaveštenja.",
 
-  sftHeroTitle: "Bezbedan prenos datoteka sa šifrovanjem u pretraživaču",
+  sftHeroTitle: "Bezbedan prenos datoteka. Šifrovano pre otpremanja.",
   sftSeoHeading: "Delite šifrovane datoteke bez izlaganja sadržaja",
   sftSeoBody1:
     "PrivateNote šalje datoteke putem privremenih šifrovanih linkova. Datoteke se šifruju u vašem pretraživaču pre otpremanja, pa server čuva samo šifrovani tekst — nikad izvorni sadržaj.",
@@ -1943,6 +1943,16 @@ export const sr: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Kako da opozovete privatnu belešku pre otvaranja",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Opozovite neotvorene PrivateNote linkove i pregledajte vremenske linije dokaza pristupa za događaje isporuke—bez stavljanja tajni u e-poštu.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Zaštitite advokatsku tajnu bez trajne istorije poruka",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Sigurna dostava uputstava i dokumenata klijentima — bez instaliranja dodatnih aplikacija.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Poverljiva komunikacija između advokata i klijenta zaslužuje više od enkripcije tokom prenosa. Važno je i koje kopije ostaju nakon dostave, ko im kasnije može pristupiti i koliko dugo ostaju dostupne.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Advokatska tajna bez istorije poruka",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Sigurna dostava uputstava i dokumenata klijentima — bez instaliranja dodatnih aplikacija. Pogledajte Business paket.",
   blogSocialMediaBansTitle: "Da li će zabrane društvenih mreža za decu delovati?",
   blogSocialMediaBansSubtitle: "Šta kaže evidencija",
   blogSocialMediaBansExcerpt:

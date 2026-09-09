@@ -14,7 +14,9 @@ describe("isTrustedBrowserOrigin", () => {
     assert.equal(isTrustedBrowserOrigin("https://premium.privatenote-ai.pages.dev"), true);
     assert.equal(isTrustedBrowserOrigin("https://develop.privatenote-ai.pages.dev"), true);
     assert.equal(isTrustedBrowserOrigin("https://privatenote.ai"), true);
-    assert.equal(isTrustedBrowserOrigin("http://localhost:5173"), true);
+    assert.equal(isTrustedBrowserOrigin("http://localhost:5180"), true);
+    assert.equal(isTrustedBrowserOrigin("http://localhost:5181"), true);
+    assert.equal(isTrustedBrowserOrigin("https://localhost:5180"), true);
   });
 
   it("allows https loopback dev (Vite TLS / Turnstile)", () => {

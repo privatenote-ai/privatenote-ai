@@ -5,10 +5,10 @@ export const fr: Translations = {
   writeNote: "Écrire une note",
   sharePassword: "Partager un mot de passe",
   shareFile: "Partager un fichier",
-  sftHeroPrefix: "La",
-  sftHeroAccent: "façon privée",
-  sftHeroSuffix: "de partager des fichiers",
-  sftHeroSubtitle: "Aucune analyse de fichiers. Aucun accès à leur contenu. Tout est chiffré dans votre navigateur avant l’envoi.",
+  sftHeroPrefix: "Transfert de fichiers sécurisé.",
+  sftHeroAccent: "Chiffré avant l’envoi.",
+  sftHeroSuffix: "",
+  sftHeroSubtitle: "Vos fichiers sont chiffrés directement dans votre navigateur avant de quitter votre appareil. Nous ne pouvons pas lire leur contenu, et nous ne les analysons jamais.",
   sftFeatureEncryptionTitle: "Chiffrement dans le navigateur",
   sftFeatureEncryptionText: "Les fichiers sont chiffrés sur votre appareil avant l’envoi. PrivateNote ne stocke que du texte chiffré, jamais le contenu lisible de vos fichiers.",
   sftFeatureFolderTitle: "Transfert de dossiers",
@@ -477,7 +477,7 @@ export const fr: Translations = {
   closeNavigationMenu: "Fermer le menu",
   homeHeroLine1: "Vos messages,",
   homeHeroLine2: "votre vie privée",
-  homeHeroSubtitle: "Partagez des notes chiffrées qui disparaissent après lecture. Pas de publicité, pas de profilage, pas de collecte inutile — seulement des messages privés, à usage unique.",
+  homeHeroSubtitle: "Partagez mots de passe, messages sensibles et fichiers via des liens chiffrés de bout en bout qui disparaissent après ouverture. Pas de compte destinataire. Pas de publicité. Zéro profilage.",
   whyPrivateNote: "Pourquoi PrivateNote",
   shareSensitiveHeading: "Partagez des notes sensibles en toute confiance.",
   shareSensitiveBody: "PrivateNote protège vos messages en les chiffrant dans le navigateur, puis en supprimant la note après lecture. Pas de compte, pas de friction inutile, pas de publicité qui vous suit.",
@@ -1527,7 +1527,7 @@ export const fr: Translations = {
   homeFaq_encryptionKey_question: "La clé de chiffrement est-elle stockée sur votre serveur ?",
   homeFaq_encryptionKey_answer: "Non. Pour les notes standard, nous stockons la note chiffrée et des métadonnées, pas la clé de déchiffrement utilisable. La clé se trouve dans la partie du lien après `#`. Les navigateurs gardent tout ce qui suit `#` sur l’appareil au chargement—ils ne l’envoient pas à nos serveurs—, donc nous ne recevons jamais votre clé.",
   homeFaq_metadata_question: "Quelles métadonnées stockez-vous ?",
-  homeFaq_metadata_answer: "Nous stockons les charges utiles chiffrées et les paramètres nécessaires à l’expiration et aux limites de lecture—pas votre texte en clair. Nous conservons aussi des statistiques de service agrégées first-party : compteurs quotidiens (notes créées ou consultées, usage du mot de passe et du mode IA, pays approximatif et langue d’interface, et totaux opérationnels similaires). Ces statistiques n’incluent jamais le contenu des notes et ne sont pas partagées avec des fournisseurs publicitaires ou d’analytique tiers. Des journaux limités de sécurité et de prévention des abus (par ex. métadonnées IP et limitation de débit) sont conservés brièvement, comme indiqué dans notre politique de confidentialité.",
+  homeFaq_metadata_answer: "Nous stockons les charges utiles chiffrées et les paramètres nécessaires à l’expiration et aux limites de lecture—pas votre texte en clair. Nous conservons aussi des statistiques de service agrégées first-party : compteurs quotidiens (notes créées ou consultées, usage du mot de passe et du mode IA, pays approximatif et langue d’interface, visites de pages, temps visible, heatmaps clics/défilement grossiers, et totaux opérationnels similaires). Ces statistiques n’incluent jamais le contenu des notes, les identifiants de note ni d’enregistrements de session et ne sont pas partagées avec des fournisseurs publicitaires ou d’analytique tiers. Des journaux limités de sécurité et de prévention des abus (par ex. métadonnées IP et limitation de débit) sont conservés brièvement, comme indiqué dans notre politique de confidentialité.",
   homeFaq_euStorage_question: "Les données de PrivateNote.ai sont-elles stockées dans l’UE ?",
   homeFaq_euStorage_answer: "Oui. Les données d’authentification, les notes chiffrées et les enregistrements opérationnels sont stockés dans une infrastructure sous juridiction de l’UE. Une partie du trafic réseau peut encore passer par des systèmes de sécurité et de livraison avant d’atteindre le stockage.",
   homeFaq_recover_question: "Puis-je récupérer une note détruite ou expirée ?",
@@ -1815,7 +1815,7 @@ export const fr: Translations = {
   documentMetaAccountActivityDescription: "Activité récente du compte et des notes.",
   documentMetaAccountPreferencesTitle: "Préférences",
   documentMetaAccountPreferencesDescription: "Thème, langue et notifications.",
-  sftHeroTitle: "Transfert de fichiers sécurisé avec chiffrement dans le navigateur",
+  sftHeroTitle: "Transfert de fichiers sécurisé. Chiffré avant l’envoi.",
   sftSeoHeading: "Partage de fichiers chiffré sans exposer vos fichiers",
   sftSeoBody1:
     "PrivateNote envoie les fichiers au moyen de liens chiffrés qui expirent. Les fichiers sont chiffrés dans votre navigateur avant l’envoi ; le serveur ne stocke donc que du texte chiffré, jamais le contenu original.",
@@ -1943,6 +1943,16 @@ export const fr: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Révoquer une note privée avant ouverture",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Révoquez les liens PrivateNote non ouverts et consultez les chronologies de preuve d’accès pour les événements de livraison—sans mettre de secrets dans les e-mails.",
+  blogSecureClientDeliveryForLawyersTitle:
+    "Transmettez vos instructions sans laisser de trace numérique",
+  blogSecureClientDeliveryForLawyersSubtitle:
+    "Un canal d’envoi chiffré aux couleurs de votre cabinet, accessible directement depuis le navigateur du client.",
+  blogSecureClientDeliveryForLawyersExcerpt:
+    "Les messageries grand public conservent une trace. Pour beaucoup d’échanges couverts par le secret, l’objectif est inverse : transmettre une instruction, puis cesser d’accumuler des copies. Comment les cabinets, surtout en défense pénale, envoient instructions et pièces sous leur nom, sans imposer une autre application.",
+  blogSecureClientDeliveryForLawyersMetaTitle:
+    "Instructions sans historique durable",
+  blogSecureClientDeliveryForLawyersMetaDescription:
+    "Canal d’envoi chiffré aux couleurs du cabinet, ouvert dans le navigateur du client. Sans application. Découvrez l’offre Business pour cabinets.",
   blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",
   blogSocialMediaBansSubtitle: "Ce que dit la science",
   blogSocialMediaBansExcerpt:

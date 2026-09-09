@@ -59,6 +59,7 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
   "chat-control-europe-cryptographers": "privacy",
   "social-media-bans-children-evidence": "privacy",
   "workplace-texts-private-note": "privacy",
+  "secure-client-delivery-for-lawyers": "privacy",
   "privacy-tools": "privacy",
 
   // AI

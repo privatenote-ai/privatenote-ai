@@ -37,6 +37,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "revoke-unopened-note-proof-of-access",
   "delayed-reveal-scheduled-secret-links",
   "how-to-send-nudes-safely",
+  "secure-client-delivery-for-lawyers",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -455,6 +456,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-enviar-nudes-com-seguranca",
     sr: "kako-bezbedno-poslati-intimne-fotografije",
     hr: "kako-sigurno-poslati-intimne-fotografije",
+  },
+  "secure-client-delivery-for-lawyers": {
+    en: "secure-client-delivery-for-lawyers",
+    de: "sichere-mandantenuebergabe-fuer-anwaelte",
+    fr: "remise-confidentielle-pour-avocats",
+    es: "entrega-confidencial-para-abogados",
+    it: "consegna-riservata-per-avvocati",
+    nl: "veilige-clientlevering-voor-advocaten",
+    pt: "entrega-confidencial-para-advogados",
+    sr: "bezbedna-dostava-klijentima-za-advokate",
+    hr: "sigurna-dostava-klijentima-za-odvjetnike",
   },
 
 };
