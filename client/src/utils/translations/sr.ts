@@ -1452,7 +1452,7 @@ export const sr: Translations = {
   homeFaq_takePhoto_question: "Mogu li da snimim fotografiju i pošaljem je privatno?",
   homeFaq_takePhoto_answer: "Da. Koristite Snimi fotografiju da uhvatite sliku kamerom. Slika se šifruje u pregledaču kao prilog pre slanja. Prvo možete iseći i zamagliti detalje; metapodaci o lokaciji se podrazumevano uklanjaju za uobičajene formate fotografija. Za slanje je potreban besplatan nalog; primaocima nije. Oni i dalje mogu da sačuvaju ili snime ono što otvore.",
   homeFaq_video_question: "Mogu li da snimim video poruku?",
-  homeFaq_video_answer: "Da. Koristite Snimi i izaberite Video. Klip se šifruje u pregledaču kao prilog i šalje kao poruka koja nestaje. Snimanje glasa ili videa je uključeno u Starter i Business. Primaoci i dalje mogu da preuzmu ili sačuvaju video nakon što otvore link.",
+  homeFaq_video_answer: "Da. Koristite Snimi i izaberite Video. Klip se šifruje u pregledaču kao prilog i šalje kao poruka koja nestaje. Snimanje glasa ili videa je dostupno uz besplatni nalog. Starter i Business omogućavaju duže snimke i veće fajlove. Primaoci i dalje mogu da preuzmu ili sačuvaju video nakon što otvore link.",
   homeFaq_linkLength_question: "Zašto je link duži od drugih servisa za deljenje poruka?",
   homeFaq_linkLength_answer: "Link je duži jer ključ za dešifrovanje putuje u samom linku, a ne na našim serverima. Ključ se nalazi iza `#` u URL. Kada neko otvori link, pregledač veb lokacijama šalje samo deo pre `#`—ostatak ostaje na uređaju—tako da taj ključ nikada ne stiže do PrivateNote.ai.",
   homeFaq_password_question: "Mogu li da zaštitim poruku lozinkom?",

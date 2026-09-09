@@ -1704,7 +1704,7 @@ export const es: Translations = {
   homeFaq_takePhoto_question: "¿Puedo hacer una foto y enviarla en privado?",
   homeFaq_takePhoto_answer: "Sí. Usa Hacer foto para capturar con la cámara. La imagen se cifra en el navegador como un archivo adjunto antes de subirse. Puedes recortar y difuminar detalles primero, y los metadatos de ubicación se eliminan por defecto en los formatos de foto habituales. Enviar fotos requiere una cuenta gratuita; los destinatarios no. Aun así pueden guardar o capturar lo que abran.",
   homeFaq_video_question: "¿Puedo grabar un mensaje de vídeo?",
-  homeFaq_video_answer: "Sí. Usa Grabar y elige Vídeo. El clip se cifra en el navegador como un archivo adjunto y se envía como una nota que desaparece. La grabación de voz o vídeo está incluida en Starter y Business. Los destinatarios pueden descargar o guardar el vídeo después de abrir el enlace.",
+  homeFaq_video_answer: "Sí. Usa Grabar y elige Vídeo. El clip se cifra en el navegador como un archivo adjunto y se envía como una nota que desaparece. La grabación de voz o vídeo está disponible con una cuenta gratuita. Starter y Business permiten grabaciones más largas y archivos más grandes. Los destinatarios pueden descargar o guardar el vídeo después de abrir el enlace.",
   homeFaq_linkLength_question: "¿Por qué el enlace es más largo que en otros servicios?",
   homeFaq_linkLength_answer: "El enlace es más largo porque la clave de descifrado va en el propio enlace, no en nuestros servidores. La clave está después del `#` en la URL. Al abrirlo, el navegador solo envía a los sitios la parte anterior al `#`; el resto permanece en el dispositivo, así que esa clave nunca llega a PrivateNote.ai.",
   homeFaq_password_question: "¿Puedo proteger una nota con contraseña?",

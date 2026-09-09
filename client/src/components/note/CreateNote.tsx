@@ -698,15 +698,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       window.location.href = attachFileSignInHref;
       return;
     }
-    if (!isPremiumUser) {
-      toast({
-        title: t.upgradeRequiredTitle ?? "Premium required",
-        description:
-          t.recordMessageFormatPremiumHint ??
-          "Upgrade to Premium to record voice or video-style messages in PrivateNote.",
-      });
-      return;
-    }
     if (!isVoiceRecordingSupported()) {
       toast({
         title: t.recordMessageUnsupportedTitle ?? "Recording unavailable",
@@ -724,15 +715,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     if (!canAttachFiles) {
       saveAuthRedirectDraft();
       window.location.href = attachFileSignInHref;
-      return;
-    }
-    if (!isPremiumUser) {
-      toast({
-        title: t.upgradeRequiredTitle ?? "Premium required",
-        description:
-          t.recordMessageFormatPremiumHint ??
-          "Upgrade to Premium to use direct capture features in PrivateNote.",
-      });
       return;
     }
     if (!isCameraCaptureSupported()) {
@@ -827,14 +809,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const recordMessageButtonLabel =
     selectedFileIsVoice || selectedFileIsVideo
       ? formatAttachmentDisplayName(selectedFile!.name)
-      : !isPremiumUser
-        ? `${t.recordMessage ?? "Record message"} (Premium)`
-        : (t.recordMessage ?? "Record message");
+      : (t.recordMessage ?? "Record message");
   const takePhotoButtonLabel = selectedFileIsPhoto
     ? formatAttachmentDisplayName(selectedFile!.name)
-    : !isPremiumUser
-      ? `${t.takePhoto ?? "Take photo"} (Premium)`
-      : (t.takePhoto ?? "Take photo");
+    : (t.takePhoto ?? "Take photo");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -3562,8 +3540,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         type="button"
                         onClick={handleRecordMessageClick}
                         title={selectedFile.name}
-                        disabled={!isPremiumUser}
-                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem] disabled:cursor-not-allowed disabled:opacity-50`}
+                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem]`}
                         aria-label={recordMessageButtonLabel}
                       >
                       <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
@@ -3574,8 +3551,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         type="button"
                         onClick={handleTakePhotoClick}
                         title={selectedFile.name}
-                        disabled={!isPremiumUser}
-                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem] disabled:cursor-not-allowed disabled:opacity-50`}
+                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem]`}
                         aria-label={takePhotoButtonLabel}
                       >
                         <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
@@ -3734,7 +3710,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     <button
                       type="button"
                       onClick={handleTakePhotoClick}
-                      disabled={isPreparingFolder || !isPremiumUser}
+                      disabled={isPreparingFolder}
                       className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
                       aria-label={takePhotoButtonLabel}
                       title={takePhotoButtonLabel}
@@ -3748,7 +3724,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     <button
                       type="button"
                       onClick={handleRecordMessageClick}
-                      disabled={isPreparingFolder || !isPremiumUser}
+                      disabled={isPreparingFolder}
                       className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
                       aria-label={recordMessageButtonLabel}
                       title={recordMessageButtonLabel}

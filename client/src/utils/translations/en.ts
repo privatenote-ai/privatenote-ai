@@ -2104,7 +2104,7 @@ export const en: Translations = {
     "Yes. Use Take photo to capture from your camera. The image is encrypted in your browser like a file attachment before upload. You can crop and blur details first, and location metadata is removed by default for common photo formats. Sending photos requires a free account; recipients do not. They can still save or screenshot what they open.",
   homeFaq_video_question: "Can I record a video message?",
   homeFaq_video_answer:
-    "Yes. Use Record and choose Video. The clip is encrypted in your browser like a file attachment, then sent as a disappearing note. Recording voice or video is included on Starter and Business. Recipients can still download or save the video after they open the link.",
+    "Yes. Use Record and choose Video. The clip is encrypted in your browser like a file attachment, then sent as a disappearing note. Recording voice or video is available on Free with a signed-in account. Starter and Business allow longer recordings and larger files. Recipients can still download or save the video after they open the link.",
   homeFaq_linkLength_question: "Why is the link longer than other note-sharing services?",
   homeFaq_linkLength_answer:
     "The link is longer because the decryption key travels in the link itself, not on our servers. The key sits after the `#` in the URL. When someone opens the link, the browser only sends the part before `#` to websites—the rest stays on the device—so that key never reaches PrivateNote.ai.",

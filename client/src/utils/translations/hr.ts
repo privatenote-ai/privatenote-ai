@@ -1452,7 +1452,7 @@ export const hr: Translations = {
   homeFaq_takePhoto_question: "Mogu li snimiti fotografiju i poslati je privatno?",
   homeFaq_takePhoto_answer: "Da. Upotrijebite Snimi fotografiju da uhvatite sliku kamerom. Slika se šifrira u pregledniku kao privitak prije prijenosa. Prvo možete obrezati i zamagliti detalje; metapodaci o lokaciji uklanjaju se prema zadanim postavkama za uobičajene formate fotografija. Za slanje je potreban besplatan račun; primateljima nije. Oni i dalje mogu spremiti ili snimiti ono što otvore.",
   homeFaq_video_question: "Mogu li snimiti video poruku?",
-  homeFaq_video_answer: "Da. Upotrijebite Snimi i odaberite Video. Klip se šifrira u pregledniku kao privitak i šalje kao bilješka koja nestaje. Snimanje glasa ili videa uključeno je u Starter i Business. Primatelji i dalje mogu preuzeti ili spremiti video nakon što otvore vezu.",
+  homeFaq_video_answer: "Da. Upotrijebite Snimi i odaberite Video. Klip se šifrira u pregledniku kao privitak i šalje kao bilješka koja nestaje. Snimanje glasa ili videa dostupno je uz besplatni račun. Starter i Business omogućuju dulje snimke i veće datoteke. Primatelji i dalje mogu preuzeti ili spremiti video nakon što otvore vezu.",
   homeFaq_linkLength_question: "Zašto je veza duža od drugih servisa za dijeljenje bilješki?",
   homeFaq_linkLength_answer: "Veza je duža jer ključ za dešifriranje putuje u samoj vezi, a ne na našim poslužiteljima. Ključ se nalazi nakon \"#\" u URL. Kada netko otvori vezu, preglednik web-mjestima šalje samo dio prije `#`—ostatak ostaje na uređaju—tako da ključ nikada ne dosegne PrivateNote.ai.",
   homeFaq_password_question: "Mogu li zaštititi bilješku lozinkom?",
