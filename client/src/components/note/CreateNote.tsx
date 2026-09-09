@@ -680,7 +680,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const attachActionButtonClass =
     "flex min-w-0 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-transparent !shadow-none px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-transparent dark:text-blue-300 dark:hover:bg-blue-400/15 lg:bg-primary/8 lg:gap-1.5 lg:px-5 dark:lg:bg-blue-400/10";
   const composeToolButtonClass =
-    "max-lg:h-11 max-lg:w-full max-lg:min-w-0 max-lg:flex-1 max-lg:gap-0 max-lg:px-0";
+    "max-lg:h-11 max-lg:w-11 max-lg:shrink-0 max-lg:gap-0 max-lg:px-0";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -3514,7 +3514,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </p>
                 </>
               ) : isFileTransferMode && hasAttachments ? (
-                <div className="flex w-full flex-nowrap items-center gap-2 lg:justify-between">
+                <div className="flex w-full flex-nowrap items-center gap-2">
                   <input
                     ref={fileInputRef}
                     id={canAttachFiles ? fileTransferFileInputId : undefined}
@@ -3524,7 +3524,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     tabIndex={-1}
                     onChange={handleAttachFileSelected}
                   />
-                  <div className="flex min-w-0 flex-nowrap items-center gap-2 max-lg:flex-1">
+                  <div className="flex shrink-0 flex-nowrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -3583,7 +3583,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:ml-auto lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
+                    className="flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 lg:whitespace-nowrap lg:px-6"
                   >
                     {isLoading ? (
                       <>
@@ -3609,8 +3609,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex w-full flex-nowrap items-center gap-2 lg:justify-between">
-                <div className="flex min-w-0 flex-nowrap items-center gap-2 max-lg:flex-1">
+              <div className="flex w-full flex-nowrap items-center gap-2">
+                <div className="flex shrink-0 flex-nowrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -3670,7 +3670,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:ml-auto lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
+                  className="flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 lg:whitespace-nowrap lg:px-6"
                 >
                   {isLoading ? (
                     <>

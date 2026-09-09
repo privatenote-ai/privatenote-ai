@@ -235,7 +235,7 @@ export function ComposerAddActions({
 
   return (
     <>
-      <div className="flex min-w-0 max-lg:flex-1">
+      <div className="flex shrink-0">
         <ComposerAttachControl
           disabled={disabled}
           isPreparingFolder={isPreparingFolder}
