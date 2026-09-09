@@ -95,6 +95,7 @@ export function ComposerAttachControl({
   onAddFolder,
   labels,
   buttonClassName,
+  iconOnlyOnMobile = false,
 }: {
   disabled: boolean;
   isPreparingFolder: boolean;
@@ -105,17 +106,20 @@ export function ComposerAttachControl({
   onAddFolder: () => void;
   labels: AttachLabels;
   buttonClassName: string;
+  iconOnlyOnMobile?: boolean;
 }) {
   const className = `${buttonClassName} disabled:cursor-not-allowed disabled:opacity-50`;
+  const labelClass = iconOnlyOnMobile ? "hidden lg:inline" : undefined;
+  const accessibleLabel = addDisabledReason || (isPreparingFolder ? labels.zipping : labels.attach);
   const triggerInner = isPreparingFolder ? (
     <>
-      <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-      {labels.zipping}
+      <Loader2 className="h-5 w-5 shrink-0 animate-spin lg:h-4 lg:w-4" aria-hidden />
+      <span className={labelClass}>{labels.zipping}</span>
     </>
   ) : (
     <>
-      <Paperclip className="h-4 w-4 shrink-0" aria-hidden />
-      {labels.attach}
+      <Paperclip className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+      <span className={labelClass}>{labels.attach}</span>
       {showFolder ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden /> : null}
     </>
   );
@@ -123,7 +127,12 @@ export function ComposerAttachControl({
   if (!showFolder || isPreparingFolder) {
     if (fileInputId && !disabled && !isPreparingFolder) {
       return (
-        <label htmlFor={fileInputId} title={addDisabledReason} className={`${className} cursor-pointer`}>
+        <label
+          htmlFor={fileInputId}
+          title={accessibleLabel}
+          aria-label={iconOnlyOnMobile ? accessibleLabel : undefined}
+          className={`${className} cursor-pointer`}
+        >
           {triggerInner}
         </label>
       );
@@ -132,7 +141,8 @@ export function ComposerAttachControl({
       <button
         type="button"
         disabled={disabled || isPreparingFolder}
-        title={addDisabledReason}
+        title={accessibleLabel}
+        aria-label={iconOnlyOnMobile ? accessibleLabel : undefined}
         onClick={onAddFile}
         className={className}
       >
@@ -144,7 +154,13 @@ export function ComposerAttachControl({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button type="button" disabled={disabled} title={addDisabledReason} className={className}>
+        <button
+          type="button"
+          disabled={disabled}
+          title={accessibleLabel}
+          aria-label={iconOnlyOnMobile ? accessibleLabel : undefined}
+          className={className}
+        >
           {triggerInner}
         </button>
       </DropdownMenuTrigger>
@@ -227,20 +243,29 @@ export function ComposerAddActions({
         onAddFolder={onAddFolder}
         labels={attachLabels}
         buttonClassName={actionClass}
+        iconOnlyOnMobile
       />
       <button
         type="button"
         disabled={disabled}
-        title={addDisabledReason}
+        title={addDisabledReason || labels.takePhoto}
+        aria-label={labels.takePhoto}
         onClick={onTakePhoto}
         className={actionClass}
       >
-        <Camera className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="max-w-full truncate">{labels.takePhoto}</span>
+        <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+        <span className="hidden max-w-full truncate lg:inline">{labels.takePhoto}</span>
       </button>
-      <button type="button" disabled={disabled} onClick={onRecord} className={actionClass}>
-        <Mic className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="max-w-full truncate">{labels.record}</span>
+      <button
+        type="button"
+        disabled={disabled}
+        title={labels.record}
+        aria-label={labels.record}
+        onClick={onRecord}
+        className={actionClass}
+      >
+        <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
+        <span className="hidden max-w-full truncate lg:inline">{labels.record}</span>
       </button>
     </>
   );

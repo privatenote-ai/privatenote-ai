@@ -682,7 +682,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const attachActionButtonClass =
     "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 max-lg:flex-col max-lg:gap-1 lg:flex-row lg:gap-1.5 lg:px-5";
   const composeToolButtonClass =
-    "max-lg:h-auto max-lg:min-h-[3.55rem] max-lg:flex-1 max-lg:px-1 max-lg:py-2 max-lg:text-[11px]";
+    "max-lg:h-11 max-lg:min-h-11 max-lg:flex-1 max-lg:flex-row max-lg:px-2 max-lg:py-0";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -3548,18 +3548,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   >
                     {customizeSheetExperiment || !showAdvancedOptions ? (
                       <>
-                        <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" />
-                        <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                          {t.customize}
-                        </span>
+                        <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
                         <span className="hidden truncate lg:inline">{t.customize}</span>
                       </>
                     ) : (
                       <>
-                        <ChevronUp className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" />
-                        <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                          {t.hideOptions}
-                        </span>
+                        <ChevronUp className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
                         <span className="hidden truncate lg:inline">{t.hideOptions}</span>
                       </>
                     )}
@@ -3641,17 +3635,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       {customizeSheetExperiment || !showAdvancedOptions ? (
                         <>
                           <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                          <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                            {t.customize}
-                          </span>
                           <span className="hidden truncate lg:inline">{t.customize}</span>
                         </>
                       ) : (
                         <>
                           <ChevronUp className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                          <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                            {t.hideOptions}
-                          </span>
                           <span className="hidden truncate lg:inline">{t.hideOptions}</span>
                         </>
                       )}
