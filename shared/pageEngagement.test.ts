@@ -7,6 +7,10 @@ import {
   canonicalizeAnalyticsPath,
   createEmptyDailyPageEngagement,
   documentPointToCell,
+  engagementLegacyKvKey,
+  engagementReadKvKeys,
+  engagementShardKvKey,
+  ENGAGEMENT_WRITE_SHARDS,
   HEATMAP_COLS,
   HEATMAP_ROWS,
   HEATMAP_VERSION,
@@ -14,6 +18,7 @@ import {
   mergeDailyPageEngagement,
   parseHeatmapCellKey,
   parsePageEngagementFlush,
+  pickEngagementWriteShard,
   scrollReachFromMaxHistogram,
   upsampleLegacyHeatmap,
 } from "./pageEngagement";
@@ -211,5 +216,41 @@ describe("upsampleLegacyHeatmap", () => {
       assert.ok(parseHeatmapCellKey(key));
     }
     assert.equal(heatmapCellKey(0, 0) in up || Object.keys(up).length > 0, true);
+  });
+});
+
+describe("engagement KV shards", () => {
+  it("writes to numbered shards and still reads the unsharded legacy key", () => {
+    const keys = engagementReadKvKeys("2026-09-09");
+    assert.equal(keys[0], engagementLegacyKvKey("2026-09-09"));
+    assert.equal(keys.length, ENGAGEMENT_WRITE_SHARDS + 1);
+    assert.equal(engagementShardKvKey("2026-09-09", 0), "analytics:engagement:2026-09-09:s0");
+    assert.equal(engagementShardKvKey("2026-09-09", ENGAGEMENT_WRITE_SHARDS), engagementShardKvKey("2026-09-09", 0));
+    assert.equal(pickEngagementWriteShard(17) % ENGAGEMENT_WRITE_SHARDS, pickEngagementWriteShard(17));
+  });
+
+  it("merges visits from separate shard documents the way admin reads do", () => {
+    const a = applyEngagementFlush(createEmptyDailyPageEngagement(), {
+      page: "/",
+      visits: 2,
+      visibleMs: 1000,
+      scrollRecorded: false,
+      scrollMaxPct: 0,
+      clicks: [[1, 1, 1]],
+      dwell: [],
+    });
+    const b = applyEngagementFlush(createEmptyDailyPageEngagement(), {
+      page: "/",
+      visits: 3,
+      visibleMs: 2000,
+      scrollRecorded: false,
+      scrollMaxPct: 0,
+      clicks: [[1, 1, 4]],
+      dwell: [],
+    });
+    const merged = mergeDailyPageEngagement(a, b);
+    assert.equal(merged.visits["/"], 5);
+    assert.equal(merged.visibleSeconds["/"], 3);
+    assert.equal(merged.clicks["/"]!["1,1"], 5);
   });
 });

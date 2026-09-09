@@ -109,20 +109,28 @@ class NativePageAnalyticsCollector {
   private started = false;
 
   start(): void {
-    if (this.started || isPrerender() || isEmbeddedPreview()) return;
-    this.started = true;
-    window.addEventListener("click", this.onClick, { capture: true, passive: true });
-    window.addEventListener("mousemove", this.onMouseMove, { passive: true });
-    window.addEventListener("scroll", this.onScroll, { passive: true });
-    document.addEventListener("visibilitychange", this.onVisibility);
-    window.addEventListener("pagehide", this.onPageHide);
-    this.setPage(window.location.pathname || "/");
-    this.armTimers();
+    try {
+      if (this.started || isPrerender() || isEmbeddedPreview()) return;
+      this.started = true;
+      window.addEventListener("click", this.onClick, { capture: true, passive: true });
+      window.addEventListener("mousemove", this.onMouseMove, { passive: true });
+      window.addEventListener("scroll", this.onScroll, { passive: true });
+      document.addEventListener("visibilitychange", this.onVisibility);
+      window.addEventListener("pagehide", this.onPageHide);
+      this.setPage(window.location.pathname || "/");
+      this.armTimers();
+    } catch {
+      this.started = false;
+    }
   }
 
   stop(): void {
     if (!this.started) return;
-    this.flush({ keepalive: true, recordScroll: true });
+    try {
+      this.flush({ keepalive: true, recordScroll: true });
+    } catch {
+      /* ignore */
+    }
     this.started = false;
     window.removeEventListener("click", this.onClick, true);
     window.removeEventListener("mousemove", this.onMouseMove);
@@ -134,10 +142,14 @@ class NativePageAnalyticsCollector {
 
   onRouteChange(pathname: string): void {
     if (!this.started) return;
-    const path = pathname.split(/[?#]/)[0] || "/";
-    if (path === this.path && this.page) return;
-    this.flush({ keepalive: false, recordScroll: true });
-    this.setPage(path);
+    try {
+      const path = pathname.split(/[?#]/)[0] || "/";
+      if (path === this.path && this.page) return;
+      this.flush({ keepalive: false, recordScroll: true });
+      this.setPage(path);
+    } catch {
+      /* never break routing */
+    }
   }
 
   private setPage(pathname: string): void {
@@ -175,10 +187,14 @@ class NativePageAnalyticsCollector {
   }
 
   private onClick = (event: MouseEvent): void => {
-    if (!this.page || !pageAllowsHeatmap(this.page)) return;
-    const size = pageSize();
-    const cell = documentPointToCell(event.pageX, event.pageY, size.width, size.height);
-    if (cell) bump(this.clicks, cell.row, cell.col);
+    try {
+      if (!this.page || !pageAllowsHeatmap(this.page)) return;
+      const size = pageSize();
+      const cell = documentPointToCell(event.pageX, event.pageY, size.width, size.height);
+      if (cell) bump(this.clicks, cell.row, cell.col);
+    } catch {
+      /* ignore */
+    }
   };
 
   private onMouseMove = (event: MouseEvent): void => {
@@ -211,70 +227,92 @@ class NativePageAnalyticsCollector {
   }
 
   private sampleDwell(): void {
-    if (!this.page || !pageAllowsHeatmap(this.page)) return;
-    if (document.visibilityState !== "visible") return;
-    const size = pageSize();
-    let x: number;
-    let y: number;
-    if (this.lastMouse) {
-      x = this.lastMouse.x;
-      y = this.lastMouse.y;
-    } else {
-      x = window.scrollX + window.innerWidth / 2;
-      y = window.scrollY + window.innerHeight / 2;
+    try {
+      if (!this.page || !pageAllowsHeatmap(this.page)) return;
+      if (document.visibilityState !== "visible") return;
+      const size = pageSize();
+      let x: number;
+      let y: number;
+      if (this.lastMouse) {
+        x = this.lastMouse.x;
+        y = this.lastMouse.y;
+      } else {
+        x = window.scrollX + window.innerWidth / 2;
+        y = window.scrollY + window.innerHeight / 2;
+      }
+      const cell = documentPointToCell(x, y, size.width, size.height);
+      if (cell) bump(this.dwell, cell.row, cell.col);
+    } catch {
+      /* ignore */
     }
-    const cell = documentPointToCell(x, y, size.width, size.height);
-    if (cell) bump(this.dwell, cell.row, cell.col);
   }
 
   private flush(opts: { keepalive: boolean; recordScroll: boolean }): void {
-    if (!this.page) return;
-    if (document.visibilityState === "visible" && this.visibleStartedAt > 0) {
-      this.visibleAccumMs += Math.max(0, Date.now() - this.visibleStartedAt);
-      this.visibleStartedAt = Date.now();
+    try {
+      if (!this.page) return;
+      if (document.visibilityState === "visible" && this.visibleStartedAt > 0) {
+        this.visibleAccumMs += Math.max(0, Date.now() - this.visibleStartedAt);
+        this.visibleStartedAt = Date.now();
+      }
+      const visits = this.visitsPending;
+      const visibleMs = this.visibleAccumMs;
+      const clicks = serializeCells(this.clicks);
+      const dwell = serializeCells(this.dwell);
+      const scrollRecorded = opts.recordScroll;
+      if (
+        visits === 0 &&
+        visibleMs < 500 &&
+        clicks.length === 0 &&
+        dwell.length === 0 &&
+        !scrollRecorded
+      ) {
+        return;
+      }
+      postEngagement(
+        {
+          kind: "engagement",
+          path: this.path,
+          hv: HEATMAP_VERSION,
+          visits,
+          visibleMs,
+          scrollRecorded,
+          scrollMaxPct: scrollRecorded ? this.maxScrollPct : 0,
+          clicks,
+          dwell,
+        },
+        opts.keepalive,
+      );
+      this.visitsPending = 0;
+      this.visibleAccumMs = 0;
+    } catch {
+      /* never throw into the page */
     }
-    const visits = this.visitsPending;
-    const visibleMs = this.visibleAccumMs;
-    const clicks = serializeCells(this.clicks);
-    const dwell = serializeCells(this.dwell);
-    const scrollRecorded = opts.recordScroll;
-    if (
-      visits === 0 &&
-      visibleMs < 500 &&
-      clicks.length === 0 &&
-      dwell.length === 0 &&
-      !scrollRecorded
-    ) {
-      return;
-    }
-    postEngagement(
-      {
-        kind: "engagement",
-        path: this.path,
-        hv: HEATMAP_VERSION,
-        visits,
-        visibleMs,
-        scrollRecorded,
-        scrollMaxPct: scrollRecorded ? this.maxScrollPct : 0,
-        clicks,
-        dwell,
-      },
-      opts.keepalive,
-    );
-    this.visitsPending = 0;
-    this.visibleAccumMs = 0;
   }
 }
 
 let collector: NativePageAnalyticsCollector | null = null;
 
 export function startNativePageAnalytics(): () => void {
-  if (typeof window === "undefined" || isPrerender() || isEmbeddedPreview()) return () => {};
-  if (!collector) collector = new NativePageAnalyticsCollector();
-  collector.start();
-  return () => collector?.stop();
+  try {
+    if (typeof window === "undefined" || isPrerender() || isEmbeddedPreview()) return () => {};
+    if (!collector) collector = new NativePageAnalyticsCollector();
+    collector.start();
+    return () => {
+      try {
+        collector?.stop();
+      } catch {
+        /* ignore */
+      }
+    };
+  } catch {
+    return () => {};
+  }
 }
 
 export function notifyNativePageAnalyticsRoute(pathname: string): void {
-  collector?.onRouteChange(pathname);
+  try {
+    collector?.onRouteChange(pathname);
+  } catch {
+    /* never break routing */
+  }
 }

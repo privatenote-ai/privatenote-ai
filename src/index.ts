@@ -57,7 +57,7 @@ const getCorsHeaders = (request: Request): Record<string, string> => {
 };
 
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     console.log(`[WORKER-ENTRY] ${request.method} ${request.url}`);
 
     try {
@@ -90,7 +90,7 @@ export default {
 
       // Handle model serving routes (before API routes)
       if (pathname.startsWith("/models/")) {
-        return await registerRoutes(request, env);
+        return await registerRoutes(request, env, ctx);
       }
 
       // Handle API routes
@@ -104,7 +104,7 @@ export default {
             },
           });
         }
-        return await registerRoutes(request, env);
+        return await registerRoutes(request, env, ctx);
       }
 
       // For non-API routes, return helpful message (frontend should be served by Cloudflare Pages)

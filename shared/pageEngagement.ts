@@ -13,6 +13,34 @@ export const MAX_ENGAGEMENT_CELLS_PER_FLUSH = 200;
 export const MAX_VISIBLE_MS_PER_FLUSH = 20 * 60 * 1000;
 export const MAX_ANALYTICS_PATH_LENGTH = 160;
 export const MAX_STORED_PAGES_PER_DAY = 250;
+/** Write shards per UTC day so ingest is not a single hot KV key (~1 write/sec). */
+export const ENGAGEMENT_WRITE_SHARDS = 16;
+/** Admin reads merge shards+legacy; keep this under the Worker subrequest budget. */
+export const MAX_ENGAGEMENT_RANGE_DAYS = 31;
+export const ANALYTICS_ENGAGEMENT_PREFIX = "analytics:engagement:";
+/** Skip a shard write if it would exceed this (KV is 25 MiB; CPU/merge cost bites first). */
+export const MAX_ENGAGEMENT_SHARD_JSON_BYTES = 120_000;
+
+export function engagementLegacyKvKey(dateKey: string): string {
+  return `${ANALYTICS_ENGAGEMENT_PREFIX}${dateKey}`;
+}
+
+export function engagementShardKvKey(dateKey: string, shard: number): string {
+  const index = ((shard % ENGAGEMENT_WRITE_SHARDS) + ENGAGEMENT_WRITE_SHARDS) % ENGAGEMENT_WRITE_SHARDS;
+  return `${ANALYTICS_ENGAGEMENT_PREFIX}${dateKey}:s${index}`;
+}
+
+export function engagementReadKvKeys(dateKey: string): string[] {
+  const keys = [engagementLegacyKvKey(dateKey)];
+  for (let i = 0; i < ENGAGEMENT_WRITE_SHARDS; i++) {
+    keys.push(engagementShardKvKey(dateKey, i));
+  }
+  return keys;
+}
+
+export function pickEngagementWriteShard(randomByte: number): number {
+  return randomByte % ENGAGEMENT_WRITE_SHARDS;
+}
 
 /** Pre-exact-path buckets still present in older KV records. */
 export const PAGE_ENGAGEMENT_KEYS = [
@@ -487,7 +515,7 @@ export function applyEngagementFlush(
   current: DailyPageEngagement,
   flush: PageEngagementFlush,
 ): DailyPageEngagement {
-  const next = mergeDailyPageEngagement(current, createEmptyDailyPageEngagement());
+  const next = normalizeDailyPageEngagement(current);
   let page = migrateLegacyPageKey(flush.page);
   const alreadyKnown =
     page in next.visits ||

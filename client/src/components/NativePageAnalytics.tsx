@@ -14,11 +14,19 @@ export function NativePageAnalytics() {
   const [location] = useLocation();
 
   useEffect(() => {
-    return startNativePageAnalytics();
+    try {
+      return startNativePageAnalytics();
+    } catch {
+      return () => {};
+    }
   }, []);
 
   useEffect(() => {
-    notifyNativePageAnalyticsRoute(location.split(/[?#]/)[0] || "/");
+    try {
+      notifyNativePageAnalyticsRoute(location.split(/[?#]/)[0] || "/");
+    } catch {
+      /* ignore */
+    }
   }, [location]);
 
   return null;

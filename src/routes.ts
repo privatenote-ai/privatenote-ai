@@ -7,7 +7,7 @@ import { parseNoteOpensAtFromBody } from "@shared/noteMetaEligibility";
 import { isValidReceiptAckTokenHash } from "@shared/noteReceiptAck";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
-import { parsePageEngagementFlush } from "@shared/pageEngagement";
+import { MAX_ENGAGEMENT_RANGE_DAYS, parsePageEngagementFlush } from "@shared/pageEngagement";
 import {
   normalizeAccountType,
   planFeaturesFor,
@@ -8247,7 +8247,23 @@ function parseAnalyticsUtcDayParam(value: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export async function registerRoutes(request: Request, env: Env): Promise<Response> {
+/** Persist analytics after the response so ingest cannot stall /api. */
+function scheduleAnalyticsWork(ctx: ExecutionContext | undefined, work: Promise<unknown>): void {
+  const task = work.catch((error) => {
+    console.error("Error persisting analytics:", error);
+  });
+  if (ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(task);
+    return;
+  }
+  void task;
+}
+
+export async function registerRoutes(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+): Promise<Response> {
   env = withEuStoredDataEnv(env);
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -10231,11 +10247,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       const body = (await readJsonBody(request)) as Record<string, unknown>;
       const engagement = parsePageEngagementFlush(body);
       if (engagement) {
-        try {
-          await storage.trackPageEngagement(engagement);
-        } catch (error) {
-          console.error("Error tracking page engagement:", error);
-        }
+        scheduleAnalyticsWork(ctx, storage.trackPageEngagement(engagement));
         return jsonResponse({ ok: true }, 200, request);
       }
       const allowed = ["wrong_password", "qr_share"] as const;
@@ -10244,11 +10256,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         ? (body.event as AllowedEvent)
         : null;
       if (event) {
-        try {
-          await storage.trackClientEvent(event);
-        } catch (error) {
-          console.error("Error tracking client analytics event:", error);
-        }
+        scheduleAnalyticsWork(ctx, storage.trackClientEvent(event));
         return jsonResponse({ ok: true }, 200, request);
       }
       const pageAllowed = ["file-share", "password-share"] as const;
@@ -10257,11 +10265,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         ? (body.page as AllowedPage)
         : null;
       if (page) {
-        try {
-          await storage.trackPageView(page);
-        } catch (error) {
-          console.error("Error tracking page view:", error);
-        }
+        scheduleAnalyticsWork(ctx, storage.trackPageView(page));
         return jsonResponse({ ok: true }, 200, request);
       }
       return jsonResponse({ message: "Invalid event type" }, 400, request);
@@ -10886,10 +10890,10 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
       if (!start || !end) {
         return jsonResponse({ message: "startDate and endDate must be YYYY-MM-DD" }, 400, request);
       }
-      const maxDays = 366;
+      const maxDays = MAX_ENGAGEMENT_RANGE_DAYS;
       const spanDays = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
       if (spanDays < 1 || spanDays > maxDays) {
-        return jsonResponse({ message: "Date range must be 1–366 UTC days" }, 400, request);
+        return jsonResponse({ message: `Date range must be 1–${maxDays} UTC days` }, 400, request);
       }
       const result = await storage.getAggregatedPageEngagement(start, end);
       return jsonResponse(result, 200, request);

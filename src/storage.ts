@@ -20,7 +20,11 @@ import {
 import {
   applyEngagementFlush,
   createEmptyDailyPageEngagement,
+  engagementReadKvKeys,
+  engagementShardKvKey,
+  MAX_ENGAGEMENT_SHARD_JSON_BYTES,
   mergeDailyPageEngagement,
+  pickEngagementWriteShard,
   type AggregatedPageEngagement,
   type DailyPageEngagement,
   type PageEngagementFlush,
@@ -41,7 +45,6 @@ interface AnalyticsContext {
 }
 
 const ANALYTICS_DAILY_PREFIX = "analytics:daily:";
-const ANALYTICS_ENGAGEMENT_PREFIX = "analytics:engagement:";
 
 export type AggregatedAnalyticsResult = {
   metrics: DailyMetrics;
@@ -702,23 +705,27 @@ class KVAnalyticsStorage {
     await this.saveDailyMetrics(today, metrics);
   }
 
-  private getEngagementKey(date: Date): string {
-    return `${ANALYTICS_ENGAGEMENT_PREFIX}${getAnalyticsDateKeyUtc(date)}`;
-  }
-
-  private async loadDailyEngagement(date: Date): Promise<DailyPageEngagement> {
-    const stored = await this.kv.get<DailyPageEngagement>(this.getEngagementKey(date), { type: "json" });
-    return stored ? mergeDailyPageEngagement(createEmptyDailyPageEngagement(), stored) : createEmptyDailyPageEngagement();
-  }
-
-  private async saveDailyEngagement(date: Date, engagement: DailyPageEngagement): Promise<void> {
-    await this.kv.put(this.getEngagementKey(date), JSON.stringify(engagement));
+  private async loadEngagementRecord(key: string): Promise<DailyPageEngagement | null> {
+    const stored = await this.kv.get<DailyPageEngagement>(key, { type: "json" });
+    return stored || null;
   }
 
   async trackPageEngagement(flush: PageEngagementFlush): Promise<void> {
-    const today = new Date();
-    const current = await this.loadDailyEngagement(today);
-    await this.saveDailyEngagement(today, applyEngagementFlush(current, flush));
+    const dateKey = getAnalyticsDateKeyUtc(new Date());
+    const entropy = crypto.getRandomValues(new Uint8Array(1))[0] ?? 0;
+    const key = engagementShardKvKey(dateKey, pickEngagementWriteShard(entropy));
+    const stored = await this.loadEngagementRecord(key);
+    const current = stored
+      ? mergeDailyPageEngagement(createEmptyDailyPageEngagement(), stored)
+      : createEmptyDailyPageEngagement();
+    let next = applyEngagementFlush(current, flush);
+    let payload = JSON.stringify(next);
+    if (payload.length > MAX_ENGAGEMENT_SHARD_JSON_BYTES) {
+      next = applyEngagementFlush(current, { ...flush, clicks: [], dwell: [] });
+      payload = JSON.stringify(next);
+    }
+    if (payload.length > MAX_ENGAGEMENT_SHARD_JSON_BYTES) return;
+    await this.kv.put(key, payload);
   }
 
   async getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement> {
@@ -728,8 +735,10 @@ class KVAnalyticsStorage {
     let hasAny = false;
 
     while (cursor <= end) {
-      const daily = await this.kv.get<DailyPageEngagement>(this.getEngagementKey(cursor), { type: "json" });
-      if (daily) {
+      const keys = engagementReadKvKeys(getAnalyticsDateKeyUtc(cursor));
+      const records = await Promise.all(keys.map((key) => this.loadEngagementRecord(key)));
+      for (const daily of records) {
+        if (!daily) continue;
         merged = mergeDailyPageEngagement(merged, daily);
         hasAny = true;
       }
