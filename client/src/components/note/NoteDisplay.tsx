@@ -190,6 +190,32 @@ type AttachmentDisplayMetadata = {
   size: number;
 };
 
+/** Survives language-change remounts so a second /reveal is not required. */
+type OpenedRevealSession = {
+  noteContent: string;
+  noteData: NoteData | null;
+  hasRevealed: boolean;
+  isPasswordProtected: boolean;
+  contentKey: CryptoKey | null;
+  attachmentMetadataList: AttachmentDisplayMetadata[];
+  receiptAckRequired: boolean;
+  receiptAckAcknowledged: boolean;
+  receiptAckTokenHex: string | null;
+  receiptAckStatement: string | null;
+  receiptAckMessage: string | null;
+  senderSelectedLanguage: SupportedLanguage | null;
+  resolvedRevealBranding: RevealBranding | undefined;
+  bodyFont: StoredRevealBodyFont | undefined;
+  recipientGateRequired: boolean;
+  recipientGateCodeRequired: boolean;
+  recipientGateVerified: boolean;
+  recipientGateEmailHint: string | null;
+  recipientCodeSent: boolean;
+  attachmentViewOnly: boolean;
+};
+
+const openedRevealSessionByNoteId = new Map<string, OpenedRevealSession>();
+
 async function decryptAttachmentMetadataList(
   attachments: NoteAttachment[],
   metadataKey: CryptoKey,
@@ -598,44 +624,63 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   linkKeyTruncated = false,
 }) => {
   const { language, setLanguage } = useLanguage();
-  const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(null);
+  const restoredSession = id ? openedRevealSessionByNoteId.get(id) : undefined;
+  const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(
+    () => restoredSession?.senderSelectedLanguage ?? null,
+  );
   // Branding is returned as public note metadata before reveal. Keep it in local
   // state because ViewNote cannot know a note's snapshotted branding up front.
   const [resolvedRevealBranding, setResolvedRevealBranding] =
-    useState<RevealBranding | undefined>(revealBranding);
-  const [bodyFont, setBodyFont] = useState<StoredRevealBodyFont | undefined>(undefined);
-  const [attachmentViewOnly, setAttachmentViewOnly] = useState(false);
+    useState<RevealBranding | undefined>(() => restoredSession?.resolvedRevealBranding ?? revealBranding);
+  const [bodyFont, setBodyFont] = useState<StoredRevealBodyFont | undefined>(
+    () => restoredSession?.bodyFont,
+  );
+  const [attachmentViewOnly, setAttachmentViewOnly] = useState(
+    () => restoredSession?.attachmentViewOnly ?? false,
+  );
   const activeRevealBranding = resolvedRevealBranding ?? revealBranding;
   const readerLanguage = senderSelectedLanguage ?? language ?? "en";
   const [readerTranslations, setReaderTranslations] = useState<Translations>(() =>
     getTranslations(readerLanguage),
   );
   const t = readerTranslations;
-  const [noteContent, setNoteContent] = useState('');
+  const [noteContent, setNoteContent] = useState(() => restoredSession?.noteContent ?? '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyMismatchError, setKeyMismatchError] = useState(false);
   const [delayedRevealOpensAt, setDelayedRevealOpensAt] = useState<string | null>(null);
   /** False until the note meta request settles, so the delayed-reveal check runs before any gate. */
-  const [delayedRevealChecked, setDelayedRevealChecked] = useState(false);
-  const [receiptAckRequired, setReceiptAckRequired] = useState(false);
-  const [receiptAckAcknowledged, setReceiptAckAcknowledged] = useState(false);
-  const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(null);
+  const [delayedRevealChecked, setDelayedRevealChecked] = useState(() => Boolean(restoredSession?.hasRevealed));
+  const [receiptAckRequired, setReceiptAckRequired] = useState(() => restoredSession?.receiptAckRequired ?? false);
+  const [receiptAckAcknowledged, setReceiptAckAcknowledged] = useState(
+    () => restoredSession?.receiptAckAcknowledged ?? false,
+  );
+  const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(
+    () => restoredSession?.receiptAckTokenHex ?? null,
+  );
   const [receiptAckSubmitting, setReceiptAckSubmitting] = useState(false);
-  const [receiptAckMessage, setReceiptAckMessage] = useState<string | null>(null);
-  const [receiptAckStatement, setReceiptAckStatement] = useState<string | null>(null);
-  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [receiptAckMessage, setReceiptAckMessage] = useState<string | null>(
+    () => restoredSession?.receiptAckMessage ?? null,
+  );
+  const [receiptAckStatement, setReceiptAckStatement] = useState<string | null>(
+    () => restoredSession?.receiptAckStatement ?? null,
+  );
+  const [isPasswordProtected, setIsPasswordProtected] = useState(
+    () => restoredSession?.isPasswordProtected ?? false,
+  );
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordDecryptError, setPasswordDecryptError] = useState<string | null>(null);
-  const [noteData, setNoteData] = useState<NoteData | null>(null);
+  const [noteData, setNoteData] = useState<NoteData | null>(() => restoredSession?.noteData ?? null);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
-  const [hasRevealed, setHasRevealed] = useState(false);
+  const [hasRevealed, setHasRevealed] = useState(() => restoredSession?.hasRevealed ?? false);
   const [isRevealButtonReady, setIsRevealButtonReady] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [contentKey, setContentKey] = useState<CryptoKey | null>(null);
-  const [attachmentMetadataList, setAttachmentMetadataList] = useState<AttachmentDisplayMetadata[]>([]);
+  const [contentKey, setContentKey] = useState<CryptoKey | null>(() => restoredSession?.contentKey ?? null);
+  const [attachmentMetadataList, setAttachmentMetadataList] = useState<AttachmentDisplayMetadata[]>(
+    () => restoredSession?.attachmentMetadataList ?? [],
+  );
   const [previewAttachmentIndex, setPreviewAttachmentIndex] = useState<number | null>(null);
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
   const [isViewingFile, setIsViewingFile] = useState(false);
@@ -651,17 +696,72 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [audioPlaybackUnsupported, setAudioPlaybackUnsupported] = useState(false);
   const thumbnailLoadAttemptedRef = useRef(false);
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
-  const [recipientGateLoading, setRecipientGateLoading] = useState(true);
-  const [recipientGateRequired, setRecipientGateRequired] = useState(false);
-  const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(false);
-  const [recipientGateVerified, setRecipientGateVerified] = useState(false);
+  const [recipientGateLoading, setRecipientGateLoading] = useState(() => !restoredSession?.hasRevealed);
+  const [recipientGateRequired, setRecipientGateRequired] = useState(
+    () => restoredSession?.recipientGateRequired ?? false,
+  );
+  const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(
+    () => restoredSession?.recipientGateCodeRequired ?? false,
+  );
+  const [recipientGateVerified, setRecipientGateVerified] = useState(
+    () => restoredSession?.recipientGateVerified ?? false,
+  );
   const [recipientCodeInput, setRecipientCodeInput] = useState("");
   const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
   const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
-  const [recipientGateEmailHint, setRecipientGateEmailHint] = useState<string | null>(null);
+  const [recipientGateEmailHint, setRecipientGateEmailHint] = useState<string | null>(
+    () => restoredSession?.recipientGateEmailHint ?? null,
+  );
   const [recipientCodeSending, setRecipientCodeSending] = useState(false);
-  const [recipientCodeSent, setRecipientCodeSent] = useState(false);
+  const [recipientCodeSent, setRecipientCodeSent] = useState(() => restoredSession?.recipientCodeSent ?? false);
   const recipientCodeAutoSendRef = useRef(false);
+  useEffect(() => {
+    if (!id || !hasRevealed) return;
+    openedRevealSessionByNoteId.set(id, {
+      noteContent,
+      noteData,
+      hasRevealed,
+      isPasswordProtected,
+      contentKey,
+      attachmentMetadataList,
+      receiptAckRequired,
+      receiptAckAcknowledged,
+      receiptAckTokenHex,
+      receiptAckStatement,
+      receiptAckMessage,
+      senderSelectedLanguage,
+      resolvedRevealBranding,
+      bodyFont,
+      recipientGateRequired,
+      recipientGateCodeRequired,
+      recipientGateVerified,
+      recipientGateEmailHint,
+      recipientCodeSent,
+      attachmentViewOnly,
+    });
+  }, [
+    id,
+    hasRevealed,
+    noteContent,
+    noteData,
+    isPasswordProtected,
+    contentKey,
+    attachmentMetadataList,
+    receiptAckRequired,
+    receiptAckAcknowledged,
+    receiptAckTokenHex,
+    receiptAckStatement,
+    receiptAckMessage,
+    senderSelectedLanguage,
+    resolvedRevealBranding,
+    bodyFont,
+    recipientGateRequired,
+    recipientGateCodeRequired,
+    recipientGateVerified,
+    recipientGateEmailHint,
+    recipientCodeSent,
+    attachmentViewOnly,
+  ]);
   const { toast } = useToast();
   const { entitlements } = useAccountEntitlements();
   const canChooseVoiceDownloadFormat = hasPremiumFeatures(entitlements.accountType);
@@ -701,6 +801,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setSenderSelectedLanguage(null);
       setResolvedRevealBranding(revealBranding);
       setDelayedRevealOpensAt(null);
+      setDelayedRevealChecked(true);
+      return;
+    }
+    if (openedRevealSessionByNoteId.get(id)?.hasRevealed) {
       setDelayedRevealChecked(true);
       return;
     }
@@ -961,6 +1065,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setError('Invalid note ID');
       setKeyMismatchError(false);
       setIsLoading(false);
+      setRecipientGateLoading(false);
+      return;
+    }
+    if (openedRevealSessionByNoteId.get(id)?.hasRevealed) {
       setRecipientGateLoading(false);
       return;
     }

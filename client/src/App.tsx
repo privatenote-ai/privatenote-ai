@@ -168,6 +168,11 @@ function LazyRoute({ component: Page }: { component: ComponentType }) {
   );
 }
 
+/** Stable identity so language changes do not remount the one-time reveal session. */
+function ViewNoteRoute() {
+  return <LazyRoute component={ViewNote} />;
+}
+
 function pathWithoutQueryOrHash(loc: string): string {
   return loc.split(/[?#]/)[0] ?? "";
 }
@@ -349,7 +354,7 @@ function Router() {
               <Route path={`/${language}/security-guides/:topicId`} component={() => <LocalizedRoute language={language} component={SecurityGuideDetail} />} />
             </Fragment>
           ))}
-          <Route path="/note/:id" component={() => <LazyRoute component={ViewNote} />} />
+          <Route path="/note/:id" component={ViewNoteRoute} />
           <Route path="/password-generator" component={() => <LazyRoute component={PasswordGenerator} />} />
           <Route path="/secure-file-transfer" component={() => <LazyRoute component={SecureFileTransfer} />} />
           <Route path="/privacy-tools" component={() => <LazyRoute component={PrivacyTools} />} />
