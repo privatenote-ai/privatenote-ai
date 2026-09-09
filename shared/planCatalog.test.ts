@@ -77,6 +77,12 @@ describe("planCatalog", () => {
     assert.equal(free.maxVoiceMessageSeconds, 5 * 60);
     assert.equal(starter.maxVoiceMessageSeconds, 15 * 60);
     assert.equal(business.maxVoiceMessageSeconds, 30 * 60);
+    assert.equal(free.attachmentsMaxCount, 5);
+    assert.equal(starter.attachmentsMaxCount, 10);
+    assert.equal(business.attachmentsMaxCount, 20);
+    assert.equal(free.attachmentTransferMaxBytes, 25 * 1024 * 1024);
+    assert.equal(starter.attachmentTransferMaxBytes, 250 * 1024 * 1024);
+    assert.equal(business.attachmentTransferMaxBytes, 1024 * 1024 * 1024);
   });
 
   it("enables workflow on Starter and branding on Business", () => {

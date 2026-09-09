@@ -215,6 +215,10 @@ function comparisonValue(planId: AccountType, key: string, t: Translations): Com
       return flag(features.attachmentViewOnly, t.pricingIncluded);
     case "attachments":
       return cell(formatBytesLabel(features.attachmentMaxBytes, t));
+    case "attachmentCount":
+      return cell(`${features.attachmentsMaxCount} files`);
+    case "attachmentTransfer":
+      return cell(formatBytesLabel(features.attachmentTransferMaxBytes, t));
     case "fileTransfers":
       if (features.maxAttachmentTransfersPerDay == null) {
         return cell(t.pricingFileTransfersUnlimited);
@@ -286,6 +290,8 @@ function comparisonSections(t: Translations): {
       description: t.pricingSectionCapacityDesc,
       rows: [
         { key: "attachments", label: t.pricingRowAttachments },
+        { key: "attachmentCount", label: t.pricingRowAttachmentCount ?? "Files per transfer" },
+        { key: "attachmentTransfer", label: t.pricingRowAttachmentTransfer ?? "Max transfer size" },
         { key: "fileTransfers", label: t.pricingRowFileTransfers },
         { key: "payloadBuffer", label: t.pricingRowPayloadBuffer },
         { key: "fileWindow", label: t.pricingRowFileWindow },

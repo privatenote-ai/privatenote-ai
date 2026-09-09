@@ -8,6 +8,7 @@ import {
   noteReservationUploadClientMatches,
   parseNoteReserveAttachmentBinding,
   parseNoteUploadBearerToken,
+  reservationAttachmentAt,
   uploadedChunkHashKey,
 } from "./noteFileUploadAuth.ts";
 
@@ -35,6 +36,10 @@ describe("note file upload auth", () => {
     }), {
       attachmentPlaintextSize: 100,
       attachmentEncryptedSize: 117,
+      attachments: [{
+        attachmentPlaintextSize: 100,
+        attachmentEncryptedSize: 117,
+      }],
     });
     assert.equal(parseNoteReserveAttachmentBinding({ attachmentPlaintextSize: 100 }), null);
     assert.equal(parseNoteReserveAttachmentBinding({ attachmentEncryptedSize: 50, attachmentPlaintextSize: 100 }), null);
@@ -51,6 +56,30 @@ describe("note file upload auth", () => {
   it("uses string keys for uploaded chunk hashes", () => {
     assert.equal(uploadedChunkHashKey(0), "0");
     assert.equal(uploadedChunkHashKey(12), "12");
+    assert.equal(uploadedChunkHashKey(0, 1), "1:0");
+    assert.equal(uploadedChunkHashKey(3, 2), "2:3");
+  });
+
+  it("parses a multi-file reserve binding and reads items by index", () => {
+    const parsed = parseNoteReserveAttachmentBinding({
+      attachments: [
+        { attachmentPlaintextSize: 10, attachmentEncryptedSize: 27 },
+        { attachmentPlaintextSize: 20, attachmentEncryptedSize: 37 },
+      ],
+    });
+    assert.deepEqual(parsed, {
+      attachmentPlaintextSize: 30,
+      attachmentEncryptedSize: 64,
+      attachments: [
+        { attachmentPlaintextSize: 10, attachmentEncryptedSize: 27 },
+        { attachmentPlaintextSize: 20, attachmentEncryptedSize: 37 },
+      ],
+    });
+    assert.deepEqual(reservationAttachmentAt(parsed!, 1), {
+      attachmentPlaintextSize: 20,
+      attachmentEncryptedSize: 37,
+    });
+    assert.equal(reservationAttachmentAt(parsed!, 2), null);
   });
 
   it("matches reservation client identifiers", () => {

@@ -14,9 +14,12 @@ import {
   NOTE_FILE_BUSINESS_MAX_BYTES,
   NOTE_FILE_STARTER_MAX_BYTES,
   formatNoteFileSize,
+  noteFileAttachmentsMaxCountForAccount,
   noteFileLimitBytesForAccount,
+  noteFileTransferLimitBytesForAccount,
   resolveFileSizeUpgradePlan,
 } from "@shared/noteFileLimits";
+import { attachmentUploadApiPath } from "@shared/noteAttachments";
 import {
   NOTE_EXPIRY_DEFAULT_PRESET_ID,
   clampNoteExpiryPresetForAccount,
@@ -127,6 +130,7 @@ const CustomizeSettingsOverlay = lazy(() =>
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { GravityDropZone } from "./GravityDropZone";
+import { ComposerAddActions, ComposerAttachmentList } from "./ComposerAttachments";
 import { useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
@@ -508,7 +512,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [attachmentPermission, setAttachmentPermission] =
     useState<AttachmentRecipientPermission>("download");
   const [applyBranding, setApplyBranding] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [fileSizeUpgradePlan, setFileSizeUpgradePlan] = useState<
     "personal_premium" | "business_premium" | null
   >(null);
@@ -556,15 +561,35 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const canRequireReceiptAck = isPremiumUser && planCapabilities.receiptAcknowledgment;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
+  const transferLimitBytes = noteFileTransferLimitBytesForAccount(accountType);
+  const attachmentsMaxCount = noteFileAttachmentsMaxCountForAccount(accountType);
+  const selectedFilesTotalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+  const remainingTransferBytes = transferLimitBytes - selectedFilesTotalBytes;
+  const canAddMoreAttachments =
+    selectedFiles.length < attachmentsMaxCount && remainingTransferBytes > 0;
+  const hasAttachments = selectedFiles.length > 0;
+  const addDisabledReason = !canAddMoreAttachments
+    ? selectedFiles.length >= attachmentsMaxCount
+      ? (t.tooManyAttachmentsDescription ?? "This plan allows up to {count} files per transfer.").replace(
+          "{count}",
+          String(attachmentsMaxCount),
+        )
+      : (t.transferAddDisabledSize ??
+          "This transfer is already at the {limit} limit for one link.").replace(
+          "{limit}",
+          formatNoteFileSize(transferLimitBytes),
+        )
+    : undefined;
   const paidFileUpgradeHint = (t.fileTooLargeUpgradeHint ??
     "Starter allows up to {starterLimit} per file; Business up to {businessLimit}.")
     .replace("{starterLimit}", formatNoteFileSize(NOTE_FILE_STARTER_MAX_BYTES))
     .replace("{businessLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES))
     .replace("{premiumLimit}", formatNoteFileSize(NOTE_FILE_BUSINESS_MAX_BYTES));
-  const attachFileMaxSizeHint = (t.attachFileMaxSizeHint ?? "Up to {limit} per file").replace(
-    "{limit}",
-    fileLimitLabel,
-  );
+  const attachFileMaxSizeHint = (t.attachTransferQuotaHint ??
+    "Up to {count} files · {limit} each · {total} total")
+    .replace("{count}", String(attachmentsMaxCount))
+    .replace("{limit}", fileLimitLabel)
+    .replace("{total}", formatNoteFileSize(transferLimitBytes));
 
   const attachFileReturnTo =
     typeof window === "undefined"
@@ -598,14 +623,48 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     return true;
   };
 
+  const tryAppendFiles = (incoming: File[]): boolean => {
+    if (!incoming.length) return false;
+    const accepted: File[] = [];
+    let nextCount = selectedFiles.length;
+    let nextTotal = selectedFilesTotalBytes;
+    for (const file of incoming) {
+      if (rejectOversizedAttachment(file)) continue;
+      if (nextCount >= attachmentsMaxCount) {
+        toast({
+          title: t.tooManyAttachmentsTitle ?? "Too many files",
+          description: (t.tooManyAttachmentsDescription ?? "This plan allows up to {count} files per transfer.")
+            .replace("{count}", String(attachmentsMaxCount)),
+          variant: "destructive",
+        });
+        break;
+      }
+      if (nextTotal + file.size > transferLimitBytes) {
+        toast({
+          title: t.transferTooLargeTitle ?? "Transfer is too large",
+          description: (t.transferTooLargeDescription ??
+            "This transfer would be {size}. Your plan allows up to {limit} in one link.")
+            .replace("{size}", formatNoteFileSize(nextTotal + file.size))
+            .replace("{limit}", formatNoteFileSize(transferLimitBytes)),
+          variant: "destructive",
+        });
+        continue;
+      }
+      accepted.push(file);
+      nextCount += 1;
+      nextTotal += file.size;
+    }
+    if (!accepted.length) return false;
+    setSelectedFiles((current) => [...current, ...accepted]);
+    return true;
+  };
+
   const handleVoiceMessageRecorded = (file: File) => {
-    if (rejectOversizedAttachment(file)) return;
-    setSelectedFile(file);
+    tryAppendFiles([file]);
   };
 
   const handlePhotoCaptured = (file: File) => {
-    if (rejectOversizedAttachment(file)) return;
-    setSelectedFile(file);
+    tryAppendFiles([file]);
   };
 
   const secondaryActionButtonClass =
@@ -744,11 +803,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const handleAttachFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
+    const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (!file) return;
-    if (rejectOversizedAttachment(file)) return;
-    setSelectedFile(file);
+    if (!files.length) return;
+    tryAppendFiles(files);
   };
 
   const handleAttachFolderSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -759,8 +817,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     try {
       const { createStoredZipFromFiles } = await import("@/utils/createStoredZip");
       const zippedFolder = await createStoredZipFromFiles(files);
-      if (rejectOversizedAttachment(zippedFolder)) return;
-      setSelectedFile(zippedFolder);
+      tryAppendFiles([zippedFolder]);
     } catch (error) {
       toast({
         title: t.sftFolderPrepareFailedTitle,
@@ -787,36 +844,25 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const handleDropZoneDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsFileDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
+    const files = Array.from(e.dataTransfer.files ?? []);
+    if (!files.length) return;
     if (!canAttachFiles) {
       saveAuthRedirectDraft();
       window.location.href = attachFileSignInHref;
       return;
     }
-    if (rejectOversizedAttachment(file)) return;
-    setSelectedFile(file);
+    tryAppendFiles(files);
   };
 
-  const selectedFileIsVoice = isVoiceMessageFile(selectedFile);
-  const selectedFileIsVideo = isVideoMessageFile(selectedFile);
-  const selectedFileIsPhoto = isCapturedPhotoFile(selectedFile);
-  const attachFileButtonLabel = selectedFile
-    ? formatAttachmentDisplayName(selectedFile.name)
-    : isFileTransferMode
-      ? t.sftAttachFile
-      : t.attachFile;
-  const recordMessageButtonLabel =
-    selectedFileIsVoice || selectedFileIsVideo
-      ? formatAttachmentDisplayName(selectedFile!.name)
-      : !canAttachFiles
-        ? (t.signInToRecordMessage ?? t.signInToAttachFiles ?? t.recordMessage ?? "Record message")
-        : (t.recordMessage ?? "Record message");
-  const takePhotoButtonLabel = selectedFileIsPhoto
-    ? formatAttachmentDisplayName(selectedFile!.name)
-    : !canAttachFiles
-      ? (t.signInToTakePhoto ?? t.signInToAttachFiles ?? t.takePhoto ?? "Take photo")
-      : (t.takePhoto ?? "Take photo");
+  const selectedFileIsVoice = selectedFiles.some((file) => isVoiceMessageFile(file));
+  const selectedFileIsVideo = selectedFiles.some((file) => isVideoMessageFile(file));
+  const attachFileButtonLabel = isFileTransferMode ? t.sftAttachFile : t.attachFile;
+  const recordMessageButtonLabel = !canAttachFiles
+    ? (t.signInToRecordMessage ?? t.signInToAttachFiles ?? t.recordMessage ?? "Record message")
+    : (t.recordMessage ?? "Record message");
+  const takePhotoButtonLabel = !canAttachFiles
+    ? (t.signInToTakePhoto ?? t.signInToAttachFiles ?? t.takePhoto ?? "Take photo")
+    : (t.takePhoto ?? "Take photo");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);
@@ -988,10 +1034,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   ]);
 
   useEffect(() => {
-    if (!canAttachFiles && selectedFile) {
-      setSelectedFile(null);
+    if (!canAttachFiles && hasAttachments) {
+      setSelectedFiles([]);
     }
-  }, [canAttachFiles, selectedFile]);
+  }, [canAttachFiles, hasAttachments]);
 
   useEffect(() => {
     if (!canNotifyOnOpen && notifyOnOpen) {
@@ -1026,10 +1072,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [canRequireReceiptAck, requireReceiptAck]);
 
   useEffect(() => {
-    if (selectedFile) return;
+    if (hasAttachments) return;
     if (!notifyOnAttachmentDownload) return;
     setNotifyOnAttachmentDownload(false);
-  }, [notifyOnAttachmentDownload, selectedFile]);
+  }, [notifyOnAttachmentDownload, hasAttachments]);
 
   // One-time notes open and destroy together — keep both notify flags aligned.
   useEffect(() => {
@@ -1430,7 +1476,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isFileTransferMode && !selectedFile) {
+    if (isFileTransferMode && !hasAttachments) {
       toast({
         title: t.sftAttachRequiredTitle,
         description: t.sftAttachRequiredDescription,
@@ -1439,7 +1485,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    if (!noteContent.trim() && !selectedFile) {
+    if (!noteContent.trim() && !hasAttachments) {
       toast({
         title: t.error,
         description: t.toastAddContentOrFile,
@@ -1448,11 +1494,22 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    if (selectedFile && rejectOversizedAttachment(selectedFile)) {
+    if (hasAttachments && selectedFiles.some((file) => rejectOversizedAttachment(file))) {
+      return;
+    }
+    if (hasAttachments && selectedFilesTotalBytes > transferLimitBytes) {
+      toast({
+        title: t.transferTooLargeTitle ?? "Transfer is too large",
+        description: (t.transferTooLargeDescription ??
+          "This transfer would be {size}. Your plan allows up to {limit} in one link.")
+          .replace("{size}", formatNoteFileSize(selectedFilesTotalBytes))
+          .replace("{limit}", formatNoteFileSize(transferLimitBytes)),
+        variant: "destructive",
+      });
       return;
     }
 
-    if (selectedFile && !canAttachFiles) {
+    if (hasAttachments && !canAttachFiles) {
       toast({
         title: t.signInToAttachFiles,
         description: t.signInToAttachFilesHint,
@@ -1562,7 +1619,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         ? parsedBodyFont
         : undefined;
     const applyAttachmentPermission =
-      planCapabilities.attachmentViewOnly && selectedFile
+      planCapabilities.attachmentViewOnly && hasAttachments
         ? parseAttachmentRecipientPermission(attachmentPermission)
         : undefined;
     const tracksDelivery =
@@ -1619,11 +1676,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     setIsLoading(true);
     setAttachmentProgress(
-      selectedFile
+      hasAttachments
         ? {
             phase: "prepare",
             progress: 2,
-            detail: formatAttachmentDisplayName(selectedFile.name),
+            detail: formatAttachmentDisplayName(selectedFiles[0]!.name),
           }
         : null,
     );
@@ -1664,12 +1721,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         encryptFileToSodiumBlob,
         encryptFileToSodiumChunks,
       } = await import("@/utils/libsodiumFileAttachment");
-      const encryptedSizeBound = selectedFile
-        ? attachmentEncryptedSizeUpperBound(selectedFile.size)
+      const encryptedSizeBound = hasAttachments
+        ? selectedFiles.reduce((sum, file) => sum + attachmentEncryptedSizeUpperBound(file.size), 0)
         : 0;
-      const attachmentReserveBinding = selectedFile
+      const attachmentReserveBinding = hasAttachments
         ? {
-            attachmentPlaintextSize: selectedFile.size,
+            attachments: selectedFiles.map((file) => ({
+              attachmentPlaintextSize: file.size,
+              attachmentEncryptedSize: attachmentEncryptedSizeUpperBound(file.size),
+            })),
+            attachmentPlaintextSize: selectedFilesTotalBytes,
             attachmentEncryptedSize: encryptedSizeBound,
           }
         : undefined;
@@ -1682,7 +1743,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
       let aad: string;
       let kdfParams: unknown;
-      let attachment: {
+      const attachments: {
         v: 2;
         alg: "libsodium-secretstream-xchacha20poly1305";
         encryptedSize: number;
@@ -1704,7 +1765,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         };
         chunks: Array<{ index: number; encryptedSize: number }>;
         encryptedContentSha256: string;
-      } | null = null;
+      }[] = [];
 
       const aadBinding = {
         noteId: reservedId,
@@ -1767,229 +1828,245 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       }
       rootKeyBytes.fill(0);
 
-      if (selectedFile) {
+      if (hasAttachments) {
         if (!uploadToken) {
           throw new Error("Upload token missing from note reservation.");
         }
-        try {
-          const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes(selectedFile.size);
-          const singleBlob = usesSingleBlobAttachmentUpload(selectedFile.size);
-          const totalChunksHint = singleBlob
-            ? 1
-            : Math.max(1, Math.ceil(selectedFile.size / attachmentChunkSizeBytes));
-          logFileUpload("info", "starting attachment encryption", {
-            noteId: reservedId,
-            fileName: selectedFile.name,
-            fileType: selectedFile.type || "application/octet-stream",
-            fileSize: selectedFile.size,
-            totalChunks: totalChunksHint,
-            chunkSizeBytes: attachmentChunkSizeBytes,
-            encryptedSizeBound,
-            singleBlob,
-            apiBase: getFileUploadTargetLabel(),
-          });
+        for (let attachmentIndex = 0; attachmentIndex < selectedFiles.length; attachmentIndex += 1) {
+          const file = selectedFiles[attachmentIndex]!;
+          const fileBound = attachmentEncryptedSizeUpperBound(file.size);
+          try {
+            const attachmentChunkSizeBytes = getAttachmentChunkSizeBytes(file.size);
+            const singleBlob = usesSingleBlobAttachmentUpload(file.size);
+            const totalChunksHint = singleBlob
+              ? 1
+              : Math.max(1, Math.ceil(file.size / attachmentChunkSizeBytes));
+            const fileLabel =
+              selectedFiles.length > 1
+                ? `${attachmentIndex + 1}/${selectedFiles.length} · ${formatAttachmentDisplayName(file.name)}`
+                : formatAttachmentDisplayName(file.name);
+            logFileUpload("info", "starting attachment encryption", {
+              noteId: reservedId,
+              attachmentIndex,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+              totalChunks: totalChunksHint,
+              chunkSizeBytes: attachmentChunkSizeBytes,
+              encryptedSizeBound: fileBound,
+              singleBlob,
+              apiBase: getFileUploadTargetLabel(),
+            });
 
-          if (singleBlob) {
-            const fileLabel = formatAttachmentDisplayName(selectedFile.name);
-            setAttachmentProgress({
-              phase: "encrypt",
-              progress: 8,
-              detail: fileLabel,
-            });
-            const encrypted = await encryptFileToSodiumBlob(
-              selectedFile,
-              fileWrapKey!,
-              metadataKey!,
-              reservedId,
-              (pipeline) => {
-                const ratio =
-                  typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
-                    ? pipeline.ratio
-                    : pipeline.totalChunks > 0
-                      ? pipeline.completedChunks / pipeline.totalChunks
-                      : 0;
-                const next = Math.max(2, Math.min(99, Math.round(ratio * 100)));
-                setAttachmentProgress((prev) => ({
-                  phase: "encrypt",
-                  // Never jump backwards (initial 8% must not drop to 2%).
-                  progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, next),
-                  detail: fileLabel,
-                }));
-              },
-            );
-            attachment = encrypted.metadata;
-            setAttachmentProgress({
-              phase: "encrypt",
-              progress: 100,
-              detail: fileLabel,
-            });
-            setAttachmentProgress({
-              phase: "upload",
-              progress: 4,
-              detail: fileLabel,
-            });
-            if (shouldUseDirectR2Upload(encrypted.blob.size)) {
-              await uploadEncryptedAttachmentViaPresignedR2({
-                noteId: reservedId,
-                blob: encrypted.blob,
-                chunkSha256: encrypted.sha256,
-                uploadToken,
-                onUploadProgress: ({ loaded, total }) => {
-                  if (!Number.isFinite(total) || total <= 0) return;
-                  const ratio = Math.min(1, Math.max(0, loaded / total));
-                  const next = Math.max(4, Math.round(ratio * 100));
-                  setAttachmentProgress((prev) => ({
-                    phase: "upload",
-                    progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, next),
-                    detail: fileLabel,
-                  }));
-                },
+            if (singleBlob) {
+              setAttachmentProgress({
+                phase: "encrypt",
+                progress: 8,
+                detail: fileLabel,
               });
-            } else {
-              await uploadEncryptedAttachmentBlob(
-                `/api/notes/${reservedId}/file`,
-                encrypted.blob,
-                {
-                  "x-file-plaintext-size": String(selectedFile.size),
-                  "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
-                  "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
-                  "x-file-chunk-sha256": encrypted.sha256,
-                },
-                uploadToken,
-                ({ loaded, total }) => {
-                  if (!Number.isFinite(total) || total <= 0) return;
-                  const ratio = Math.min(1, Math.max(0, loaded / total));
-                  const next = Math.max(4, Math.round(ratio * 100));
+              const encrypted = await encryptFileToSodiumBlob(
+                file,
+                fileWrapKey!,
+                metadataKey!,
+                reservedId,
+                (pipeline) => {
+                  const ratio =
+                    typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
+                      ? pipeline.ratio
+                      : pipeline.totalChunks > 0
+                        ? pipeline.completedChunks / pipeline.totalChunks
+                        : 0;
+                  const next = Math.max(2, Math.min(99, Math.round(ratio * 100)));
                   setAttachmentProgress((prev) => ({
-                    phase: "upload",
-                    progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, next),
+                    phase: "encrypt",
+                    progress: Math.max(prev?.phase === "encrypt" ? prev.progress : 0, next),
                     detail: fileLabel,
                   }));
                 },
+                attachmentIndex,
               );
-            }
-            setAttachmentProgress({
-              phase: "upload",
-              progress: 100,
-              detail: fileLabel,
-            });
-          } else {
-            const fileLabel = formatAttachmentDisplayName(selectedFile.name);
-            const chunkDetail = (done: number, total: number) =>
-              total <= 1 ? fileLabel : `${done}/${total} · ${fileLabel}`;
-            const completedChunksRef = { current: 0 };
-            setAttachmentProgress({
-              phase: "encrypt",
-              progress: 5,
-              detail: fileLabel,
-            });
-            attachment = await encryptFileToSodiumChunks(
-              selectedFile,
-              fileWrapKey!,
-              metadataKey!,
-              reservedId,
-              async (chunk) => {
-                await uploadEncryptedAttachmentChunk(
-                  `/api/notes/${reservedId}/file/chunks/${chunk.index}`,
-                  chunk.encryptedBytes,
+              attachments.push(encrypted.metadata);
+              setAttachmentProgress({
+                phase: "encrypt",
+                progress: 100,
+                detail: fileLabel,
+              });
+              setAttachmentProgress({
+                phase: "upload",
+                progress: 4,
+                detail: fileLabel,
+              });
+              if (shouldUseDirectR2Upload(encrypted.blob.size)) {
+                await uploadEncryptedAttachmentViaPresignedR2({
+                  noteId: reservedId,
+                  blob: encrypted.blob,
+                  chunkSha256: encrypted.sha256,
+                  uploadToken,
+                  attachmentIndex,
+                  onUploadProgress: ({ loaded, total }) => {
+                    if (!Number.isFinite(total) || total <= 0) return;
+                    const ratio = Math.min(1, Math.max(0, loaded / total));
+                    const next = Math.max(4, Math.round(ratio * 100));
+                    setAttachmentProgress((prev) => ({
+                      phase: "upload",
+                      progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, next),
+                      detail: fileLabel,
+                    }));
+                  },
+                });
+              } else {
+                await uploadEncryptedAttachmentBlob(
+                  attachmentUploadApiPath(reservedId, attachmentIndex),
+                  encrypted.blob,
                   {
-                    "x-file-plaintext-size": String(selectedFile.size),
-                    "x-file-encrypted-size": String(encryptedSizeBound),
-                    "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
-                    "x-file-chunk-sha256": chunk.sha256,
+                    "x-file-plaintext-size": String(file.size),
+                    "x-file-encrypted-size": String(encrypted.metadata.encryptedSize),
+                    "x-file-chunk-encrypted-size": String(encrypted.metadata.encryptedSize),
+                    "x-file-chunk-sha256": encrypted.sha256,
                   },
                   uploadToken,
+                  ({ loaded, total }) => {
+                    if (!Number.isFinite(total) || total <= 0) return;
+                    const ratio = Math.min(1, Math.max(0, loaded / total));
+                    const next = Math.max(4, Math.round(ratio * 100));
+                    setAttachmentProgress((prev) => ({
+                      phase: "upload",
+                      progress: Math.max(prev?.phase === "upload" ? prev.progress : 0, next),
+                      detail: fileLabel,
+                    }));
+                  },
                 );
-              },
-              (pipeline) => {
-                if (pipeline.phase === "upload") {
-                  completedChunksRef.current = pipeline.completedChunks;
-                }
-                const done =
-                  pipeline.phase === "upload"
-                    ? pipeline.completedChunks
-                    : completedChunksRef.current;
-                const ratio =
-                  typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
-                    ? pipeline.ratio
-                    : pipeline.totalChunks > 0
-                      ? pipeline.completedChunks / pipeline.totalChunks
-                      : 1;
-                const within = Math.round(ratio * 100);
-                setAttachmentProgress({
-                  phase: pipeline.phase === "upload" ? "upload" : "encrypt",
-                  progress: Math.min(100, Math.max(pipeline.phase === "encrypt" ? 5 : 4, within)),
-                  detail: chunkDetail(done, pipeline.totalChunks),
-                });
-              },
-            );
+              }
+              setAttachmentProgress({
+                phase: "upload",
+                progress: 100,
+                detail: fileLabel,
+              });
+            } else {
+              const chunkDetail = (done: number, total: number) =>
+                total <= 1 ? fileLabel : `${done}/${total} · ${fileLabel}`;
+              const completedChunksRef = { current: 0 };
+              setAttachmentProgress({
+                phase: "encrypt",
+                progress: 5,
+                detail: fileLabel,
+              });
+              const chunkPathBase =
+                attachmentIndex > 0
+                  ? `/api/notes/${reservedId}/attachments/${attachmentIndex}/file/chunks`
+                  : `/api/notes/${reservedId}/file/chunks`;
+              const metadata = await encryptFileToSodiumChunks(
+                file,
+                fileWrapKey!,
+                metadataKey!,
+                reservedId,
+                async (chunk) => {
+                  await uploadEncryptedAttachmentChunk(
+                    `${chunkPathBase}/${chunk.index}`,
+                    chunk.encryptedBytes,
+                    {
+                      "x-file-plaintext-size": String(file.size),
+                      "x-file-encrypted-size": String(fileBound),
+                      "x-file-chunk-encrypted-size": String(chunk.encryptedSize),
+                      "x-file-chunk-sha256": chunk.sha256,
+                    },
+                    uploadToken,
+                  );
+                },
+                (pipeline) => {
+                  if (pipeline.phase === "upload") {
+                    completedChunksRef.current = pipeline.completedChunks;
+                  }
+                  const done =
+                    pipeline.phase === "upload"
+                      ? pipeline.completedChunks
+                      : completedChunksRef.current;
+                  const ratio =
+                    typeof pipeline.ratio === "number" && Number.isFinite(pipeline.ratio)
+                      ? pipeline.ratio
+                      : pipeline.totalChunks > 0
+                        ? pipeline.completedChunks / pipeline.totalChunks
+                        : 1;
+                  const within = Math.round(ratio * 100);
+                  setAttachmentProgress({
+                    phase: pipeline.phase === "upload" ? "upload" : "encrypt",
+                    progress: Math.min(100, Math.max(pipeline.phase === "encrypt" ? 5 : 4, within)),
+                    detail: chunkDetail(done, pipeline.totalChunks),
+                  });
+                },
+                attachmentIndex,
+              );
+              attachments.push(metadata);
+              setAttachmentProgress({
+                phase: "upload",
+                progress: 100,
+                detail: fileLabel,
+              });
+            }
+
             setAttachmentProgress({
-              phase: "upload",
-              progress: 100,
+              phase: "finalize",
+              progress: 35,
               detail: fileLabel,
             });
-          }
-
-          setAttachmentProgress({
-            phase: "finalize",
-            progress: 35,
-            detail: formatAttachmentDisplayName(selectedFile.name),
-          });
-          logFileUpload("info", "attachment encryption+upload complete", {
-            noteId: reservedId,
-            totalChunks: attachment.totalChunks,
-            encryptedSize: attachment.encryptedSize,
-            singleBlob,
-          });
-        } catch (error) {
-          logFileUpload("error", "attachment failed", {
-            noteId: reservedId,
-            fileName: selectedFile.name,
-            fileType: selectedFile.type || "application/octet-stream",
-            fileSize: selectedFile.size,
-            error:
-              error instanceof ApiRequestError
-                ? { status: error.status, bodyPreview: error.bodyText.slice(0, 500) }
-                : error instanceof Error
-                  ? { name: error.name, message: error.message }
-                  : String(error),
-          });
-          if (error instanceof ApiRequestError) {
-            try {
-              const parsed = JSON.parse(error.bodyText) as {
-                error?: string;
-                message?: string;
-                limit?: number;
-              };
-              if (parsed.error === "attachment_transfer_daily_limit") {
-                const limit =
-                  typeof parsed.limit === "number" && Number.isFinite(parsed.limit)
-                    ? parsed.limit
-                    : 10;
-                throw new Error(
-                  parsed.message?.trim() ||
-                    `Free accounts can start ${limit} file, photo, audio, or recording transfers per day. Upgrade for higher limits.`,
-                );
+            logFileUpload("info", "attachment encryption+upload complete", {
+              noteId: reservedId,
+              attachmentIndex,
+              totalChunks: attachments[attachmentIndex]!.totalChunks,
+              encryptedSize: attachments[attachmentIndex]!.encryptedSize,
+              singleBlob,
+            });
+          } catch (error) {
+            logFileUpload("error", "attachment failed", {
+              noteId: reservedId,
+              attachmentIndex,
+              fileName: file.name,
+              fileType: file.type || "application/octet-stream",
+              fileSize: file.size,
+              error:
+                error instanceof ApiRequestError
+                  ? { status: error.status, bodyPreview: error.bodyText.slice(0, 500) }
+                  : error instanceof Error
+                    ? { name: error.name, message: error.message }
+                    : String(error),
+            });
+            if (error instanceof ApiRequestError) {
+              try {
+                const parsed = JSON.parse(error.bodyText) as {
+                  error?: string;
+                  message?: string;
+                  limit?: number;
+                };
+                if (parsed.error === "attachment_transfer_daily_limit") {
+                  const limit =
+                    typeof parsed.limit === "number" && Number.isFinite(parsed.limit)
+                      ? parsed.limit
+                      : 10;
+                  throw new Error(
+                    parsed.message?.trim() ||
+                      `Free accounts can start ${limit} file, photo, audio, or recording transfers per day. Upgrade for higher limits.`,
+                  );
+                }
+                if (parsed.error === "account_file_storage_quota_exceeded") {
+                  throw new Error(
+                    parsed.message?.trim() ||
+                      "Encrypted file storage limit reached. Delete older transfers or upgrade your plan.",
+                  );
+                }
+                if (typeof parsed.message === "string" && parsed.message.trim()) {
+                  throw new Error(parsed.message.trim());
+                }
+              } catch (parsedError) {
+                if (parsedError instanceof Error && parsedError !== error) throw parsedError;
               }
-              if (parsed.error === "account_file_storage_quota_exceeded") {
-                throw new Error(
-                  parsed.message?.trim() ||
-                    "Encrypted file storage limit reached. Delete older transfers or upgrade your plan.",
-                );
-              }
-              if (typeof parsed.message === "string" && parsed.message.trim()) {
-                throw new Error(parsed.message.trim());
-              }
-            } catch (parsedError) {
-              if (parsedError instanceof Error && parsedError !== error) throw parsedError;
             }
+            const message = error instanceof Error ? error.message : "";
+            throw new Error(
+              message && message !== "Load failed"
+                ? message
+                : "Encrypted file upload failed before the server responded. Try a smaller file or save the image locally and retry.",
+            );
           }
-          const message = error instanceof Error ? error.message : "";
-          throw new Error(
-            message && message !== "Load failed"
-              ? message
-              : "Encrypted file upload failed before the server responded. Try a smaller file or save the image locally and retry.",
-          );
         }
       }
 
@@ -2008,7 +2085,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           canNotifyOnOpen &&
           (readCount === 1 ? notifyOnOpen || notifyOnDestroyed : notifyOnDestroyed),
         notifyOnAttachmentDownload:
-          Boolean(selectedFile) && canNotifyOnOpen && notifyOnAttachmentDownload,
+          hasAttachments && canNotifyOnOpen && notifyOnAttachmentDownload,
         ...(alertsEnabled
           ? {
               alertNotifyAccountEmail: applyAlertNotifyAccountEmail,
@@ -2049,10 +2126,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         isPasswordProtected,
         keyDerivation: NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
         aad,
-        ...(attachment
+        ...(attachments.length > 0
           ? {
-              attachment,
-              attachmentContentHash: attachment.encryptedContentSha256,
+              attachment: attachments[0],
+              attachments,
+              attachmentContentHash: attachments[0]!.encryptedContentSha256,
+              attachmentContentHashes: attachments.map((item) => item.encryptedContentSha256),
               ...(selectedFileIsVoice ? { hasVoiceMessage: true } : {}),
             }
           : {}),
@@ -2394,7 +2473,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     setShowPassword(false);
     setPasswordSource(null);
     setExpiryValue(NOTE_EXPIRY_DEFAULT_PRESET_ID);
-    setSelectedFile(null);
+    setSelectedFiles([]);
   };
 
   // ── AI actions ────────────────────────────────────────────────────────────
@@ -3215,33 +3294,20 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 rows={6}
                 className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-primary/60 dark:border-primary/40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 placeholder={t.typeHere}
-                required={!selectedFile}
+                required={!hasAttachments}
               />
             </div>
           ) : null}
 
-          {!isAiMode && isFileTransferMode && selectedFile ? (
+          {!isAiMode && isFileTransferMode && hasAttachments ? (
             <div className="mb-4 space-y-4">
-              <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900">
-                <Paperclip className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                    <span
-                      className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100"
-                      title={selectedFile.name}
-                    >
-                      {formatAttachmentDisplayName(selectedFile.name)}
-                    </span>
-                    <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
-                      {formatNoteFileSize(selectedFile.size)}
-                    </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedFile(null)}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                  aria-label={t.removeSelectedFile ?? "Remove selected file"}
-                >
-                  <X className="h-4 w-4" aria-hidden />
-                </button>
-              </div>
+              <ComposerAttachmentList
+                files={selectedFiles}
+                onRemove={(index) =>
+                  setSelectedFiles((current) => current.filter((_, i) => i !== index))
+                }
+                removeLabel={t.removeSelectedFile ?? "Remove selected file"}
+              />
               <div>
                 <label
                   htmlFor="file-transfer-message"
@@ -3271,7 +3337,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
           {(!isAiMode || aiDraftAccepted) &&
             !customizeSheetExperiment &&
-            (!isFileTransferMode || selectedFile) && (
+            (!isFileTransferMode || hasAttachments) && (
             <Suspense
               fallback={
                 <div
@@ -3299,7 +3365,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 setNotifyOnDestroyed={setNotifyOnDestroyed}
                 notifyOnAttachmentDownload={notifyOnAttachmentDownload}
                 setNotifyOnAttachmentDownload={setNotifyOnAttachmentDownload}
-                hasAttachment={Boolean(selectedFile)}
+                hasAttachment={hasAttachments}
                 hasVoiceMessage={selectedFileIsVoice}
                 canNotifyOnOpen={canNotifyOnOpen}
                 emailLinkToRecipient={emailLinkToRecipient}
@@ -3378,12 +3444,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   })}
                 />
               ) : null}
-              {isFileTransferMode && !selectedFile ? (
+              {isFileTransferMode && !hasAttachments ? (
                 <>
                   <input
                     ref={fileInputRef}
                     id={canAttachFiles ? fileTransferFileInputId : undefined}
                     type="file"
+                    multiple
                     className="sr-only"
                     tabIndex={-1}
                     onChange={handleAttachFileSelected}
@@ -3440,7 +3507,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     </a>
                   </p>
                 </>
-              ) : isFileTransferMode && selectedFile ? (
+              ) : isFileTransferMode && hasAttachments ? (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="button"
@@ -3475,6 +3542,36 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       </>
                     )}
                   </button>
+                  <ComposerAddActions
+                    isMobile={isMobile}
+                    canAdd={canAddMoreAttachments}
+                    addDisabledReason={addDisabledReason}
+                    isPreparingFolder={isPreparingFolder}
+                    recordDisabled={!isPremiumUser}
+                    showFolder={!isMobile}
+                    addSheetOpen={addSheetOpen}
+                    onAddSheetOpenChange={setAddSheetOpen}
+                    onAddFile={handleAttachFileClick}
+                    onAddFolder={handleAttachFolderClick}
+                    onTakePhoto={handleTakePhotoClick}
+                    onRecord={handleRecordMessageClick}
+                    labels={{
+                      add: t.addToTransferShort ?? "Add",
+                      addToTransfer: t.addToTransfer ?? "Add to this transfer",
+                      addFile: t.sftSelectFile ?? t.attachFile,
+                      addFileHint: t.addFileHint ?? "Choose one or more files",
+                      takePhoto: t.takePhoto ?? "Take photo",
+                      takePhotoHint: t.takePhotoHint ?? "Use the camera",
+                      record: recordMessageButtonLabel,
+                      recordHint: !isPremiumUser
+                        ? (t.recordMessageFormatPremiumHint ??
+                          "Upgrade to Premium to record voice or video-style messages in PrivateNote.")
+                        : (t.recordMessageHint ?? "Record a voice message"),
+                      folder: t.sftSelectFolder ?? "Folder",
+                      cancel: t.cancel ?? "Cancel",
+                    }}
+                    attachActionButtonClass={`${attachActionButtonClass} ${composeToolButtonClass}`}
+                  />
                   <button
                     type="submit"
                     disabled={isLoading}
@@ -3499,129 +3596,22 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 ref={fileInputRef}
                 id={canAttachFiles ? noteFileInputId : undefined}
                 type="file"
+                multiple
                 className="sr-only"
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
+              {hasAttachments ? (
+                <ComposerAttachmentList
+                  files={selectedFiles}
+                  onRemove={(index) =>
+                    setSelectedFiles((current) => current.filter((_, i) => i !== index))
+                  }
+                  removeLabel={t.removeSelectedFile ?? "Remove selected file"}
+                />
+              ) : null}
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-2">
-                {selectedFile ? (
-                  <div className="flex min-w-0 w-full flex-nowrap items-center gap-2 sm:flex-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (customizeSheetExperiment) {
-                          setCustomizeSheetOpen(true);
-                        } else {
-                          setShowAdvancedOptions(!showAdvancedOptions);
-                        }
-                      }}
-                      className={`${secondaryActionButtonClass} ${composeToolButtonClass}`}
-                      aria-label={
-                        customizeSheetExperiment || !showAdvancedOptions
-                          ? t.customize
-                          : t.hideOptions
-                      }
-                      title={
-                        customizeSheetExperiment || !showAdvancedOptions
-                          ? t.customize
-                          : t.hideOptions
-                      }
-                    >
-                      {customizeSheetExperiment || !showAdvancedOptions ? (
-                        <>
-                          <Settings className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                          <span className="hidden truncate lg:inline">{t.customize}</span>
-                        </>
-                      ) : (
-                        <>
-                          <ChevronUp className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                          <span className="hidden truncate lg:inline">{t.hideOptions}</span>
-                        </>
-                      )}
-                    </button>
-                    {selectedFileIsVoice || selectedFileIsVideo ? (
-                      <button
-                        type="button"
-                        onClick={handleRecordMessageClick}
-                        title={selectedFile.name}
-                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem]`}
-                        aria-label={recordMessageButtonLabel}
-                      >
-                      <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                      <span className="hidden truncate lg:inline">{recordMessageButtonLabel}</span>
-                      </button>
-                    ) : selectedFileIsPhoto ? (
-                      <button
-                        type="button"
-                        onClick={handleTakePhotoClick}
-                        title={selectedFile.name}
-                        className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem]`}
-                        aria-label={takePhotoButtonLabel}
-                      >
-                        <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                        <span className="hidden truncate lg:inline">{takePhotoButtonLabel}</span>
-                      </button>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            title={selectedFile.name}
-                            disabled={isPreparingFolder}
-                            className={`${attachActionButtonClass} ${composeToolButtonClass} lg:max-w-[14rem] disabled:cursor-not-allowed disabled:opacity-50`}
-                            aria-label={
-                              isPreparingFolder
-                                ? (t.sftZippingFolder ?? "Zipping…")
-                                : attachFileButtonLabel
-                            }
-                          >
-                            {isPreparingFolder ? (
-                              <Loader2 className="h-5 w-5 shrink-0 animate-spin lg:h-4 lg:w-4" aria-hidden />
-                            ) : selectedFile.type === "application/zip" ||
-                              selectedFile.name.toLowerCase().endsWith(".zip") ? (
-                              <FolderArchive className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                            ) : (
-                              <Paperclip className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                            )}
-                            <span className="hidden truncate lg:inline">
-                              {isPreparingFolder
-                                ? (t.sftZippingFolder ?? "Zipping…")
-                                : attachFileButtonLabel}
-                            </span>
-                            <ChevronDown className="hidden h-3.5 w-3.5 shrink-0 opacity-80 lg:inline" aria-hidden />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="min-w-[10.5rem]">
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              window.setTimeout(() => handleAttachFileClick(), 0);
-                            }}
-                          >
-                            <File className="mr-2 h-4 w-4" aria-hidden />
-                            {t.sftSelectFile ?? "File"}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              window.setTimeout(() => handleAttachFolderClick(), 0);
-                            }}
-                          >
-                            <FolderArchive className="mr-2 h-4 w-4" aria-hidden />
-                            {t.sftSelectFolder ?? "Folder"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedFile(null)}
-                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-                      aria-label={t.removeSelectedFile ?? "Remove selected file"}
-                    >
-                      <X className="h-4 w-4" aria-hidden />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
+                <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -3661,86 +3651,37 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         </>
                       )}
                     </button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={isPreparingFolder}
-                          className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
-                          aria-label={
-                            isPreparingFolder
-                              ? (t.sftZippingFolder ?? "Zipping…")
-                              : attachFileButtonLabel
-                          }
-                          title={attachFileButtonLabel}
-                        >
-                          {isPreparingFolder ? (
-                            <Loader2 className="h-5 w-5 shrink-0 animate-spin lg:h-4 lg:w-4" aria-hidden />
-                          ) : (
-                            <Paperclip className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                          )}
-                          <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                            {isPreparingFolder
-                              ? (t.sftZippingFolder ?? "Zipping…")
-                              : (t.composeActionFile ?? "File")}
-                          </span>
-                          <span className="hidden truncate lg:inline">
-                            {isPreparingFolder
-                              ? (t.sftZippingFolder ?? "Zipping…")
-                              : attachFileButtonLabel}
-                          </span>
-                          <ChevronDown className="hidden h-3.5 w-3.5 shrink-0 opacity-80 lg:inline" aria-hidden />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="min-w-[10.5rem]">
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            window.setTimeout(() => handleAttachFileClick(), 0);
-                          }}
-                        >
-                          <File className="mr-2 h-4 w-4" aria-hidden />
-                          {t.sftSelectFile ?? "File"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            window.setTimeout(() => handleAttachFolderClick(), 0);
-                          }}
-                        >
-                          <FolderArchive className="mr-2 h-4 w-4" aria-hidden />
-                          {t.sftSelectFolder ?? "Folder"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <button
-                      type="button"
-                      onClick={handleTakePhotoClick}
-                      disabled={isPreparingFolder}
-                      className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
-                      aria-label={takePhotoButtonLabel}
-                      title={takePhotoButtonLabel}
-                    >
-                      <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                      <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                        {t.composeActionPhoto ?? "Photo"}
-                      </span>
-                      <span className="hidden truncate lg:inline">{takePhotoButtonLabel}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRecordMessageClick}
-                      disabled={isPreparingFolder}
-                      className={`${attachActionButtonClass} ${composeToolButtonClass} lg:flex-none disabled:cursor-not-allowed disabled:opacity-50`}
-                      aria-label={recordMessageButtonLabel}
-                      title={recordMessageButtonLabel}
-                    >
-                      <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-                      <span className="max-w-full truncate text-[11px] font-medium lg:hidden">
-                        {t.composeActionRecord ?? "Record"}
-                      </span>
-                      <span className="hidden truncate lg:inline">{recordMessageButtonLabel}</span>
-                    </button>
+                    <ComposerAddActions
+                      isMobile={isMobile}
+                      canAdd={canAddMoreAttachments}
+                      addDisabledReason={addDisabledReason}
+                      isPreparingFolder={isPreparingFolder}
+                      recordDisabled={!isPremiumUser}
+                      showFolder={!isMobile}
+                      addSheetOpen={addSheetOpen}
+                      onAddSheetOpenChange={setAddSheetOpen}
+                      onAddFile={handleAttachFileClick}
+                      onAddFolder={handleAttachFolderClick}
+                      onTakePhoto={handleTakePhotoClick}
+                      onRecord={handleRecordMessageClick}
+                      labels={{
+                        add: t.addToTransferShort ?? "Add",
+                        addToTransfer: t.addToTransfer ?? "Add to this transfer",
+                        addFile: t.sftSelectFile ?? t.attachFile,
+                        addFileHint: t.addFileHint ?? "Choose one or more files",
+                        takePhoto: t.takePhoto ?? "Take photo",
+                        takePhotoHint: t.takePhotoHint ?? "Use the camera",
+                        record: recordMessageButtonLabel,
+                        recordHint: !isPremiumUser
+                          ? (t.recordMessageFormatPremiumHint ??
+                            "Upgrade to Premium to record voice or video-style messages in PrivateNote.")
+                          : (t.recordMessageHint ?? "Record a voice message"),
+                        folder: t.sftSelectFolder ?? "Folder",
+                        cancel: t.cancel ?? "Cancel",
+                      }}
+                      attachActionButtonClass={`${attachActionButtonClass} ${composeToolButtonClass}`}
+                    />
                   </div>
-                )}
 
                 <button
                   type="submit"
@@ -3797,7 +3738,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         </form>
       </div>
 
-      {customizeSheetExperiment && (!isAiMode || aiDraftAccepted) && (!isFileTransferMode || selectedFile) ? (
+      {customizeSheetExperiment && (!isAiMode || aiDraftAccepted) && (!isFileTransferMode || hasAttachments) ? (
         <Suspense fallback={null}>
           <CustomizeSettingsOverlay
             open={customizeSheetOpen}
@@ -3821,7 +3762,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               setNotifyOnDestroyed,
               notifyOnAttachmentDownload,
               setNotifyOnAttachmentDownload,
-              hasAttachment: Boolean(selectedFile),
+              hasAttachment: hasAttachments,
               hasVoiceMessage: selectedFileIsVoice,
               canNotifyOnOpen,
               emailLinkToRecipient,

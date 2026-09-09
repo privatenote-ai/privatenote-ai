@@ -14,6 +14,10 @@ export type BillingInterval = "month" | "year";
 export type PlanFeatureFlags = {
   hostedAiMonthly: number;
   attachmentMaxBytes: number;
+  /** Max files/media items in one secure transfer (one created link). */
+  attachmentsMaxCount: number;
+  /** Max combined plaintext size of all items in one transfer. */
+  attachmentTransferMaxBytes: number;
   /** Active encrypted payload still live (unread / not burned). */
   activePayloadBufferBytes: number;
   /**
@@ -87,6 +91,8 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
     features: {
       hostedAiMonthly: 3,
       attachmentMaxBytes: 25 * MB,
+      attachmentsMaxCount: 5,
+      attachmentTransferMaxBytes: 25 * MB,
       activePayloadBufferBytes: 250 * MB,
       maxAttachmentTransfersPerDay: 10,
       maxFileAccessWindowSeconds: 15 * 60,
@@ -122,6 +128,8 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
     features: {
       hostedAiMonthly: 50,
       attachmentMaxBytes: 250 * MB,
+      attachmentsMaxCount: 10,
+      attachmentTransferMaxBytes: 250 * MB,
       activePayloadBufferBytes: 5 * GB,
       maxAttachmentTransfersPerDay: null,
       maxFileAccessWindowSeconds: 30 * 60,
@@ -157,6 +165,8 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
     features: {
       hostedAiMonthly: 300,
       attachmentMaxBytes: 1 * GB,
+      attachmentsMaxCount: 20,
+      attachmentTransferMaxBytes: 1 * GB,
       activePayloadBufferBytes: 50 * GB,
       maxAttachmentTransfersPerDay: null,
       maxFileAccessWindowSeconds: 60 * 60,
