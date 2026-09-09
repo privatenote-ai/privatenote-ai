@@ -641,9 +641,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const [isViewingFile, setIsViewingFile] = useState(false);
   const [attachmentDecryptProgress, setAttachmentDecryptProgress] =
     useState<AttachmentProgressState | null>(null);
-  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
-  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
-  const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
+  const [previewCache, setPreviewCache] = useState<
+    Record<number, { url: string; blob: Blob; mimeType: string }>
+  >({});
+  const previewCacheRef = useRef(previewCache);
+  previewCacheRef.current = previewCache;
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [messageSheetOpen, setMessageSheetOpen] = useState(true);
   const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(false);
@@ -672,6 +674,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     previewAttachmentIndex != null
       ? attachmentMetadataList[previewAttachmentIndex] ?? null
       : attachmentMetadataList[0] ?? null;
+  const activePreview =
+    previewAttachmentIndex != null ? previewCache[previewAttachmentIndex] ?? null : null;
+  const previewObjectUrl = activePreview?.url ?? null;
+  const previewBlob = activePreview?.blob ?? null;
+  const previewMimeType = activePreview?.mimeType ?? null;
   const canImportNoteLabels = entitlements.capabilities.noteLabelPortability === true;
   const importedLabelsPack = useMemo(
     () => (noteContent ? parseNoteLabelsExport(noteContent) : null),
@@ -857,15 +864,28 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     revealAttachments,
   ]);
 
+  const rememberAttachmentPreview = useCallback(
+    (attachmentIndex: number, result: { url: string; mimeType: string; blob: Blob }) => {
+      setPreviewCache((current) => {
+        const previous = current[attachmentIndex];
+        if (previous && previous.url !== result.url) {
+          revokeAttachmentPreviewUrl(previous.url);
+        }
+        return { ...current, [attachmentIndex]: result };
+      });
+    },
+    [],
+  );
+
   useEffect(() => {
     thumbnailLoadAttemptedRef.current = false;
     setPreviewAttachmentIndex(null);
-    setPreviewObjectUrl((prev) => {
-      revokeAttachmentPreviewUrl(prev);
-      return null;
+    setPreviewCache((current) => {
+      for (const preview of Object.values(current)) {
+        revokeAttachmentPreviewUrl(preview.url);
+      }
+      return {};
     });
-    setPreviewBlob(null);
-    setPreviewMimeType(null);
     setShowInlinePreview(false);
     setMessageSheetOpen(true);
     setIsLoadingThumbnail(false);
@@ -878,7 +898,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     const previewKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
     if (previewKind !== "image" && previewKind !== "audio") return;
     if (!contentKey || !revealAttachments[0]) return;
-    if (previewObjectUrl || thumbnailLoadAttemptedRef.current) return;
+    if (previewCache[0] || thumbnailLoadAttemptedRef.current) return;
     if (noteData?.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) return;
 
     thumbnailLoadAttemptedRef.current = true;
@@ -888,9 +908,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     void decryptAttachmentPreview(0)
       .then((result) => {
         if (cancelled || !result) return;
-        setPreviewObjectUrl(result.url);
-        setPreviewMimeType(result.mimeType);
-        setPreviewBlob(result.blob);
+        rememberAttachmentPreview(0, result);
         if (previewKind === "audio" || previewKind === "image") {
           setShowInlinePreview(true);
           setMessageSheetOpen(false);
@@ -914,7 +932,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [attachmentMetadataList, contentKey, decryptAttachmentPreview, noteData, previewObjectUrl, revealAttachments]);
+  }, [
+    attachmentMetadataList,
+    contentKey,
+    decryptAttachmentPreview,
+    noteData,
+    previewCache,
+    rememberAttachmentPreview,
+    revealAttachments,
+  ]);
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
     if (e.nativeEvent.isTrusted) return true;
@@ -1107,12 +1133,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => window.clearInterval(interval);
   }, [noteData?.fileAccessTokenExpiresAtMs]);
 
-  // Revoke blob preview URLs when replaced or on unmount (data URLs need no revoke).
   useEffect(() => {
     return () => {
-      revokeAttachmentPreviewUrl(previewObjectUrl);
+      for (const preview of Object.values(previewCacheRef.current)) {
+        revokeAttachmentPreviewUrl(preview.url);
+      }
     };
-  }, [previewObjectUrl]);
+  }, []);
 
   const decryptWithKey = async (
     data: NoteData,
@@ -1592,12 +1619,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       return;
     }
 
-    if (previewAttachmentIndex === attachmentIndex && showInlinePreview && previewObjectUrl) {
+    const cachedPreview = previewCache[attachmentIndex];
+    if (previewAttachmentIndex === attachmentIndex && showInlinePreview && cachedPreview) {
       setShowInlinePreview(false);
       setMessageSheetOpen(true);
       return;
     }
-    if (previewAttachmentIndex === attachmentIndex && previewObjectUrl) {
+    if (cachedPreview) {
+      setPreviewAttachmentIndex(attachmentIndex);
       setShowInlinePreview(true);
       setMessageSheetOpen(false);
       return;
@@ -1619,10 +1648,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     try {
       const result = await decryptAttachmentPreview(attachmentIndex, { onProgress: true });
       if (!result) return;
-      revokeAttachmentPreviewUrl(previewObjectUrl);
-      setPreviewObjectUrl(result.url);
-      setPreviewMimeType(result.mimeType);
-      setPreviewBlob(result.blob);
+      rememberAttachmentPreview(attachmentIndex, result);
       setShowInlinePreview(true);
       setMessageSheetOpen(false);
       if (previewKind === "audio") {
@@ -2069,7 +2095,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                   const metadata = attachmentMetadataList[attachmentIndex];
                   const itemKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
                   const itemActive = previewAttachmentIndex === attachmentIndex;
-                  const itemPreviewUrl = itemActive ? previewObjectUrl : null;
+                  const itemPreviewUrl = previewCache[attachmentIndex]?.url ?? null;
                   const itemViewing = itemActive && isViewingFile;
                   const itemLoadingThumb = itemActive && isLoadingThumbnail;
                   const itemDownloading = itemActive && isDownloadingFile;
