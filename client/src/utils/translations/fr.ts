@@ -43,6 +43,7 @@ export const fr: Translations = {
   sftDropZoneAriaLabel: "Joindre un fichier ou un dossier",
   sftSelectFile: "Choisir un fichier",
   sftSelectFolder: "Choisir un dossier",
+  attach: "Joindre",
   sftZippingFolder: "Compression…",
   sftAttachFile: "Joindre un fichier",
   sftOptionalMessage: "Message optionnel",

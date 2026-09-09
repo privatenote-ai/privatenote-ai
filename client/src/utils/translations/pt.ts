@@ -43,6 +43,7 @@ export const pt: Translations = {
   sftDropZoneAriaLabel: "Anexe um arquivo ou pasta",
   sftSelectFile: "Selecione o arquivo",
   sftSelectFolder: "Selecione a pasta",
+  attach: "Anexar",
   sftZippingFolder: "Fechando...",
   sftAttachFile: "Anexar arquivo",
   sftOptionalMessage: "Mensagem opcional",

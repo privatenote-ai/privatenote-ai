@@ -58,6 +58,7 @@ export const de: Translations = {
   sftDropZoneAriaLabel: "Datei oder Ordner anhängen",
   sftSelectFile: "Datei auswählen",
   sftSelectFolder: "Ordner auswählen",
+  attach: "Anhängen",
   sftZippingFolder: "Wird gezippt…",
   sftAttachFile: "Datei anhängen",
   sftOptionalMessage: "Optionale Nachricht",

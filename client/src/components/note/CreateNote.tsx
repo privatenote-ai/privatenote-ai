@@ -130,7 +130,7 @@ const CustomizeSettingsOverlay = lazy(() =>
 import { NotePlaintextUtf8Meter } from "./NotePlaintextUtf8Meter";
 import { PrefillPartnerBanner } from "./PrefillPartnerBanner";
 import { GravityDropZone } from "./GravityDropZone";
-import { ComposerAddActions, ComposerAttachmentList } from "./ComposerAttachments";
+import { ComposerAddActions, ComposerAttachControl, ComposerAttachmentList } from "./ComposerAttachments";
 import { useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import { noteHasUnresolvedGuidedPlaceholders } from "@/components/note/localFallbackTemplates";
@@ -3465,37 +3465,21 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     dropTitleDragging={t.sftDropZoneTitleDragging}
                     subtitle={`${t.sftDropZoneSubtitle} · ${attachFileMaxSizeHint}`}
                   >
-                    {canAttachFiles ? (
-                      <label
-                        htmlFor={fileTransferFileInputId}
-                        className="inline-flex min-h-9 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
-                      >
-                        {t.sftSelectFile}
-                      </label>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleAttachFileClick}
-                        className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
-                      >
-                        {t.sftSelectFile}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleAttachFolderClick}
-                      disabled={isPreparingFolder}
-                      className="inline-flex min-h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 dark:bg-transparent dark:hover:bg-primary/10"
-                    >
-                      {isPreparingFolder ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
-                          {t.sftZippingFolder}
-                        </>
-                      ) : (
-                        t.sftSelectFolder
-                      )}
-                    </button>
+                    <ComposerAttachControl
+                      disabled={false}
+                      isPreparingFolder={isPreparingFolder}
+                      showFolder={!isMobile && canAttachFiles}
+                      fileInputId={canAttachFiles ? fileTransferFileInputId : undefined}
+                      onAddFile={handleAttachFileClick}
+                      onAddFolder={handleAttachFolderClick}
+                      labels={{
+                        attach: t.attach ?? "Attach",
+                        files: t.sftSelectFile,
+                        folder: t.sftSelectFolder,
+                        zipping: t.sftZippingFolder,
+                      }}
+                      buttonClassName="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-primary bg-white px-5 text-sm font-medium text-primary transition-colors hover:bg-primary/5 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-transparent dark:hover:bg-primary/10"
+                    />
                   </GravityDropZone>
                   <p className="mt-3 text-center text-xs leading-relaxed text-gray-500 dark:text-gray-400">
                     {t.sftNeedHigherLimits}{" "}
@@ -3509,6 +3493,15 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 </>
               ) : isFileTransferMode && hasAttachments ? (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <input
+                    ref={fileInputRef}
+                    id={canAttachFiles ? fileTransferFileInputId : undefined}
+                    type="file"
+                    multiple
+                    className="sr-only"
+                    tabIndex={-1}
+                    onChange={handleAttachFileSelected}
+                  />
                   <button
                     type="button"
                     onClick={() => {
@@ -3548,7 +3541,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     addDisabledReason={addDisabledReason}
                     isPreparingFolder={isPreparingFolder}
                     recordDisabled={!isPremiumUser}
-                    showFolder={!isMobile}
+                    showFolder={!isMobile && canAttachFiles}
+                    fileInputId={canAttachFiles ? fileTransferFileInputId : undefined}
                     addSheetOpen={addSheetOpen}
                     onAddSheetOpenChange={setAddSheetOpen}
                     onAddFile={handleAttachFileClick}
@@ -3558,8 +3552,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     labels={{
                       add: t.addToTransferShort ?? "Add",
                       addToTransfer: t.addToTransfer ?? "Add to this transfer",
-                      addFile: t.sftSelectFile ?? t.attachFile,
-                      addFileHint: t.addFileHint ?? "Choose one or more files",
+                      attach: t.attach ?? "Attach",
+                      addFileHint: t.addFileHint ?? "Choose files or a folder",
                       takePhoto: t.takePhoto ?? "Take photo",
                       takePhotoHint: t.takePhotoHint ?? "Use the camera",
                       record: recordMessageButtonLabel,
@@ -3567,7 +3561,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         ? (t.recordMessageFormatPremiumHint ??
                           "Upgrade to Premium to record voice or video-style messages in PrivateNote.")
                         : (t.recordMessageHint ?? "Record a voice message"),
+                      files: t.sftSelectFile,
                       folder: t.sftSelectFolder ?? "Folder",
+                      zipping: t.sftZippingFolder,
                       cancel: t.cancel ?? "Cancel",
                     }}
                     attachActionButtonClass={`${attachActionButtonClass} ${composeToolButtonClass}`}
@@ -3657,7 +3653,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       addDisabledReason={addDisabledReason}
                       isPreparingFolder={isPreparingFolder}
                       recordDisabled={!isPremiumUser}
-                      showFolder={!isMobile}
+                      showFolder={!isMobile && canAttachFiles}
+                      fileInputId={canAttachFiles ? noteFileInputId : undefined}
                       addSheetOpen={addSheetOpen}
                       onAddSheetOpenChange={setAddSheetOpen}
                       onAddFile={handleAttachFileClick}
@@ -3667,8 +3664,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       labels={{
                         add: t.addToTransferShort ?? "Add",
                         addToTransfer: t.addToTransfer ?? "Add to this transfer",
-                        addFile: t.sftSelectFile ?? t.attachFile,
-                        addFileHint: t.addFileHint ?? "Choose one or more files",
+                        attach: t.attach ?? "Attach",
+                        addFileHint: t.addFileHint ?? "Choose files or a folder",
                         takePhoto: t.takePhoto ?? "Take photo",
                         takePhotoHint: t.takePhotoHint ?? "Use the camera",
                         record: recordMessageButtonLabel,
@@ -3676,7 +3673,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           ? (t.recordMessageFormatPremiumHint ??
                             "Upgrade to Premium to record voice or video-style messages in PrivateNote.")
                           : (t.recordMessageHint ?? "Record a voice message"),
+                        files: t.sftSelectFile,
                         folder: t.sftSelectFolder ?? "Folder",
+                        zipping: t.sftZippingFolder,
                         cancel: t.cancel ?? "Cancel",
                       }}
                       attachActionButtonClass={`${attachActionButtonClass} ${composeToolButtonClass}`}

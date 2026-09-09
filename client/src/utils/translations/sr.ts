@@ -43,6 +43,7 @@ export const sr: Translations = {
   sftDropZoneAriaLabel: "Priložite datoteku ili fasciklu",
   sftSelectFile: "Izaberite fajl",
   sftSelectFolder: "Izaberite folder",
+  attach: "Priloži",
   sftZippingFolder: "Zipovanje...",
   sftAttachFile: "Priložite datoteku",
   sftOptionalMessage: "Opciona poruka",

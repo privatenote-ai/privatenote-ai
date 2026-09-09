@@ -58,6 +58,7 @@ export const nl: Translations = {
   sftDropZoneAriaLabel: "Bestand of map bijvoegen",
   sftSelectFile: "Bestand kiezen",
   sftSelectFolder: "Map kiezen",
+  attach: "Bijvoegen",
   sftZippingFolder: "Bezig met zippen…",
   sftAttachFile: "Bestand bijvoegen",
   sftOptionalMessage: "Optioneel bericht",

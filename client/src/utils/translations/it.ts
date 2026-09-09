@@ -43,6 +43,7 @@ export const it: Translations = {
   sftDropZoneAriaLabel: "Allega un file o una cartella",
   sftSelectFile: "Seleziona file",
   sftSelectFolder: "Seleziona cartella",
+  attach: "Allega",
   sftZippingFolder: "Compressione…",
   sftAttachFile: "Allega file",
   sftOptionalMessage: "Messaggio opzionale",

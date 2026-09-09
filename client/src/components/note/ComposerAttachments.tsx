@@ -1,4 +1,4 @@
-import { Camera, File, FolderArchive, Mic, Paperclip, Plus, X } from "lucide-react";
+import { Camera, ChevronDown, File, FolderArchive, Loader2, Mic, Paperclip, Plus, X } from "lucide-react";
 import { formatNoteFileSize } from "@shared/noteFileLimits";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { isVoiceMessageFile } from "@/utils/voiceMessageRecording";
@@ -9,6 +9,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function isImageFile(file: File): boolean {
   return file.type.startsWith("image/") || /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(file.name);
@@ -64,6 +70,99 @@ export function ComposerAttachmentList({
   );
 }
 
+type AttachLabels = {
+  attach: string;
+  files: string;
+  folder: string;
+  zipping: string;
+};
+
+export function ComposerAttachControl({
+  disabled,
+  isPreparingFolder,
+  showFolder,
+  addDisabledReason,
+  fileInputId,
+  onAddFile,
+  onAddFolder,
+  labels,
+  buttonClassName,
+}: {
+  disabled: boolean;
+  isPreparingFolder: boolean;
+  showFolder: boolean;
+  addDisabledReason?: string;
+  fileInputId?: string;
+  onAddFile: () => void;
+  onAddFolder: () => void;
+  labels: AttachLabels;
+  buttonClassName: string;
+}) {
+  const className = `${buttonClassName} disabled:cursor-not-allowed disabled:opacity-50`;
+  const triggerInner = isPreparingFolder ? (
+    <>
+      <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+      {labels.zipping}
+    </>
+  ) : (
+    <>
+      <Paperclip className="h-4 w-4 shrink-0" aria-hidden />
+      {labels.attach}
+      {showFolder ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden /> : null}
+    </>
+  );
+
+  if (!showFolder || isPreparingFolder) {
+    if (fileInputId && !disabled && !isPreparingFolder) {
+      return (
+        <label htmlFor={fileInputId} title={addDisabledReason} className={`${className} cursor-pointer`}>
+          {triggerInner}
+        </label>
+      );
+    }
+    return (
+      <button
+        type="button"
+        disabled={disabled || isPreparingFolder}
+        title={addDisabledReason}
+        onClick={onAddFile}
+        className={className}
+      >
+        {triggerInner}
+      </button>
+    );
+  }
+
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button type="button" disabled={disabled} title={addDisabledReason} className={className}>
+          {triggerInner}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-[12rem]">
+        {fileInputId && !disabled ? (
+          <DropdownMenuItem asChild>
+            <label htmlFor={fileInputId} className="cursor-pointer">
+              <File aria-hidden />
+              {labels.files}
+            </label>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onSelect={() => onAddFile()}>
+            <File aria-hidden />
+            {labels.files}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onSelect={() => onAddFolder()}>
+          <FolderArchive aria-hidden />
+          {labels.folder}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 type ComposerAddActionsProps = {
   isMobile: boolean;
   canAdd: boolean;
@@ -71,6 +170,7 @@ type ComposerAddActionsProps = {
   isPreparingFolder: boolean;
   recordDisabled: boolean;
   showFolder: boolean;
+  fileInputId?: string;
   addSheetOpen: boolean;
   onAddSheetOpenChange: (open: boolean) => void;
   onAddFile: () => void;
@@ -80,13 +180,15 @@ type ComposerAddActionsProps = {
   labels: {
     add: string;
     addToTransfer: string;
-    addFile: string;
+    attach: string;
     addFileHint: string;
     takePhoto: string;
     takePhotoHint: string;
     record: string;
     recordHint: string;
+    files: string;
     folder: string;
+    zipping: string;
     cancel: string;
   };
   attachActionButtonClass: string;
@@ -99,6 +201,7 @@ export function ComposerAddActions({
   isPreparingFolder,
   recordDisabled,
   showFolder,
+  fileInputId,
   addSheetOpen,
   onAddSheetOpenChange,
   onAddFile,
@@ -109,6 +212,12 @@ export function ComposerAddActions({
   attachActionButtonClass,
 }: ComposerAddActionsProps) {
   const disabled = !canAdd || isPreparingFolder;
+  const attachLabels = {
+    attach: labels.attach,
+    files: labels.files,
+    folder: labels.folder,
+    zipping: labels.zipping,
+  };
 
   if (isMobile) {
     return (
@@ -139,9 +248,9 @@ export function ComposerAddActions({
                 }}
                 className="flex items-center gap-3 rounded-lg px-2 py-3 text-left text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-100 dark:hover:bg-gray-800"
               >
-                <File className="h-5 w-5 text-primary" aria-hidden />
+                <Paperclip className="h-5 w-5 text-primary" aria-hidden />
                 <span>
-                  {labels.addFile}
+                  {labels.attach}
                   <span className="mt-0.5 block text-xs font-normal text-gray-500 dark:text-gray-400">
                     {labels.addFileHint}
                   </span>
@@ -204,16 +313,17 @@ export function ComposerAddActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
+      <ComposerAttachControl
         disabled={disabled}
-        title={addDisabledReason}
-        onClick={onAddFile}
-        className={`${attachActionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
-      >
-        <Paperclip className="h-4 w-4" aria-hidden />
-        {labels.addFile}
-      </button>
+        isPreparingFolder={isPreparingFolder}
+        showFolder={showFolder}
+        addDisabledReason={addDisabledReason}
+        fileInputId={fileInputId}
+        onAddFile={onAddFile}
+        onAddFolder={onAddFolder}
+        labels={attachLabels}
+        buttonClassName={attachActionButtonClass}
+      />
       <button
         type="button"
         disabled={disabled}
@@ -233,17 +343,6 @@ export function ComposerAddActions({
         <Mic className="h-4 w-4" aria-hidden />
         {labels.record}
       </button>
-      {showFolder ? (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={onAddFolder}
-          className={`${attachActionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
-        >
-          <FolderArchive className="h-4 w-4" aria-hidden />
-          {labels.folder}
-        </button>
-      ) : null}
     </div>
   );
 }
