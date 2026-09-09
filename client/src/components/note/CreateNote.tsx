@@ -3120,7 +3120,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   // ── Create form ───────────────────────────────────────────────────────────
   return (
     <section className="mx-auto w-full min-w-0 max-w-full">
-      <div className={isFileTransferMode ? "pt-0" : "pt-1 sm:pt-4"}>
+      <div className={isFileTransferMode ? "pt-0" : "pt-0 sm:pt-4"}>
         {!isFileTransferMode ? (
         <div className="mb-3 sm:mb-6">
           <div className="flex border-b border-gray-200 dark:border-gray-700 mb-3">
