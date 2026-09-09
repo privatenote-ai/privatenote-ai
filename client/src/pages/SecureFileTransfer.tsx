@@ -95,7 +95,7 @@ const SecureFileTransfer: React.FC = () => {
                 </span>
               </span>
             </h1>
-            <p className="mx-auto mt-3 max-w-3xl text-base text-gray-500 dark:text-gray-400 md:hidden">
+            <p className="mx-auto mt-5 max-w-3xl text-base text-gray-500 dark:text-gray-400 md:hidden">
               {t.sftHeroMobileSubtitle ?? t.sftHeroSubtitle}
             </p>
             <p className="mx-auto mt-6 hidden max-w-3xl text-xl text-gray-500 dark:text-gray-400 md:block">
@@ -105,7 +105,7 @@ const SecureFileTransfer: React.FC = () => {
         ) : null}
 
         <div
-          className={`${isCreateSuccessView ? "mt-0" : "mt-5 md:mt-10 lg:mt-12"} px-4 py-4 pb-14 sm:px-6 lg:flex-1 lg:px-8`}
+          className={`${isCreateSuccessView ? "mt-0" : "mt-8 md:mt-10 lg:mt-12"} px-4 py-4 pb-14 sm:px-6 lg:flex-1 lg:px-8`}
         >
           <div className="mx-auto min-w-0 max-w-4xl">
             {mountCreateNote ? (
