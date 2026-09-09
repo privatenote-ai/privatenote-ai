@@ -514,32 +514,25 @@ describe("brandingPageBackground", () => {
     assert.equal(brandingUsesPortalSurface({ companyName: "Acme", accentColor: "#2563eb" }), true);
   });
 
-  it("builds a subtle accent gradient for Brand style", () => {
+  it("ignores leftover Default-page filters and keeps the PrivateNote canvas", () => {
     const branding = {
       accentColor: "#e11d48",
       backgroundStyle: "gradient",
     } as const;
-    const page = brandingPageBackground(branding);
-    assert.equal(page.kind, "gradient");
-    assert.equal(page.kind === "gradient" && page.background.includes("#e11d48"), true);
+    assert.deepEqual(brandingPageBackground(branding), { kind: "none" });
     assert.equal(brandingUsesPortalSurface(branding), true);
   });
 
-  it("tints Soft wash with the accent even when a page colour is set", () => {
-    // Page colour used to be the gradient source, so green-on-green looked like no filter.
+  it("uses page colour only when a leftover filter is still stored", () => {
     const page = brandingPageBackground({
       accentColor: "#2563eb",
       backgroundColor: "#84cc16",
       backgroundStyle: "gradient",
     });
-    assert.equal(page.kind, "gradient");
-    if (page.kind !== "gradient") return;
-    assert.equal(page.background.includes("#2563eb"), true);
-    assert.equal(page.background.includes("#84cc16"), true);
-    assert.equal(page.backgroundColor, "#84cc16");
+    assert.deepEqual(page, { kind: "color", backgroundColor: "#84cc16" });
   });
 
-  it("keeps filter styles on stored note snapshots so the live page can paint them", () => {
+  it("keeps filter styles on stored snapshots but does not paint them", () => {
     for (const style of ["gradient", "vignette", "glow", "mesh"] as const) {
       const parsed = parseStoredRevealBranding({
         accentColor: "#2563eb",
@@ -547,39 +540,23 @@ describe("brandingPageBackground", () => {
         backgroundStyle: style,
       });
       assert.equal(parsed?.backgroundStyle, style);
-      const page = brandingPageBackground(parsed);
-      assert.equal(page.kind, "gradient");
-      if (page.kind !== "gradient") return;
-      assert.equal(page.backgroundColor, "#84cc16");
-      assert.equal(page.background.includes("#2563eb"), true);
+      assert.deepEqual(brandingPageBackground(parsed), {
+        kind: "color",
+        backgroundColor: "#84cc16",
+      });
     }
   });
 
-  it("builds vignette, soft glow, and mesh filters from the accent", () => {
+  it("treats vignette, soft glow, and mesh as the page colour", () => {
     for (const style of ["vignette", "glow", "mesh"] as const) {
-      const page = brandingPageBackground({
-        accentColor: "#7c3aed",
-        backgroundColor: "#f8fafc",
-        backgroundStyle: style,
-      });
-      assert.equal(page.kind, "gradient");
-      assert.equal(page.kind === "gradient" && page.background.includes("#7c3aed"), true);
-    }
-  });
-
-  it("keeps filter blobs bounded so swatches and the live page do not look identical", () => {
-    const backgrounds = (["gradient", "vignette", "glow", "mesh"] as const).map((style) => {
-      const page = brandingPageBackground({
-        accentColor: "#2563eb",
-        backgroundStyle: style,
-      });
-      assert.equal(page.kind, "gradient");
-      return page.kind === "gradient" ? page.background : "";
-    });
-    assert.equal(new Set(backgrounds).size, backgrounds.length);
-    for (const background of backgrounds) {
-      assert.equal(background.includes("radial-gradient(at "), false);
-      assert.match(background, /ellipse \d+%/);
+      assert.deepEqual(
+        brandingPageBackground({
+          accentColor: "#7c3aed",
+          backgroundColor: "#f8fafc",
+          backgroundStyle: style,
+        }),
+        { kind: "color", backgroundColor: "#f8fafc" },
+      );
     }
   });
 

@@ -31,14 +31,11 @@ import {
   BRANDING_BACKGROUND_ZOOM_DEFAULT,
   BRANDING_BACKGROUND_ZOOM_MAX,
   BRANDING_BACKGROUND_ZOOM_MIN,
-  brandingBackgroundFilter,
-  brandingBackgroundStyleForPage,
   brandingCardMarkUrl,
   brandingCtaStyle,
   brandingNoteTextBorderColor,
   brandingIsPrivateNoteCanvas,
   brandingMobileLane,
-  brandingPageBackground,
   brandingPageMode,
   brandingPositionFromMobileLane,
   brandingRevealLogoClassName,
@@ -53,7 +50,6 @@ import {
   parseOpenedNoteBrandingSettings,
   brandingPortalLayout,
   applyOpenedNoteBranding,
-  type BrandingBackgroundFilter,
   type BrandingBackgroundStyle,
   type BrandingCardPosition,
   type BrandingMobileLane,
@@ -62,7 +58,7 @@ import {
   type OpenedNoteBrandingSettings,
   type RevealBranding,
 } from "@shared/businessBranding";
-import { BrandFilterAtmosphere, RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
+import { RecipientPortal, RevealHandoffStack } from "@/components/note/RecipientPortal";
 import { useLanguage } from "@/context/LanguageContext";
 
 const DEFAULT_BRAND_COLOR = "#2563eb";
@@ -154,80 +150,6 @@ function ColorField({
           }`}
         />
       </div>
-    </div>
-  );
-}
-
-function filterSwatchWash(
-  filter: BrandingBackgroundFilter,
-  accentColor: string,
-  backgroundColor: string,
-): string {
-  const page = brandingPageBackground({
-    accentColor,
-    backgroundColor,
-    backgroundStyle: filter,
-  });
-  if (page.kind === "gradient" || page.kind === "color") return page.backgroundColor;
-  return brandingIsPrivateNoteCanvas(backgroundColor) ? "#ffffff" : backgroundColor;
-}
-
-function BackgroundFilterPicker({
-  id,
-  value,
-  onChange,
-  accentColor,
-  backgroundColor,
-}: {
-  id: string;
-  value: BrandingBackgroundFilter;
-  onChange: (next: BrandingBackgroundFilter) => void;
-  accentColor: string;
-  backgroundColor: string;
-}) {
-  const options: Array<{ id: BrandingBackgroundFilter; label: string }> = [
-    { id: "neutral", label: "None" },
-    { id: "gradient", label: "Soft wash" },
-    { id: "vignette", label: "Vignette" },
-    { id: "glow", label: "Soft glow" },
-    { id: "mesh", label: "Mesh" },
-  ];
-  return (
-    <div>
-      <Label className="mb-2 block text-sm">Background filter</Label>
-      <div id={id} className="grid grid-cols-5 gap-2">
-        {options.map((option) => (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => onChange(option.id)}
-            className={`overflow-hidden rounded-md border text-left ${
-              value === option.id
-                ? "border-primary ring-1 ring-primary"
-                : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
-            }`}
-          >
-            <span className="relative block h-16 w-full overflow-hidden" aria-hidden>
-              <BrandFilterAtmosphere
-                filter={option.id}
-                accent={accentColor}
-                wash={filterSwatchWash(option.id, accentColor, backgroundColor)}
-                compact
-              />
-            </span>
-            <span
-              className={`block px-1.5 py-1 text-[10px] font-medium leading-tight ${
-                value === option.id ? "text-primary" : "text-gray-600 dark:text-gray-300"
-              }`}
-            >
-              {option.label}
-            </span>
-          </button>
-        ))}
-      </div>
-      <p className="mt-1.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-        Tints the Default page around the card. Custom photography ignores these.
-      </p>
     </div>
   );
 }
@@ -848,7 +770,9 @@ export default function AccountBranding() {
         setBusinessSenderRole(data.businessSenderRole ?? "");
         setBusinessTrustMessage(data.businessTrustMessage ?? "");
         setBusinessBannerUrl(data.businessBannerUrl ?? null);
-        setBusinessBackgroundStyle(data.businessBackgroundStyle ?? "neutral");
+        setBusinessBackgroundStyle(
+          data.businessBackgroundStyle === "banner" ? "banner" : "neutral",
+        );
         setPortalLayout(
           typeof data.businessPortalLayout === "string"
             ? parseStoredPortalLayoutJson(data.businessPortalLayout)
@@ -1517,12 +1441,7 @@ export default function AccountBranding() {
                           setBusinessBackgroundStyle("banner");
                           return;
                         }
-                        setBusinessBackgroundStyle(
-                          brandingBackgroundStyleForPage(
-                            "default",
-                            brandingBackgroundFilter(businessBackgroundStyle),
-                          ),
-                        );
+                        setBusinessBackgroundStyle("neutral");
                       }}
                       className={`rounded-lg border px-3 py-2 text-left ${
                         brandingPageMode(businessBackgroundStyle) === choice.id
@@ -1585,17 +1504,6 @@ export default function AccountBranding() {
                             onDraft={setBusinessBackgroundColorDraft}
                           />
                         ) : null}
-                        <BackgroundFilterPicker
-                          id="business-background-filter"
-                          value={brandingBackgroundFilter(businessBackgroundStyle)}
-                          accentColor={businessAccentColor}
-                          backgroundColor={businessBackgroundColor}
-                          onChange={(filter) =>
-                            setBusinessBackgroundStyle(
-                              brandingBackgroundStyleForPage("default", filter),
-                            )
-                          }
-                        />
                       </div>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -1879,7 +1787,7 @@ export default function AccountBranding() {
                           ...(checked &&
                           (prev.background === "neutral" || prev.background === "same")
                             ? {
-                                background: brandingBackgroundFilter(businessBackgroundStyle),
+                                background: "neutral",
                                 ...(prev.backgroundColor
                                   ? {}
                                   : {

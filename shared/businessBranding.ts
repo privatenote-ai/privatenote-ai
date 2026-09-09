@@ -1356,16 +1356,6 @@ export function brandingPageBackground(
   if (brandingShowsBanner(branding) && branding.bannerUrl) {
     return { kind: "image", url: branding.bannerUrl };
   }
-  const filter = brandingBackgroundFilter(branding.backgroundStyle);
-  const wash = gradientWashColor(branding);
-  const accent = branding.accentColor ?? "#2563eb";
-  if (filter !== "neutral") {
-    return {
-      kind: "gradient",
-      background: brandFilterBackground(filter, accent, wash),
-      backgroundColor: wash,
-    };
-  }
   if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
     return { kind: "color", backgroundColor: branding.backgroundColor };
   }
@@ -1435,16 +1425,6 @@ export function brandingHeroStyle(
   branding: RevealBranding | undefined,
 ): BrandingHeroStyle | undefined {
   if (!branding) return undefined;
-  const filter = brandingBackgroundFilter(branding.backgroundStyle);
-  if (filter !== "neutral") {
-    return {
-      background: brandFilterBackground(
-        filter,
-        branding.accentColor ?? "#2563eb",
-        gradientWashColor(branding),
-      ),
-    };
-  }
   if (branding.backgroundColor && !brandingIsPrivateNoteCanvas(branding.backgroundColor)) {
     return { backgroundColor: branding.backgroundColor };
   }

@@ -2,10 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type React
 import { Check, ChevronDown, Languages, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
-  brandingBackgroundFilter,
   brandingChromeUsesLightText,
-  brandingFilterBlobs,
-  brandingFilterVignetteShadow,
   brandingLogoIsSolo,
   brandingCardMarkIsBanner,
   brandingOverlayOpacity,
@@ -16,7 +13,6 @@ import {
   brandingCardAxis,
   brandingCardPlacePercent,
   BRANDING_CARD_INSET_PX,
-  type BrandingBackgroundFilter,
   type BrandingCardPosition,
   type RevealBranding,
 } from "@shared/businessBranding";
@@ -97,46 +93,6 @@ function cardPlacementClassName(
 
 function clampPercent(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-/** Coloured circles + vignette, used by the live page and the branding picker. */
-export function BrandFilterAtmosphere({
-  filter,
-  accent,
-  wash,
-  compact = false,
-}: {
-  filter: BrandingBackgroundFilter;
-  accent: string;
-  wash: string;
-  compact?: boolean;
-}) {
-  const blobs = brandingFilterBlobs(filter, accent);
-  const blur = compact ? 10 : 48;
-  return (
-    <span className="absolute inset-0 overflow-hidden" style={{ backgroundColor: wash }}>
-      {blobs.map((blob, index) => (
-        <span
-          key={index}
-          className="absolute rounded-full"
-          style={{
-            left: blob.left,
-            top: blob.top,
-            width: blob.width,
-            height: blob.height,
-            backgroundColor: blob.color,
-            filter: `blur(${blur}px)`,
-          }}
-        />
-      ))}
-      {filter === "vignette" ? (
-        <span
-          className="absolute inset-0"
-          style={{ boxShadow: brandingFilterVignetteShadow(accent, compact) }}
-        />
-      ) : null}
-    </span>
-  );
 }
 
 export function RecipientPortal({
@@ -260,35 +216,18 @@ export function RecipientPortal({
   const shellClass = preview
     ? "absolute inset-0 isolate flex flex-col overflow-hidden"
     : "relative isolate flex min-h-[100dvh] w-full flex-col";
-  const filter = brandingBackgroundFilter(branding?.backgroundStyle);
-  const filterAccent = branding?.accentColor ?? "#2563eb";
   const pageFillStyle =
-    page.kind === "gradient"
+    page.kind === "color"
       ? { backgroundColor: page.backgroundColor }
-      : page.kind === "color"
-        ? { backgroundColor: page.backgroundColor }
-        : page.kind === "image"
-          ? { backgroundColor: "#020617" }
-          : preview
-            ? { backgroundColor: "#ffffff" }
-            : undefined;
+      : page.kind === "image"
+        ? { backgroundColor: "#020617" }
+        : preview
+          ? { backgroundColor: "#ffffff" }
+          : undefined;
 
   return (
     <div className={shellClass} style={pageFillStyle}>
-      {page.kind === "gradient" ? (
-        <div
-          className={`pointer-events-none absolute inset-0 z-0 h-full w-full ${
-            preview ? "" : "min-h-[100dvh]"
-          }`}
-          aria-hidden
-        >
-          <BrandFilterAtmosphere
-            filter={filter}
-            accent={filterAccent}
-            wash={page.backgroundColor}
-          />
-        </div>
-      ) : page.kind === "color" ? (
+      {page.kind === "color" ? (
         <div
           className={`pointer-events-none absolute inset-0 z-0 h-full w-full ${
             preview ? "" : "min-h-[100dvh]"
