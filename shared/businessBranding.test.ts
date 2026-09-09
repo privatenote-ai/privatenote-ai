@@ -1019,8 +1019,8 @@ describe("branding reveal logo size", () => {
     };
     assert.equal(brandingCardMarkUrl(branding), "https://acme.example/lockup.png");
     assert.equal(brandingLogoIsSolo(branding), false);
-    assert.match(brandingRevealLogoClassName(branding), /max-h-16/);
-    assert.match(brandingRevealLogoClassName(branding), /sm:max-h-32/);
+    assert.match(brandingRevealLogoClassName(branding), /w-full/);
+    assert.match(brandingRevealLogoClassName(branding), /object-contain/);
     // A solo logo shares the `large` branch but must keep the smaller desktop height.
     assert.doesNotMatch(
       brandingRevealLogoClassName({ logoUrl: "https://acme.example/logo.png" }),

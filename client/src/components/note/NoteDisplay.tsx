@@ -478,7 +478,11 @@ const BrandingIdentity: React.FC<{
         ) : brandingLine ? (
           <p className="m-0 text-sm font-medium text-gray-800 dark:text-gray-100">{brandingLine}</p>
         ) : null}
-        {meta ? <p className="m-0 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">{meta}</p> : null}
+        {meta ? (
+          <p className="m-0 text-xs font-medium text-gray-700 sm:text-sm dark:text-gray-300">
+            {meta}
+          </p>
+        ) : null}
         {!sender && !meta && company ? (
           <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{company}</p>
         ) : null}
