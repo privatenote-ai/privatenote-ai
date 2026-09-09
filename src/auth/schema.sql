@@ -21,7 +21,10 @@ CREATE TABLE IF NOT EXISTS users (
   business_accent_color TEXT,
   business_background_color TEXT,
   business_text_color TEXT,
-  business_background_style TEXT DEFAULT 'neutral' CHECK (business_background_style IN ('neutral', 'gradient', 'banner')),
+  business_background_style TEXT DEFAULT 'neutral' CHECK (business_background_style IN ('neutral', 'gradient', 'vignette', 'glow', 'mesh', 'banner')),
+  business_portal_layout TEXT,
+  business_show_branding_after_reveal INTEGER NOT NULL DEFAULT 0 CHECK (business_show_branding_after_reveal IN (0, 1)),
+  business_opened_branding TEXT,
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
   preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es')),
   allow_hosted_ai INTEGER NOT NULL DEFAULT 0 CHECK (allow_hosted_ai IN (0, 1))

@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
-import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, apiUploadRequest, ApiRequestError } from "@/lib/queryClient";
+import { apiRequest, ApiRequestError } from "@/lib/queryClient";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { useThemePreferenceControls, type ThemePreference } from "@/hooks/useThemePreference";
 import {
@@ -18,9 +17,6 @@ import {
   SlidersHorizontal,
   Crown,
   Mic,
-  ImageIcon,
-  Upload,
-  Trash2,
 } from "lucide-react";
 import {
   readLocalHostedAiAllowed,
@@ -45,23 +41,13 @@ import {
   planFeaturesFor,
   type AccountType,
 } from "@shared/planCatalog";
-import {
-  BRANDING_BANNER_ASPECT_RATIO,
-  BRANDING_BANNER_MAX_BYTES,
-  BRANDING_BANNER_RECOMMENDED_PX,
-  BRANDING_BANNER_SIZE_LABEL,
-  BRANDING_LOGO_MAX_BYTES,
-  BRANDING_LOGO_RECOMMENDED_PX,
-  brandingBannerStyle,
-  brandingCtaStyle,
-  brandingHeroStyle,
-  brandingHeroUsesLightText,
-  brandingShowsBanner,
-  contrastingTextOn,
-  type RevealBranding,
-} from "@shared/businessBranding";
 import { NOTE_EXPIRY_PRESETS } from "@shared/noteExpiry";
 import { NOTE_READ_LIMIT_OPTIONS, type NoteReadLimit } from "@shared/noteReadLimits";
+import {
+  parseRevealBodyFont,
+  type RevealBodyFont,
+} from "@shared/revealBodyFont";
+import { RevealBodyFontPicker } from "@/components/note/RevealBodyFontPicker";
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   NOTE_FILE_ACCESS_WINDOW_OPTIONS,
@@ -69,91 +55,12 @@ import {
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 
-/** Scaled-down mirror of the reveal page header so branding edits are truthful. */
-const BrandingPreview: React.FC<{ branding: RevealBranding; senderLine: string }> = ({
-  branding,
-  senderLine,
-}) => {
-  const bannerStyle = brandingBannerStyle(branding);
-  const lightText = brandingHeroUsesLightText(branding);
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 shadow-sm dark:border-gray-700">
-      <div className="relative min-h-48 text-center" style={brandingHeroStyle(branding)}>
-        <header>
-          {branding.accentColor ? (
-            <div className="h-[3px] w-full" style={{ backgroundColor: branding.accentColor }} />
-          ) : null}
-          {branding.logoUrl || senderLine || branding.trustMessage ? (
-          <div
-            className={`flex flex-col items-center gap-2 border-b px-6 pb-5 pt-4 ${
-              lightText ? "border-white/15" : "border-gray-200/70 dark:border-gray-800"
-            }`}
-          >
-            {branding.logoUrl ? (
-              <div className={lightText ? "rounded-lg bg-white px-3 py-2 shadow-sm" : ""}>
-                <img
-                  src={branding.logoUrl}
-                  alt="Brand preview"
-                  className="max-h-9 max-w-36 object-contain"
-                />
-              </div>
-            ) : null}
-            {senderLine ? (
-              <p
-                className={`m-0 text-sm font-medium ${
-                  lightText ? "text-white/90" : "text-gray-700 dark:text-gray-200"
-                }`}
-              >
-                {senderLine}
-              </p>
-            ) : null}
-            {branding.trustMessage ? (
-              <p
-                className={`m-0 max-w-md text-xs ${
-                  lightText ? "text-white/70" : "text-gray-500 dark:text-gray-400"
-                }`}
-              >
-                {branding.trustMessage}
-              </p>
-            ) : null}
-          </div>
-          ) : null}
-        </header>
-        <div className="px-6 py-8">
-          <p
-            className={`m-0 text-lg font-extrabold tracking-tight ${
-              lightText ? "text-white" : "text-gray-900 dark:text-white"
-            }`}
-          >
-            Reveal <span className="text-primary">Private Note</span>
-          </p>
-          {bannerStyle ? (
-            <div
-              className={`mx-auto mt-6 aspect-[8/3] w-full max-w-xs overflow-hidden rounded-lg border bg-gray-100 bg-cover bg-center shadow-sm dark:bg-gray-800 ${
-                lightText ? "border-white/15" : "border-gray-200/80 dark:border-gray-800"
-              }`}
-              style={bannerStyle}
-            />
-          ) : null}
-          <button
-            type="button"
-            className={`rounded-md px-5 py-2.5 text-sm font-semibold ${bannerStyle ? "mt-6" : "mt-8"}`}
-            style={brandingCtaStyle(branding)}
-          >
-            Reveal note
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 type NoteDefaultsForm = {
   expirySeconds: number;
   maxReads: NoteReadLimit;
   fileAccessWindowSeconds: NoteFileAccessWindowSeconds;
   readerLanguage: "auto" | SupportedLanguage;
+  bodyFont: RevealBodyFont;
   notifyOnOpen: boolean;
   requireRecipientVerification: boolean;
 };
@@ -163,6 +70,7 @@ const INITIAL_NOTE_DEFAULTS: NoteDefaultsForm = {
   maxReads: 1,
   fileAccessWindowSeconds: NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   readerLanguage: "auto",
+  bodyFont: "system",
   notifyOnOpen: false,
   requireRecipientVerification: false,
 };
@@ -231,10 +139,6 @@ function ThemePicker({
 export default function AccountPreferences() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const {
-    entitlements: accountEntitlements,
-    refreshEntitlements,
-  } = useAccountEntitlements();
   const { language, setLanguage, t } = useLanguage();
   /** Avoid stale closure inside loadSummary — must NOT refetch whenever `language` changes or we race the PATCH GET/overwrite UX. */
   const languageRef = useRef(language);
@@ -260,24 +164,6 @@ export default function AccountPreferences() {
   const [savingNoteDefaults, setSavingNoteDefaults] = useState(false);
   const [resettingNoteDefaults, setResettingNoteDefaults] = useState(false);
   const [savedNoteDefaultsIndicator, setSavedNoteDefaultsIndicator] = useState(false);
-  const [businessDisplayName, setBusinessDisplayName] = useState("");
-  const [businessAccentColor, setBusinessAccentColor] = useState("#2563eb");
-  const [businessBackgroundColor, setBusinessBackgroundColor] = useState("#ffffff");
-  const [businessTextColor, setBusinessTextColor] = useState("#ffffff");
-  const [businessLogoUrl, setBusinessLogoUrl] = useState<string | null>(null);
-  const [businessSenderName, setBusinessSenderName] = useState("");
-  const [businessSenderRole, setBusinessSenderRole] = useState("");
-  const [businessTrustMessage, setBusinessTrustMessage] = useState("");
-  const [businessBannerUrl, setBusinessBannerUrl] = useState<string | null>(null);
-  const [businessBackgroundStyle, setBusinessBackgroundStyle] =
-    useState<"neutral" | "gradient" | "banner">("neutral");
-  const [savingBranding, setSavingBranding] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [removingLogo, setRemovingLogo] = useState(false);
-  const [savedBrandingIndicator, setSavedBrandingIndicator] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const bannerInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [voiceFormatPreference, setVoiceFormatPreference] = useState<VoiceRecordingFormatPreference>(
     () => readVoiceRecordingFormatPreference(),
   );
@@ -316,16 +202,6 @@ export default function AccountPreferences() {
         allowHostedAi?: boolean;
         accountType?: unknown;
         plan?: unknown;
-        businessDisplayName?: string | null;
-        businessLogoUrl?: string | null;
-        businessAccentColor?: string | null;
-        businessBackgroundColor?: string | null;
-        businessTextColor?: string | null;
-        businessSenderName?: string | null;
-        businessSenderRole?: string | null;
-        businessTrustMessage?: string | null;
-        businessBannerUrl?: string | null;
-        businessBackgroundStyle?: "neutral" | "gradient" | "banner";
       }>("/api/auth/account/summary", "GET");
       if (data.ok && typeof data.emailNotifications === "boolean") {
         setEmailNotifications(data.emailNotifications);
@@ -333,21 +209,6 @@ export default function AccountPreferences() {
       if (data.ok && typeof data.allowHostedAi === "boolean") {
         setAllowHostedAi(data.allowHostedAi);
         writeLocalHostedAiAllowed(data.allowHostedAi);
-      }
-      if (data.ok) {
-        setBusinessDisplayName(data.businessDisplayName ?? "");
-        setBusinessLogoUrl(data.businessLogoUrl ?? null);
-        setBusinessAccentColor(data.businessAccentColor ?? "#2563eb");
-        setBusinessBackgroundColor(data.businessBackgroundColor ?? "#ffffff");
-        setBusinessTextColor(
-          data.businessTextColor
-            ?? contrastingTextOn(data.businessAccentColor ?? "#2563eb"),
-        );
-        setBusinessSenderName(data.businessSenderName ?? "");
-        setBusinessSenderRole(data.businessSenderRole ?? "");
-        setBusinessTrustMessage(data.businessTrustMessage ?? "");
-        setBusinessBannerUrl(data.businessBannerUrl ?? null);
-        setBusinessBackgroundStyle(data.businessBackgroundStyle ?? "neutral");
       }
       if (data.ok && data.preferredLanguage && SUPPORTED_LANGUAGES.includes(data.preferredLanguage)) {
         setPreferredLanguage(data.preferredLanguage);
@@ -373,6 +234,7 @@ export default function AccountPreferences() {
             maxReads: NoteReadLimit | null;
             fileAccessWindowSeconds: NoteFileAccessWindowSeconds | null;
             readerLanguage: SupportedLanguage | null;
+            bodyFont: string | null;
             notifyOnOpen: boolean;
             requireRecipientVerification: boolean;
           } | null;
@@ -386,6 +248,7 @@ export default function AccountPreferences() {
               defaultsResponse.defaults.fileAccessWindowSeconds ??
               INITIAL_NOTE_DEFAULTS.fileAccessWindowSeconds,
             readerLanguage: defaultsResponse.defaults.readerLanguage ?? "auto",
+            bodyFont: parseRevealBodyFont(defaultsResponse.defaults.bodyFont) ?? "system",
             notifyOnOpen: defaultsResponse.defaults.notifyOnOpen,
             requireRecipientVerification:
               defaultsResponse.defaults.requireRecipientVerification,
@@ -513,156 +376,6 @@ export default function AccountPreferences() {
       setResettingNoteDefaults(false);
     }
   };
-
-  const saveBrandingDefaults = async () => {
-    setSavingBranding(true);
-    try {
-      const response = await apiRequest<{
-        businessDisplayName: string | null;
-        businessAccentColor: string | null;
-        businessBackgroundColor: string | null;
-        businessTextColor: string | null;
-      }>("/api/auth/account/preferences", "PATCH", {
-        businessDisplayName,
-        businessAccentColor,
-        businessBackgroundColor,
-        businessTextColor,
-        businessSenderName,
-        businessSenderRole,
-        businessTrustMessage,
-        businessBackgroundStyle,
-      });
-      setBusinessDisplayName(response.businessDisplayName ?? "");
-      setBusinessAccentColor(response.businessAccentColor ?? "#2563eb");
-      setBusinessBackgroundColor(response.businessBackgroundColor ?? "#ffffff");
-      setBusinessTextColor(
-        response.businessTextColor
-          ?? contrastingTextOn(response.businessAccentColor ?? "#2563eb"),
-      );
-      setSavedBrandingIndicator(true);
-      setTimeout(() => setSavedBrandingIndicator(false), 2000);
-      await refreshEntitlements();
-      toast({
-        title: "Branding defaults saved",
-        description: "New notes will start with this reveal branding.",
-      });
-    } catch (error) {
-      toast({
-        title: "Could not save branding",
-        description: describeApiPreferenceError(error),
-        variant: "destructive",
-      });
-    } finally {
-      setSavingBranding(false);
-    }
-  };
-
-  const uploadBusinessBanner = async (file: File) => {
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > BRANDING_BANNER_MAX_BYTES) {
-      toast({
-        title: "Unsupported banner",
-        description: `Use a PNG, JPEG, or WebP image, ${BRANDING_BANNER_SIZE_LABEL} px, under ${Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    setUploadingBanner(true);
-    try {
-      const response = await apiUploadRequest<{ bannerUrl: string }>("/api/auth/account/branding/banner", file);
-      setBusinessBannerUrl(response.bannerUrl);
-      setBusinessBackgroundStyle("banner");
-      await refreshEntitlements();
-      toast({ title: "Banner uploaded", description: "Save branding defaults to use the banner treatment." });
-    } catch (error) {
-      toast({ title: "Could not upload banner", description: describeApiPreferenceError(error), variant: "destructive" });
-    } finally {
-      setUploadingBanner(false);
-      if (bannerInputRef.current) bannerInputRef.current.value = "";
-    }
-  };
-
-  const removeBusinessBanner = async () => {
-    setUploadingBanner(true);
-    try {
-      await apiRequest("/api/auth/account/branding/banner", "DELETE");
-      setBusinessBannerUrl(null);
-      if (businessBackgroundStyle === "banner") setBusinessBackgroundStyle("neutral");
-      await refreshEntitlements();
-    } finally {
-      setUploadingBanner(false);
-    }
-  };
-
-  const uploadBusinessLogo = async (file: File) => {
-    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-      toast({
-        title: "Unsupported logo",
-        description: "Choose a PNG, JPEG, or WebP image.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (file.size > BRANDING_LOGO_MAX_BYTES) {
-      toast({
-        title: "Logo is too large",
-        description: "Choose an image smaller than 1 MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setUploadingLogo(true);
-    try {
-      const response = await apiUploadRequest<{ ok: boolean; logoUrl: string }>(
-        "/api/auth/account/branding/logo",
-        file,
-      );
-      setBusinessLogoUrl(response.logoUrl);
-      await refreshEntitlements();
-      toast({
-        title: "Logo uploaded",
-        description: "It will be prefilled on new Business notes.",
-      });
-    } catch (error) {
-      toast({
-        title: "Could not upload logo",
-        description: describeApiPreferenceError(error),
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingLogo(false);
-      if (logoInputRef.current) logoInputRef.current.value = "";
-    }
-  };
-
-  const removeBusinessLogo = async () => {
-    setRemovingLogo(true);
-    try {
-      await apiRequest("/api/auth/account/branding/logo", "DELETE");
-      setBusinessLogoUrl(null);
-      await refreshEntitlements();
-      toast({ title: "Logo removed" });
-    } catch (error) {
-      toast({
-        title: "Could not remove logo",
-        description: describeApiPreferenceError(error),
-        variant: "destructive",
-      });
-    } finally {
-      setRemovingLogo(false);
-    }
-  };
-
-  useEffect(() => {
-    if (prefsLoading || authLoading) return;
-    if (typeof window === "undefined") return;
-    if (window.location.hash !== "#reveal-branding") return;
-    window.requestAnimationFrame(() => {
-      document.getElementById("reveal-branding")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }, [authLoading, prefsLoading]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || (user && prefsLoading)) {
@@ -845,302 +558,6 @@ export default function AccountPreferences() {
           </div>
         </section>
 
-        {/* ── Business branding defaults ───────────────────────────── */}
-        <section
-          id="reveal-branding"
-          className="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-900/60 scroll-mt-24"
-        >
-          <div className="border-b border-violet-200 bg-violet-50/60 px-5 py-4 dark:border-violet-900/60 dark:bg-violet-950/20">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-violet-600" aria-hidden />
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Reveal branding
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Synchronized Business defaults. New notes prefill these values,
-                  and you can still adjust them per note.
-                </p>
-              </div>
-              {savedBrandingIndicator ? (
-                <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  Saved
-                </span>
-              ) : (
-                <span className="shrink-0 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-900/50 dark:text-violet-200">
-                  Business
-                </span>
-              )}
-            </div>
-          </div>
-
-          {accountEntitlements.capabilities.revealBranding ? (
-            <div className="space-y-5 px-5 py-5">
-              <div>
-                <Label htmlFor="business-display-name" className="mb-2 block text-sm">
-                  Display name
-                </Label>
-                <input
-                  id="business-display-name"
-                  value={businessDisplayName}
-                  onChange={(event) => setBusinessDisplayName(event.target.value)}
-                  maxLength={120}
-                  placeholder="Company or team name"
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-                />
-                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  Shown as the company name on branded reveal pages.
-                </p>
-              </div>
-
-              <div>
-                <Label className="mb-2 block text-sm">Brand colors</Label>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {([
-                    {
-                      id: "business-background-color",
-                      label: "Background",
-                      value: businessBackgroundColor,
-                      onChange: setBusinessBackgroundColor,
-                    },
-                    {
-                      id: "business-accent-color",
-                      label: "Accent",
-                      value: businessAccentColor,
-                      onChange: setBusinessAccentColor,
-                    },
-                    {
-                      id: "business-text-color",
-                      label: "Text",
-                      value: businessTextColor,
-                      onChange: setBusinessTextColor,
-                    },
-                  ] as const).map((swatch) => (
-                    <div key={swatch.id}>
-                      <Label htmlFor={swatch.id} className="mb-2 block text-xs text-gray-500 dark:text-gray-400">
-                        {swatch.label}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          id={swatch.id}
-                          type="color"
-                          value={swatch.value}
-                          onChange={(event) => swatch.onChange(event.target.value)}
-                          className="h-10 w-12 cursor-pointer rounded border border-gray-300 bg-white p-1 dark:border-gray-700 dark:bg-gray-900"
-                        />
-                        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                          {swatch.value}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Background tints the reveal page. Accent fills Reveal and Copy.
-                  Text is the label on those buttons.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="business-sender-name" className="mb-2 block text-sm">Sender name</Label>
-                  <input id="business-sender-name" value={businessSenderName}
-                    onChange={(event) => setBusinessSenderName(event.target.value)} maxLength={80}
-                    placeholder="Marjan Skrobot"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900" />
-                </div>
-                <div>
-                  <Label htmlFor="business-sender-role" className="mb-2 block text-sm">Role or department</Label>
-                  <input id="business-sender-role" value={businessSenderRole}
-                    onChange={(event) => setBusinessSenderRole(event.target.value)} maxLength={80}
-                    placeholder="Security Operations"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900" />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="business-trust-message" className="mb-2 block text-sm">Recipient trust message</Label>
-                <textarea id="business-trust-message" value={businessTrustMessage}
-                  onChange={(event) => setBusinessTrustMessage(event.target.value)} maxLength={160} rows={2}
-                  placeholder="We use PrivateNote to deliver sensitive information securely."
-                  className="w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900" />
-                <p className="mt-1 text-right text-xs text-gray-500">{businessTrustMessage.length}/160</p>
-              </div>
-
-              <div>
-                <Label className="mb-2 block text-sm">Logo</Label>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex h-16 w-28 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700">
-                    {businessLogoUrl ? (
-                      <img
-                        src={businessLogoUrl}
-                        alt="Current reveal logo"
-                        className="max-h-full max-w-full object-contain"
-                      />
-                    ) : (
-                      <ImageIcon className="h-6 w-6 text-gray-300 dark:text-gray-600" />
-                    )}
-                  </div>
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="sr-only"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void uploadBusinessLogo(file);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={uploadingLogo || removingLogo}
-                    onClick={() => logoInputRef.current?.click()}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {uploadingLogo ? "Uploading…" : businessLogoUrl ? "Replace logo" : "Upload logo"}
-                  </Button>
-                  {businessLogoUrl ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={uploadingLogo || removingLogo}
-                      onClick={() => void removeBusinessLogo()}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      {removingLogo ? "Removing…" : "Remove"}
-                    </Button>
-                  ) : null}
-                </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  PNG, JPEG, or WebP; maximum {Math.round(BRANDING_LOGO_MAX_BYTES / (1024 * 1024))} MB.
-                  Recommended {BRANDING_LOGO_RECOMMENDED_PX.width}×{BRANDING_LOGO_RECOMMENDED_PX.height} (square)
-                  or a wider lockup up to about 1200×400. Uploaded logos are served from
-                  PrivateNote instead of an external host.
-                </p>
-              </div>
-
-              <div>
-                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                  <Label className="text-sm">Reveal banner</Label>
-                  <p className="m-0 font-mono text-xs text-gray-500 dark:text-gray-400">
-                    {BRANDING_BANNER_SIZE_LABEL} px · 8:3
-                  </p>
-                </div>
-                <div
-                  className="mb-3 overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40"
-                  style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
-                >
-                  {businessBannerUrl ? (
-                    <img
-                      src={businessBannerUrl}
-                      alt="Reveal banner preview"
-                      className="h-full w-full object-cover object-center"
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center">
-                      <p className="m-0 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        {BRANDING_BANNER_RECOMMENDED_PX.width} × {BRANDING_BANNER_RECOMMENDED_PX.height} px
-                      </p>
-                      <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
-                        8:3 landscape cover · PNG, JPEG, or WebP
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div className="mb-3 grid grid-cols-3 gap-2">
-                  {(["neutral", "gradient", "banner"] as const).map((style) => (
-                    <button key={style} type="button" onClick={() => setBusinessBackgroundStyle(style)}
-                      disabled={style === "banner" && !businessBannerUrl}
-                      className={`rounded-lg border px-3 py-2 text-sm capitalize ${businessBackgroundStyle === style ? "border-primary bg-primary/5 text-primary" : "border-gray-200 dark:border-gray-700"} disabled:opacity-40`}>
-                      {style}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <input ref={bannerInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only"
-                    onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadBusinessBanner(file); }} />
-                  <Button type="button" variant="outline" disabled={uploadingBanner}
-                    onClick={() => bannerInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />{uploadingBanner ? "Uploading…" : businessBannerUrl ? "Replace banner" : "Upload banner"}
-                  </Button>
-                  {businessBannerUrl ? <Button type="button" variant="ghost" disabled={uploadingBanner}
-                    onClick={() => void removeBusinessBanner()}><Trash2 className="mr-2 h-4 w-4" />Remove</Button> : null}
-                </div>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Export at {BRANDING_BANNER_SIZE_LABEL} pixels (8:3). Maximum{" "}
-                  {Math.round(BRANDING_BANNER_MAX_BYTES / (1024 * 1024))} MB. The banner shows in a
-                  card just above the Reveal button at its full 8:3 shape, so nothing is cropped.
-                  Your logo appears separately at the top of the page.
-                </p>
-              </div>
-
-              <div>
-                <Label className="mb-2 block text-sm">Live recipient preview</Label>
-                <BrandingPreview
-                  branding={{
-                    companyName: businessDisplayName || undefined,
-                    senderName: businessSenderName || undefined,
-                    senderRole: businessSenderRole || undefined,
-                    trustMessage: businessTrustMessage || undefined,
-                    logoUrl: businessLogoUrl ?? undefined,
-                    bannerUrl: businessBannerUrl ?? undefined,
-                    accentColor: businessAccentColor,
-                    backgroundColor: businessBackgroundColor,
-                    textColor: businessTextColor,
-                    backgroundStyle: businessBackgroundStyle,
-                  }}
-                  senderLine={
-                    businessSenderName || businessDisplayName
-                      ? `${businessSenderName || businessDisplayName}${businessSenderRole ? `, ${businessSenderRole}` : ""}${businessSenderName && businessDisplayName ? ` from ${businessDisplayName}` : ""} shared a private note`
-                      : ""
-                  }
-                />
-              </div>
-
-              <div className="flex justify-end border-t border-violet-100 pt-4 dark:border-violet-900/40">
-                <Button
-                  type="button"
-                  disabled={savingBranding}
-                  onClick={() => void saveBrandingDefaults()}
-                >
-                  {savingBranding ? "Saving…" : "Save branding defaults"}
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Branding is public reveal metadata only. It never includes note
-                content, titles, or previews.
-              </p>
-            </div>
-          ) : (
-            <div className="px-5 py-5">
-              <div className="flex items-start gap-3">
-                <Crown className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" aria-hidden />
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Available with Business
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-                    Add your display name, hosted logo, and three brand colors
-                    (background, accent, and text) to note reveal pages. Stored
-                    branding remains retained if you downgrade.
-                  </p>
-                  {(businessDisplayName || businessLogoUrl) ? (
-                    <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
-                      Your saved branding is retained but currently inactive.
-                    </p>
-                  ) : null}
-                  <Button asChild size="sm" className="mt-3">
-                    <a href="/account">View account plan</a>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
         {/* ── Saved note defaults ───────────────────────────────────────── */}
         <section className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/40">
@@ -1253,7 +670,7 @@ export default function AccountPreferences() {
 
                     <div>
                       <Label htmlFor="default-file-window" className="mb-2 block text-sm">
-                        File download window
+                        Access after opening
                       </Label>
                       <select
                         id="default-file-window"
@@ -1271,7 +688,7 @@ export default function AccountPreferences() {
                         {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
                           const locked = seconds > planCapabilities.maxFileAccessWindowSeconds;
                           const planLabel =
-                            seconds <= 15 * 60 ? null : seconds <= 30 * 60 ? "Starter" : "Business";
+                            seconds <= 60 * 60 ? null : seconds <= 4 * 60 * 60 ? "Starter" : "Business";
                           return (
                             <option
                               key={seconds}
@@ -1312,6 +729,21 @@ export default function AccountPreferences() {
                       </select>
                     </div>
                   </div>
+
+                  {planCapabilities.revealBodyFont ? (
+                    <div>
+                      <Label className="mb-2 block text-sm">Message typeface</Label>
+                      <RevealBodyFontPicker
+                        value={noteDefaults.bodyFont}
+                        onChange={(next) =>
+                          setNoteDefaults((current) => ({ ...current, bodyFont: next }))
+                        }
+                      />
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        Used on the page where the recipient opens the note.
+                      </p>
+                    </div>
+                  ) : null}
 
                   <div className="divide-y divide-gray-200 rounded-lg border border-gray-200 dark:divide-gray-700 dark:border-gray-700">
                     <div className="flex items-center justify-between gap-4 px-4 py-3">

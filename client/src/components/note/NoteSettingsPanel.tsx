@@ -2,6 +2,7 @@ import React from "react";
 import {
   Crown,
   Eye,
+  EyeOff,
   Lock,
   Timer,
   Shield,
@@ -17,6 +18,7 @@ import {
   Mail,
   Clock,
   BadgeCheck,
+  Type,
 } from "lucide-react";
 import {
   isNoteExpiryPresetId,
@@ -35,6 +37,13 @@ import {
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 import type { AccountType } from "@shared/planCatalog";
+import {
+  type RevealBodyFont,
+} from "@shared/revealBodyFont";
+import {
+  type AttachmentRecipientPermission,
+} from "@shared/attachmentRecipientPermission";
+import { RevealBodyFontPicker } from "@/components/note/RevealBodyFontPicker";
 import {
   BUSINESS_RECEIPT_ACK_PRESETS,
   RECEIPT_ACK_STATEMENT_MAX_LENGTH,
@@ -85,8 +94,8 @@ const LOCKED_OPTION_STYLE: React.CSSProperties = { color: "#9ca3af" };
 /** Starter plan caps (Business is above these). */
 const STARTER_MAX_EXPIRY_SECONDS = 15 * 24 * 60 * 60;
 const FREE_MAX_EXPIRY_SECONDS = 3 * 24 * 60 * 60;
-const STARTER_MAX_FILE_ACCESS_WINDOW_SECONDS = 30 * 60;
-const FREE_MAX_FILE_ACCESS_WINDOW_SECONDS = 15 * 60;
+const STARTER_MAX_FILE_ACCESS_WINDOW_SECONDS = 4 * 60 * 60;
+const FREE_MAX_FILE_ACCESS_WINDOW_SECONDS = 60 * 60;
 
 type PlanUnlockTier = "free" | "starter" | "business";
 
@@ -178,13 +187,13 @@ function SettingsFieldLabel({
           {icon}
         </span>
       </SettingsInfoTooltip>
-      <span className={`min-w-0 leading-snug${singleLine ? " whitespace-nowrap" : ""}`}>
+      <span className={`min-w-0 leading-snug${singleLine ? " sm:whitespace-nowrap" : ""}`}>
         {label}
       </span>
     </>
   );
   const className = singleLine
-    ? "flex items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+    ? "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:items-center"
     : "flex items-start text-sm font-medium text-gray-700 dark:text-gray-300 sm:pt-1.5";
   if (htmlFor) {
     return (
@@ -210,11 +219,14 @@ function translatedFileAccessWindowLabel(
   if (seconds === 15 * 60) {
     return t.fileAccessWindow15Min ?? formatNoteFileAccessWindow(seconds);
   }
-  if (seconds === 30 * 60) {
-    return t.fileAccessWindow30Min ?? formatNoteFileAccessWindow(seconds);
-  }
   if (seconds === 60 * 60) {
     return t.fileAccessWindow1Hour ?? formatNoteFileAccessWindow(seconds);
+  }
+  if (seconds === 4 * 60 * 60) {
+    return t.fileAccessWindow4Hours ?? formatNoteFileAccessWindow(seconds);
+  }
+  if (seconds === 24 * 60 * 60) {
+    return t.fileAccessWindow24Hours ?? formatNoteFileAccessWindow(seconds);
   }
   return formatNoteFileAccessWindow(seconds);
 }
@@ -419,6 +431,12 @@ export type NoteSettingsPanelProps = {
   setFileAccessWindowSeconds: (value: NoteFileAccessWindowSeconds) => void;
   readerLanguage: ReaderLanguageSetting;
   setReaderLanguage: (value: ReaderLanguageSetting) => void;
+  bodyFont: RevealBodyFont;
+  setBodyFont: (value: RevealBodyFont) => void;
+  canChooseBodyFont?: boolean;
+  attachmentPermission: AttachmentRecipientPermission;
+  setAttachmentPermission: (value: AttachmentRecipientPermission) => void;
+  canChooseAttachmentPermission?: boolean;
   /** Business — show the account's saved branding on the reveal page. */
   canBrandRevealPage?: boolean;
   configuredAccountType?: AccountType;
@@ -491,6 +509,12 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   setFileAccessWindowSeconds,
   readerLanguage,
   setReaderLanguage,
+  bodyFont,
+  setBodyFont,
+  canChooseBodyFont = false,
+  attachmentPermission,
+  setAttachmentPermission,
+  canChooseAttachmentPermission = false,
   canBrandRevealPage = false,
   configuredAccountType = "free",
   hasRevealBranding = false,
@@ -501,8 +525,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const { t, language } = useLanguage();
   const isFileTransfer = variant === "file-transfer";
   const premiumUpgradeHref = localizedPath("/premium", language);
-  const preferencesHref = localizedPath("/account/preferences", language);
-  const brandingHref = `${preferencesHref}#reveal-branding`;
+  const brandingHref = localizedPath("/account/branding", language);
   const isConfiguredBusiness = configuredAccountType === "business_premium";
   const brandingAllowed = canBrandRevealPage || isConfiguredBusiness;
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
@@ -703,7 +726,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 htmlFor="note-file-access-window"
                 icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
                 iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
-                label={t.settingsFileDownloads ?? "File downloads"}
+                label={t.settingsFileDownloads ?? "Access after opening"}
                 info={t.settingsFileDownloadsInfo}
               />
             </div>
@@ -719,10 +742,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   if (next > maxFileAccessWindowSeconds) {
                     const requiredPlan = fileAccessPlanUnlock(next);
                     setSelectedPremiumFeature({
-                      title: t.settingsFileDownloads ?? "File downloads",
+                      title: t.settingsFileDownloads ?? "Access after opening",
                       description:
                         t.settingsFileDownloadsInfo ??
-                        "Longer download windows after open are available on Starter and Business.",
+                        "Longer viewing windows after first opening are available on Starter and Business.",
                       plan: requiredPlan === "business" ? "business" : "starter",
                     });
                     return;
@@ -748,7 +771,78 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </select>
               <SettingsFieldHelper>
                 {t.settingsFileDownloadsHint ??
-                  "How long attachments stay downloadable after the note is opened."}
+                  "How long recipients can view and download attachments after first opening."}
+              </SettingsFieldHelper>
+            </div>
+          </div>
+
+          <div className={SETTINGS_FIELD_ROW}>
+            <div>
+              <SettingsFieldLabel
+                icon={<EyeOff className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                label={t.settingsAttachmentPermission ?? "Recipient file access"}
+                info={
+                  t.settingsAttachmentPermissionInfo ??
+                  "View only hides the download button. It is a handling policy, not DRM — a determined recipient can still capture the screen."
+                }
+              />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(
+                  [
+                    {
+                      id: "download" as const,
+                      title: t.settingsAttachmentPermissionDownload ?? "View + download",
+                      hint:
+                        t.settingsAttachmentPermissionDownloadHint ??
+                        "The recipient may download the file during the access window.",
+                    },
+                    {
+                      id: "view-only" as const,
+                      title: t.settingsAttachmentPermissionViewOnly ?? "View only",
+                      hint:
+                        t.settingsAttachmentPermissionViewOnlyHint ??
+                        "The recipient can open the secure viewer. Download is hidden.",
+                    },
+                  ] as const
+                ).map((option) => {
+                  const selected = attachmentPermission === option.id;
+                  const locked = option.id === "view-only" && !canChooseAttachmentPermission;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => {
+                        if (locked) {
+                          setSelectedPremiumFeature({
+                            title: t.settingsAttachmentPermission ?? "Recipient file access",
+                            description:
+                              t.settingsAttachmentPermissionInfo ??
+                              "View only hides the download button. It is a handling policy, not DRM — a determined recipient can still capture the screen.",
+                            plan: "business",
+                          });
+                          return;
+                        }
+                        setAttachmentPermission(option.id);
+                      }}
+                      className={`${receiptAckOptionBase} ${selected ? receiptAckOptionActive : receiptAckOptionIdle}`}
+                      aria-pressed={selected}
+                    >
+                      <span className="block font-medium">
+                        {withPlanUnlock(option.title, option.id === "view-only" ? "business" : "free", t)}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
+                        {option.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <SettingsFieldHelper>
+                {t.settingsAttachmentPermissionHint ??
+                  "View only is available on Business. It does not prevent screenshots."}
               </SettingsFieldHelper>
             </div>
           </div>
@@ -904,7 +998,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
                         label={
                           t.settingsEmailAlertOnOpenedDestroyed ??
-                          "Email alert when this note is opened and destroyed"
+                          "Email alert when note is opened and destroyed"
                         }
                         info={
                           t.settingsEmailAlertOnOpenedDestroyedInfo ??
@@ -935,7 +1029,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           icon={<Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />}
                           iconToneClassName="bg-amber-50 dark:bg-amber-900/30"
                           label={
-                            t.settingsEmailAlertOnOpen ?? "Email alert when this note is opened"
+                            t.settingsEmailAlertOnOpen ?? "Email alert when note is opened"
                           }
                           info={
                             t.settingsEmailAlertOnOpenInfo ??
@@ -962,7 +1056,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                           iconToneClassName="bg-rose-50 dark:bg-rose-900/30"
                           label={
                             t.settingsEmailAlertOnDestroyed ??
-                            "Email alert when this note is destroyed"
+                            "Email alert when note is destroyed"
                           }
                           info={
                             t.settingsEmailAlertOnDestroyedInfo ??
@@ -999,9 +1093,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                         label={
                           hasVoiceMessage
                             ? (t.settingsEmailAlertOnRecordingDownload ??
-                              "Email alert when a recording is downloaded")
+                              "Email alert when recording is downloaded")
                             : (t.settingsEmailAlertOnAttachmentDownload ??
-                              "Email alert when an attachment is downloaded")
+                              "Email alert when attachment is downloaded")
                         }
                         info={
                           hasVoiceMessage
@@ -1574,6 +1668,51 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   </SettingsFieldHelper>
                 </div>
               </div>
+              <div className="space-y-2">
+                <SettingsFieldLabel
+                  htmlFor="reveal-body-font"
+                  icon={<Type className="h-4 w-4 text-violet-600 dark:text-violet-400" />}
+                  iconToneClassName="bg-violet-50 dark:bg-violet-900/30"
+                  label={t.settingsRevealBodyFont ?? "Message typeface"}
+                  info={
+                    t.settingsRevealBodyFontInfo ??
+                    "Choose the typeface used for the opened note. Recipients see this after they reveal the message."
+                  }
+                />
+                <RevealBodyFontPicker
+                  value={bodyFont}
+                  disabled={premiumStatusLoading}
+                  locked={!canChooseBodyFont && !isPremiumUser}
+                  onLockedSelect={() =>
+                    setSelectedPremiumFeature({
+                      title: t.settingsRevealBodyFont ?? "Message typeface",
+                      description:
+                        t.settingsRevealBodyFontInfo ??
+                        "Choose the typeface used for the opened note. Recipients see this after they reveal the message.",
+                      plan: "starter",
+                    })
+                  }
+                  onChange={setBodyFont}
+                  labels={{
+                    system: t.settingsRevealBodyFontSystem ?? "Inter",
+                    satoshi: t.settingsRevealBodyFontSatoshi ?? "Satoshi",
+                    "source-serif": t.settingsRevealBodyFontSourceSerif ?? "Source Serif 4",
+                    fraunces: t.settingsRevealBodyFontFraunces ?? "Fraunces",
+                    "jetbrains-mono": t.settingsRevealBodyFontMono ?? "JetBrains Mono",
+                  }}
+                  hints={{
+                    system: t.settingsRevealBodyFontSystemHint ?? "Default — clear and professional",
+                    satoshi: t.settingsRevealBodyFontSatoshiHint ?? "Modern geometric sans",
+                    "source-serif": t.settingsRevealBodyFontSourceSerifHint ?? "Letter and document",
+                    fraunces: t.settingsRevealBodyFontFrauncesHint ?? "Warm editorial",
+                    "jetbrains-mono": t.settingsRevealBodyFontMonoHint ?? "Passwords, keys, and code",
+                  }}
+                />
+                <SettingsFieldHelper>
+                  {t.settingsRevealBodyFontHint ??
+                    "Inter and Satoshi are free. Starter and Business unlock more typefaces."}
+                </SettingsFieldHelper>
+              </div>
               {!isPremiumUser ? (
                 <a
                   href={premiumUpgradeHref}
@@ -1591,8 +1730,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             >
               <SectionHeading
                 id="note-reveal-branding-heading"
-                title={t.settingsRevealBrandingSection ?? "Reveal branding"}
-                showPremiumBadge={!isConfiguredBusiness}
+                title={t.settingsRevealBrandingSection ?? "Recipient branding"}
+                showPremiumBadge={!brandingAllowed}
                 premiumLabel={t.settingsPlanBusiness ?? "Business"}
               />
               <div className={SETTINGS_TOGGLE_ROW}>
@@ -1640,7 +1779,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   )}
                 </div>
               </div>
-              {!isConfiguredBusiness ? (
+              {!brandingAllowed ? (
                 <div className="space-y-2">
                   <p className="px-1 text-xs leading-snug text-violet-700 dark:text-violet-300">
                     Business adds your company identity to the recipient reveal page.

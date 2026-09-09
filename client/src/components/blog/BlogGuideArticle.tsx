@@ -49,13 +49,14 @@ function collectToc(root: HTMLElement): BlogTocEntry[] {
 type BlogGuideArticleProps = {
   slug: string;
   children: React.ReactNode;
+  showMobileToc?: boolean;
 };
 
 /**
  * Applies Guide chrome (category breadcrumbs + sticky TOC) to any blog post.
  * TOC entries are derived from `article h2` headings.
  */
-export function BlogGuideArticle({ slug, children }: BlogGuideArticleProps) {
+export function BlogGuideArticle({ slug, children, showMobileToc = true }: BlogGuideArticleProps) {
   const { t, language } = useLanguage();
   const contentRef = useRef<HTMLDivElement>(null);
   const [toc, setToc] = useState<BlogTocEntry[]>([]);
@@ -81,7 +82,7 @@ export function BlogGuideArticle({ slug, children }: BlogGuideArticleProps) {
       mobileNav={
         <div className="mb-4 space-y-4 sm:mb-5 lg:hidden">
           <BlogPostBreadcrumbs section={breadcrumbSection} sectionHref={breadcrumbSectionHref} />
-          {toc.length > 0 ? (
+          {showMobileToc && toc.length > 0 ? (
             <BlogOnThisPage
               heading={tocHeading}
               entries={toc}

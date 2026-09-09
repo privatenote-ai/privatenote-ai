@@ -311,12 +311,12 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
   },
   "how-to-share-photos-securely": {
     related: [
+      "how-to-send-nudes-safely",
       "send-sensitive-documents-securely",
       "one-time-secret-links",
       "encrypted-vs-secure-file-sharing",
       "google-drive-vs-one-time-encrypted-links",
       "why-email-is-worst-for-secrets",
-      "common-secret-handling-mistakes",
     ],
     trust: "/how-it-works",
   },
@@ -383,6 +383,17 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
       "why-email-is-worst-for-secrets",
       "how-to-share-a-password-securely",
       "common-secret-handling-mistakes",
+    ],
+    trust: "/how-it-works",
+  },
+  "how-to-send-nudes-safely": {
+    related: [
+      "how-to-share-photos-securely",
+      "one-time-secret-links",
+      "encrypted-vs-secure-file-sharing",
+      "recipient-verification-code-before-reveal",
+      "click-to-reveal-private-notes",
+      "secrets-never-send-in-chat",
     ],
     trust: "/how-it-works",
   },

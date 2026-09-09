@@ -1,22 +1,20 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import {
   Copy,
   RefreshCw,
   Unlock,
   Eye,
   EyeOff,
-  ShieldCheck,
-  Trash2,
-  UserX,
   Download,
   Paperclip,
-  ExternalLink,
   FileText,
   Image as ImageIcon,
   Mic,
+  Video,
   BadgeCheck,
   Tags,
   ChevronDown,
+  Lock,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
 import { useAccountEntitlements } from '@/context/AccountEntitlementsContext';
@@ -37,11 +35,21 @@ import {
   unwrapRootKeyWithPassword,
 } from '@/utils/encryption';
 import { formatNoteFileSize } from '@shared/noteFileLimits';
+import {
+  attachmentChunkDownloadApiPath,
+  storedNoteAttachmentsFromPayload,
+} from '@shared/noteAttachments';
 import { formatAttachmentDisplayName } from '@/utils/formatAttachmentDisplayName';
 import {
   canBrowserPlayVoiceAttachment,
-  isVoiceMessageAttachment,
 } from '@/utils/voiceMessageRecording';
+import {
+  formatAttachmentTypeLabel,
+  getAttachmentBlobMimeType,
+  getAttachmentPreviewKind,
+} from '@/utils/attachmentPreviewKind';
+import { parseAttachmentRecipientPermission } from '@shared/attachmentRecipientPermission';
+import { SecureAttachmentViewer } from '@/components/note/SecureAttachmentViewer';
 import {
   convertVoiceAttachmentForDownload,
   isVoiceDownloadConversionAvailable,
@@ -49,17 +57,29 @@ import {
 } from '@/utils/voiceMessageDownloadFormat';
 import { useToast } from '@/hooks/use-toast';
 import {
-  brandingBannerStyle,
   brandingCtaStyle,
-  brandingHeroStyle,
-  brandingHeroUsesLightText,
-  brandingShowsBanner,
+  brandingCardMarkUrl,
+  brandingRevealLogoClassName,
+  brandingUsesPortalSurface,
+  applyOpenedNoteBranding,
+  parseStoredRevealBranding,
+  brandingNoteTextBorderColor,
 } from '@shared/businessBranding';
+import { stripTrustedPartnerRevealBanner } from '@shared/trustedPrefillPartners';
+import {
+  parseRevealBodyFont,
+  revealBodyFontClassName,
+  type StoredRevealBodyFont,
+} from '@shared/revealBodyFont';
+import {
+  RecipientPortal,
+  RevealHandoffStack,
+  type RecipientPortalSurface,
+} from '@/components/note/RecipientPortal';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
 import {
   getTranslations,
-  LANGUAGE_OPTIONS,
   loadTranslations,
   normalizeLanguageCode,
   type SupportedLanguage,
@@ -98,10 +118,19 @@ interface RevealBranding {
   sharerName?: string;
   companyName?: string;
   accentColor?: string;
+  noteBorderColor?: string;
   backgroundColor?: string;
   textColor?: string;
   bannerUrl?: string;
-  backgroundStyle?: "neutral" | "gradient" | "banner";
+  cardBannerUrl?: string;
+  cardImage?: "logo" | "banner";
+  backgroundStyle?: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
+  showBrandingAfterReveal?: boolean;
+  openedBackground?: "same" | "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
+  openedShowLogo?: boolean;
+  openedShowSenderName?: boolean;
+  openedShowCompanyName?: boolean;
+  openedShowTrustMessage?: boolean;
 }
 
 interface NoteData {
@@ -124,6 +153,7 @@ interface NoteData {
   fileAccessTokenExpiresIn?: number;
   fileAccessTokenExpiresAtMs?: number;
   attachment?: NoteAttachment;
+  attachments?: NoteAttachment[];
   readerLanguage?: SupportedLanguage;
   revealBranding?: RevealBranding;
 }
@@ -160,109 +190,63 @@ type AttachmentDisplayMetadata = {
   size: number;
 };
 
-type AttachmentPreviewKind = "image" | "pdf" | "audio";
+/** Survives language-change remounts so a second /reveal is not required. */
+type OpenedRevealSession = {
+  noteContent: string;
+  noteData: NoteData | null;
+  hasRevealed: boolean;
+  isPasswordProtected: boolean;
+  contentKey: CryptoKey | null;
+  attachmentMetadataList: AttachmentDisplayMetadata[];
+  receiptAckRequired: boolean;
+  receiptAckAcknowledged: boolean;
+  receiptAckTokenHex: string | null;
+  receiptAckStatement: string | null;
+  receiptAckMessage: string | null;
+  senderSelectedLanguage: SupportedLanguage | null;
+  resolvedRevealBranding: RevealBranding | undefined;
+  bodyFont: StoredRevealBodyFont | undefined;
+  recipientGateRequired: boolean;
+  recipientGateCodeRequired: boolean;
+  recipientGateVerified: boolean;
+  recipientGateEmailHint: string | null;
+  recipientCodeSent: boolean;
+  attachmentViewOnly: boolean;
+};
 
-const IMAGE_FILE_EXTENSIONS = new Set([
-  "jpg",
-  "jpeg",
-  "png",
-  "gif",
-  "webp",
-  "bmp",
-  "svg",
-  "heic",
-  "heif",
-]);
+const openedRevealSessionByNoteId = new Map<string, OpenedRevealSession>();
 
-function getFileExtension(fileName: string | undefined): string | null {
-  if (!fileName) return null;
-  const dot = fileName.lastIndexOf(".");
-  if (dot < 0 || dot === fileName.length - 1) return null;
-  return fileName.slice(dot + 1).toLowerCase();
-}
-
-function getAttachmentPreviewKind(
-  mimeType: string | undefined,
-  fileName?: string,
-): AttachmentPreviewKind | null {
-  const normalizedMime = mimeType?.trim().toLowerCase();
-  if (normalizedMime?.startsWith("image/")) return "image";
-  if (normalizedMime === "application/pdf" || normalizedMime === "application/x-pdf") return "pdf";
-  if (isVoiceMessageAttachment(mimeType, fileName)) return "audio";
-
-  const ext = getFileExtension(fileName);
-  if (ext && IMAGE_FILE_EXTENSIONS.has(ext)) return "image";
-  if (ext === "pdf") return "pdf";
-  return null;
-}
-
-function isGenericAttachmentMimeType(mimeType: string | undefined): boolean {
-  const normalized = mimeType?.trim().toLowerCase();
-  return !normalized || normalized === "application/octet-stream" || normalized === "binary/octet-stream";
-}
-
-function getAttachmentBlobMimeType(
-  mimeType: string | undefined,
-  previewKind: AttachmentPreviewKind,
-  fileName?: string,
-): string {
-  const normalizedMime = mimeType?.trim();
-  if (normalizedMime && !isGenericAttachmentMimeType(mimeType)) return normalizedMime;
-  if (previewKind === "pdf") return "application/pdf";
-
-  const ext = getFileExtension(fileName);
-  if (previewKind === "audio") {
-    if (ext === "m4a" || ext === "mp4") return "audio/mp4";
-    if (ext === "ogg" || ext === "oga") return "audio/ogg";
-    if (ext === "mp3") return "audio/mpeg";
-    if (ext === "wav") return "audio/wav";
-    if (ext === "aac") return "audio/aac";
-    return "audio/webm";
+async function decryptAttachmentMetadataList(
+  attachments: NoteAttachment[],
+  metadataKey: CryptoKey,
+  noteId: string,
+): Promise<AttachmentDisplayMetadata[]> {
+  if (attachments.length === 0) return [];
+  const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
+  const list: AttachmentDisplayMetadata[] = [];
+  for (const attachment of attachments) {
+    if (attachment.v === 2) {
+      list.push(await decryptSodiumAttachmentMetadata(attachment, metadataKey, noteId));
+    }
   }
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  if (ext === "png") return "image/png";
-  if (ext === "gif") return "image/gif";
-  if (ext === "webp") return "image/webp";
-  if (ext === "heic") return "image/heic";
-  if (ext === "heif") return "image/heif";
-  if (ext === "bmp") return "image/bmp";
-  if (ext === "svg") return "image/svg+xml";
-  return previewKind === "image" ? "image/jpeg" : "application/octet-stream";
-}
-
-/** WebKit (Safari, iOS browsers) does not render blob: PDFs inside iframes — use a data URL instead. */
-function prefersPdfDataUrlPreview(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const isWebKit = /AppleWebKit/i.test(ua);
-  const isChromium = /Chrome|Chromium|Edg|OPR/i.test(ua);
-  return isWebKit && !isChromium;
+  return list;
 }
 
 function revokeAttachmentPreviewUrl(url: string | null): void {
   if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
-async function createAttachmentPreviewUrl(blob: Blob, previewKind: AttachmentPreviewKind): Promise<string> {
-  if (previewKind === "pdf" && prefersPdfDataUrlPreview()) {
-    return await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error ?? new Error("Failed to read PDF for preview"));
-      reader.readAsDataURL(blob);
-    });
-  }
+function createAttachmentPreviewUrl(blob: Blob): string {
   return URL.createObjectURL(blob);
 }
 
 interface RevealHeroProps {
-  noteId: string;
   isRevealing: boolean;
   isRevealButtonReady: boolean;
   onReveal: (e: React.MouseEvent<HTMLButtonElement>) => Promise<void>;
   branding?: RevealBranding;
-  readerLanguageLabel: string;
   t: Translations;
+  compact: boolean;
 }
 
 /** Shared hero subtitle: matches Secure File Transfer / Password Generator rhythm. */
@@ -284,27 +268,6 @@ function isDecryptKeyFailureMessage(message: string): boolean {
     m.includes("Missing encryption key in URL. The note cannot be decrypted.")
   );
 }
-
-const TrustSignals: React.FC<{ t: Translations; lightText?: boolean }> = ({ t, lightText }) => (
-  <ul
-    className={`mt-40 sm:mt-44 flex flex-col items-center gap-2.5 lg:flex-row lg:justify-center lg:gap-6 text-xs sm:text-sm ${
-      lightText ? "text-white/75" : "text-gray-600/75 dark:text-gray-300/72"
-    }`}
-  >
-    <li className="inline-flex items-center gap-1.5">
-      <ShieldCheck className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
-      <span>{t.revealTrustEncrypted ?? "End-to-end encrypted"}</span>
-    </li>
-    <li className="inline-flex items-center gap-1.5">
-      <Trash2 className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
-      <span>{t.revealTrustSelfDestructs ?? "Self-destructs after opening"}</span>
-    </li>
-    <li className="inline-flex items-center gap-1.5">
-      <UserX className={`h-4 w-4 ${lightText ? "text-white/70" : "text-primary/70"}`} aria-hidden />
-      <span>{t.revealTrustNoAccount ?? "No account required"}</span>
-    </li>
-  </ul>
-);
 
 const getBrandingLine = (branding: RevealBranding | undefined, t: Translations): string | null => {
   if (!branding) return null;
@@ -479,21 +442,54 @@ const NoteAccessProblem: React.FC<{
 const BrandingIdentity: React.FC<{
   branding?: RevealBranding;
   brandingLine: string | null;
-  lightText: boolean;
-}> = ({ branding, brandingLine, lightText }) => {
-  const hasLogo = Boolean(branding?.logoUrl);
+  lightText?: boolean;
+  /** Compact identity block for the opened note card header. */
+  inCard?: boolean;
+}> = ({ branding, brandingLine, lightText = false, inCard = false }) => {
+  const markUrl = brandingCardMarkUrl(branding);
+  const hasLogo = Boolean(markUrl);
+  const sender = branding?.senderName?.trim() || branding?.sharerName?.trim();
+  const role = branding?.senderRole?.trim();
+  const company = branding?.companyName?.trim();
+  const meta = [role, company].filter(Boolean).join(" · ");
   const hasTrustMessage = Boolean(branding?.trustMessage?.trim());
-  if (!brandingLine && !hasLogo && !hasTrustMessage) return null;
+  if (!brandingLine && !hasLogo && !hasTrustMessage && !sender && !company) return null;
 
-  const logo = branding?.logoUrl ? (
+  const logo = markUrl ? (
     <img
-      src={branding.logoUrl}
-      alt={branding.companyName ? `${branding.companyName} logo` : "Sender logo"}
-      className="max-h-14 w-auto object-contain sm:max-h-16"
+      src={markUrl}
+      alt={branding?.companyName ? `${branding.companyName} logo` : "Sender logo"}
+      className={
+        inCard
+          ? brandingRevealLogoClassName(branding)
+          : "max-h-14 w-auto object-contain sm:max-h-16"
+      }
       loading="lazy"
       referrerPolicy="no-referrer"
     />
   ) : null;
+
+  if (inCard) {
+    return (
+      <div className="flex w-full flex-col items-center gap-2 text-center">
+        {logo}
+        {sender ? (
+          <p className="m-0 text-base font-semibold text-gray-900 dark:text-gray-50">{sender}</p>
+        ) : brandingLine ? (
+          <p className="m-0 text-sm font-medium text-gray-800 dark:text-gray-100">{brandingLine}</p>
+        ) : null}
+        {meta ? <p className="m-0 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">{meta}</p> : null}
+        {!sender && !meta && company ? (
+          <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{company}</p>
+        ) : null}
+        {branding?.trustMessage ? (
+          <p className="m-0 max-w-sm text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+            {branding.trustMessage}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2.5">
@@ -526,112 +522,95 @@ const BrandingIdentity: React.FC<{
   );
 };
 
-/**
- * Brand banner shown between the reveal copy and the CTA, where the layout
- * already leaves a deliberate gap. Kept as a bounded card so it reads as the
- * sender's artwork rather than a page background.
- */
-const BrandingBanner: React.FC<{ branding?: RevealBranding; lightText: boolean }> = ({
-  branding,
-  lightText,
-}) => {
-  const bannerStyle = brandingBannerStyle(branding);
-  if (!bannerStyle) return null;
-
-  return (
-    <div
-      role="img"
-      aria-label={branding?.companyName ? `${branding.companyName} banner` : "Sender banner"}
-      className={`mx-auto aspect-[8/3] w-full max-w-xl overflow-hidden rounded-xl border bg-gray-100 bg-cover bg-center shadow-sm dark:bg-gray-800 ${
-        lightText ? "border-white/15" : "border-gray-200/80 dark:border-gray-800"
-      }`}
-      style={bannerStyle}
-    />
-  );
-};
-
 const RevealHero: React.FC<RevealHeroProps> = ({
-  noteId,
   isRevealing,
   isRevealButtonReady,
   onReveal,
   branding,
-  readerLanguageLabel,
   t,
+  compact,
 }) => {
   const brandingLine = getBrandingLine(branding, t);
   const buttonStyle = brandingCtaStyle(branding);
-  const brandedHeroStyle = brandingHeroStyle(branding);
-  const lightText = brandingHeroUsesLightText(branding);
-  const showBanner = brandingShowsBanner(branding);
-  const framedHero = Boolean(brandedHeroStyle);
+  const markUrl = brandingCardMarkUrl(branding);
+  const logo = markUrl ? (
+    <img
+      src={markUrl}
+      alt={branding?.companyName ? `${branding.companyName} logo` : "Sender logo"}
+      className={brandingRevealLogoClassName(branding)}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  ) : null;
+
+  const action = (
+    <div className="flex w-full justify-center">
+      <button
+        type="button"
+        onClick={(ev) => void onReveal(ev)}
+        disabled={isRevealing || !isRevealButtonReady}
+        style={buttonStyle}
+        className={`inline-flex w-full max-w-[15rem] items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+          buttonStyle
+            ? "hover:shadow-[0_0_12px_rgba(15,23,42,0.12)] focus-visible:ring-gray-400"
+            : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_12px_rgba(59,130,246,0.16)] focus-visible:ring-primary"
+        }`}
+      >
+        {isRevealing ? (
+          <>
+            <div className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-t-2 border-b-2 border-current" />
+            {t.revealing ?? "Revealing..."}
+          </>
+        ) : (
+          <>
+            <Unlock className="mr-1.5 h-3.5 w-3.5" />
+            {t.revealNote ?? "Reveal Note"}
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <RevealHandoffStack
+        compact
+        branding={branding}
+        brandingLine={brandingLine}
+        logo={logo}
+        action={action}
+        footnote={
+          <>
+            <span className="sm:hidden">
+              {t.revealDeletedAfterOpening ?? "Deleted after opening"}
+            </span>
+            <span className="hidden sm:inline">
+              {t.revealDeletedAfterOpeningDesktop ??
+                "This note will be deleted after opening"}
+            </span>
+          </>
+        }
+      />
+    );
+  }
 
   return (
     <section className={NOTE_VIEW_SHELL}>
-      <section
-        className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
-        style={brandedHeroStyle}
-      >
-        <div className="text-center">
-          <h1 className={`page-title ${lightText ? "text-white" : "text-gray-900 dark:text-white"}`}>
-            {t.revealTitlePrefix ?? "Reveal"} <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
-          </h1>
-          <div className={`mt-3 text-xs leading-relaxed ${lightText ? "text-white/70" : "text-gray-500/85 dark:text-gray-400/85"}`}>
-            <p className="m-0 font-medium">{(t.revealPrivateNoteId ?? "Private note #{id}").replace("{id}", noteId)}</p>
-            <p className="m-0">{(t.revealLanguageLine ?? "Language: {language}").replace("{language}", readerLanguageLabel)}</p>
-          </div>
-          <p className={`${NOTE_VIEW_HERO_SUBTITLE} ${lightText ? "!text-white/85" : ""}`}>
-            {t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
-          </p>
-
-          {(brandingLine || branding?.logoUrl || branding?.trustMessage) ? (
-            <div className="mt-8 sm:mt-10">
-              <BrandingIdentity branding={branding} brandingLine={brandingLine} lightText={lightText} />
-            </div>
-          ) : null}
-
-          {showBanner ? (
-            <div className="mt-12 sm:mt-14">
-              <BrandingBanner branding={branding} lightText={lightText} />
-            </div>
-          ) : null}
-
-          <div className={`${showBanner ? "mt-12 sm:mt-14" : "mt-10 sm:mt-12"} w-full flex justify-center`}>
-            <button
-              type="button"
-              onClick={(ev) => void onReveal(ev)}
-              disabled={isRevealing || !isRevealButtonReady}
-              style={buttonStyle}
-              className={`w-full max-w-sm inline-flex items-center justify-center px-5 py-3 text-base font-semibold rounded-md transition-all duration-200 hover:scale-[1.015] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                buttonStyle
-                  ? "hover:shadow-[0_0_18px_rgba(15,23,42,0.18)] focus-visible:ring-gray-400"
-                  : "bg-primary text-white hover:bg-primary/90 hover:shadow-[0_0_18px_rgba(59,130,246,0.22)] focus-visible:ring-primary"
-              }`}
-            >
-              {isRevealing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2" />
-                  {t.revealing ?? "Revealing..."}
-                </>
-              ) : (
-                <>
-                  <Unlock className="h-4 w-4 mr-2" />
-                  {t.revealNote ?? "Reveal Note"}
-                </>
-              )}
-            </button>
-          </div>
-
-          <p
-            className={`mt-4 sm:mt-5 text-sm ${
-              lightText ? "text-white/70" : "text-gray-600/62 dark:text-gray-300/58"
-            }`}
-          >
-            {t.revealReadyWarning ?? "Open only when you're ready — this cannot be undone."}
-          </p>
-
-          <TrustSignals t={t} lightText={lightText} />
-        </div>
+      <section className={NOTE_VIEW_HERO_SECTION}>
+        <RevealHandoffStack
+          branding={branding}
+          brandingLine={brandingLine}
+          logo={logo}
+          title={
+            <>
+              {t.revealTitlePrefix ?? "Reveal"}{" "}
+              <span className="text-primary">{t.privateNote ?? "Private Note"}</span>
+            </>
+          }
+          subtitle={t.revealPrivacyDescription ?? "For your privacy, this note is deleted after it's opened."}
+          action={action}
+          footnote={t.revealReadyWarning ?? "Open only when you're ready — this cannot be undone."}
+        />
       </section>
     </section>
   );
@@ -644,68 +623,158 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   linkKeyMissing = false,
   linkKeyTruncated = false,
 }) => {
-  const { language } = useLanguage();
-  const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(null);
+  const { language, setLanguage } = useLanguage();
+  const restoredSession = id ? openedRevealSessionByNoteId.get(id) : undefined;
+  const [senderSelectedLanguage, setSenderSelectedLanguage] = useState<SupportedLanguage | null>(
+    () => restoredSession?.senderSelectedLanguage ?? null,
+  );
   // Branding is returned as public note metadata before reveal. Keep it in local
   // state because ViewNote cannot know a note's snapshotted branding up front.
   const [resolvedRevealBranding, setResolvedRevealBranding] =
-    useState<RevealBranding | undefined>(revealBranding);
+    useState<RevealBranding | undefined>(() => restoredSession?.resolvedRevealBranding ?? revealBranding);
+  const [bodyFont, setBodyFont] = useState<StoredRevealBodyFont | undefined>(
+    () => restoredSession?.bodyFont,
+  );
+  const [attachmentViewOnly, setAttachmentViewOnly] = useState(
+    () => restoredSession?.attachmentViewOnly ?? false,
+  );
   const activeRevealBranding = resolvedRevealBranding ?? revealBranding;
   const readerLanguage = senderSelectedLanguage ?? language ?? "en";
   const [readerTranslations, setReaderTranslations] = useState<Translations>(() =>
     getTranslations(readerLanguage),
   );
   const t = readerTranslations;
-  const [noteContent, setNoteContent] = useState('');
+  const [noteContent, setNoteContent] = useState(() => restoredSession?.noteContent ?? '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyMismatchError, setKeyMismatchError] = useState(false);
   const [delayedRevealOpensAt, setDelayedRevealOpensAt] = useState<string | null>(null);
   /** False until the note meta request settles, so the delayed-reveal check runs before any gate. */
-  const [delayedRevealChecked, setDelayedRevealChecked] = useState(false);
-  const [receiptAckRequired, setReceiptAckRequired] = useState(false);
-  const [receiptAckAcknowledged, setReceiptAckAcknowledged] = useState(false);
-  const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(null);
+  const [delayedRevealChecked, setDelayedRevealChecked] = useState(() => Boolean(restoredSession?.hasRevealed));
+  const [receiptAckRequired, setReceiptAckRequired] = useState(() => restoredSession?.receiptAckRequired ?? false);
+  const [receiptAckAcknowledged, setReceiptAckAcknowledged] = useState(
+    () => restoredSession?.receiptAckAcknowledged ?? false,
+  );
+  const [receiptAckTokenHex, setReceiptAckTokenHex] = useState<string | null>(
+    () => restoredSession?.receiptAckTokenHex ?? null,
+  );
   const [receiptAckSubmitting, setReceiptAckSubmitting] = useState(false);
-  const [receiptAckMessage, setReceiptAckMessage] = useState<string | null>(null);
-  const [receiptAckStatement, setReceiptAckStatement] = useState<string | null>(null);
-  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [receiptAckMessage, setReceiptAckMessage] = useState<string | null>(
+    () => restoredSession?.receiptAckMessage ?? null,
+  );
+  const [receiptAckStatement, setReceiptAckStatement] = useState<string | null>(
+    () => restoredSession?.receiptAckStatement ?? null,
+  );
+  const [isPasswordProtected, setIsPasswordProtected] = useState(
+    () => restoredSession?.isPasswordProtected ?? false,
+  );
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordDecryptError, setPasswordDecryptError] = useState<string | null>(null);
-  const [noteData, setNoteData] = useState<NoteData | null>(null);
+  const [noteData, setNoteData] = useState<NoteData | null>(() => restoredSession?.noteData ?? null);
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [isRevealing, setIsRevealing] = useState(false);
-  const [hasRevealed, setHasRevealed] = useState(false);
+  const [hasRevealed, setHasRevealed] = useState(() => restoredSession?.hasRevealed ?? false);
   const [isRevealButtonReady, setIsRevealButtonReady] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [contentKey, setContentKey] = useState<CryptoKey | null>(null);
-  const [attachmentMetadata, setAttachmentMetadata] = useState<AttachmentDisplayMetadata | null>(null);
+  const [contentKey, setContentKey] = useState<CryptoKey | null>(() => restoredSession?.contentKey ?? null);
+  const [attachmentMetadataList, setAttachmentMetadataList] = useState<AttachmentDisplayMetadata[]>(
+    () => restoredSession?.attachmentMetadataList ?? [],
+  );
+  const [previewAttachmentIndex, setPreviewAttachmentIndex] = useState<number | null>(null);
   const [isDownloadingFile, setIsDownloadingFile] = useState(false);
   const [isViewingFile, setIsViewingFile] = useState(false);
   const [attachmentDecryptProgress, setAttachmentDecryptProgress] =
     useState<AttachmentProgressState | null>(null);
-  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
-  const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
+  const [previewCache, setPreviewCache] = useState<
+    Record<number, { url: string; blob: Blob; mimeType: string }>
+  >({});
+  const previewCacheRef = useRef(previewCache);
+  previewCacheRef.current = previewCache;
   const [showInlinePreview, setShowInlinePreview] = useState(false);
   const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(false);
   const [audioPlaybackUnsupported, setAudioPlaybackUnsupported] = useState(false);
   const thumbnailLoadAttemptedRef = useRef(false);
   const [fileAccessNowMs, setFileAccessNowMs] = useState(() => Date.now());
-  const [recipientGateLoading, setRecipientGateLoading] = useState(true);
-  const [recipientGateRequired, setRecipientGateRequired] = useState(false);
-  const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(false);
-  const [recipientGateVerified, setRecipientGateVerified] = useState(false);
+  const [recipientGateLoading, setRecipientGateLoading] = useState(() => !restoredSession?.hasRevealed);
+  const [recipientGateRequired, setRecipientGateRequired] = useState(
+    () => restoredSession?.recipientGateRequired ?? false,
+  );
+  const [recipientGateCodeRequired, setRecipientGateCodeRequired] = useState(
+    () => restoredSession?.recipientGateCodeRequired ?? false,
+  );
+  const [recipientGateVerified, setRecipientGateVerified] = useState(
+    () => restoredSession?.recipientGateVerified ?? false,
+  );
   const [recipientCodeInput, setRecipientCodeInput] = useState("");
   const [recipientGateError, setRecipientGateError] = useState<string | null>(null);
   const [recipientGateSubmitting, setRecipientGateSubmitting] = useState(false);
-  const [recipientGateEmailHint, setRecipientGateEmailHint] = useState<string | null>(null);
+  const [recipientGateEmailHint, setRecipientGateEmailHint] = useState<string | null>(
+    () => restoredSession?.recipientGateEmailHint ?? null,
+  );
   const [recipientCodeSending, setRecipientCodeSending] = useState(false);
-  const [recipientCodeSent, setRecipientCodeSent] = useState(false);
+  const [recipientCodeSent, setRecipientCodeSent] = useState(() => restoredSession?.recipientCodeSent ?? false);
   const recipientCodeAutoSendRef = useRef(false);
+  useEffect(() => {
+    if (!id || !hasRevealed) return;
+    openedRevealSessionByNoteId.set(id, {
+      noteContent,
+      noteData,
+      hasRevealed,
+      isPasswordProtected,
+      contentKey,
+      attachmentMetadataList,
+      receiptAckRequired,
+      receiptAckAcknowledged,
+      receiptAckTokenHex,
+      receiptAckStatement,
+      receiptAckMessage,
+      senderSelectedLanguage,
+      resolvedRevealBranding,
+      bodyFont,
+      recipientGateRequired,
+      recipientGateCodeRequired,
+      recipientGateVerified,
+      recipientGateEmailHint,
+      recipientCodeSent,
+      attachmentViewOnly,
+    });
+  }, [
+    id,
+    hasRevealed,
+    noteContent,
+    noteData,
+    isPasswordProtected,
+    contentKey,
+    attachmentMetadataList,
+    receiptAckRequired,
+    receiptAckAcknowledged,
+    receiptAckTokenHex,
+    receiptAckStatement,
+    receiptAckMessage,
+    senderSelectedLanguage,
+    resolvedRevealBranding,
+    bodyFont,
+    recipientGateRequired,
+    recipientGateCodeRequired,
+    recipientGateVerified,
+    recipientGateEmailHint,
+    recipientCodeSent,
+    attachmentViewOnly,
+  ]);
   const { toast } = useToast();
   const { entitlements } = useAccountEntitlements();
   const canChooseVoiceDownloadFormat = hasPremiumFeatures(entitlements.accountType);
+  const revealAttachments = useMemo(
+    () => (noteData ? storedNoteAttachmentsFromPayload(noteData) : []),
+    [noteData],
+  );
+  const previewMetadata =
+    previewAttachmentIndex != null
+      ? attachmentMetadataList[previewAttachmentIndex] ?? null
+      : attachmentMetadataList[0] ?? null;
+  const previewBlob =
+    previewAttachmentIndex != null ? previewCache[previewAttachmentIndex]?.blob ?? null : null;
   const canImportNoteLabels = entitlements.capabilities.noteLabelPortability === true;
   const importedLabelsPack = useMemo(
     () => (noteContent ? parseNoteLabelsExport(noteContent) : null),
@@ -716,9 +785,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   useEffect(() => {
     setLabelsImported(false);
   }, [noteContent]);
-  const readerLanguageLabel =
-    LANGUAGE_OPTIONS.find((option) => option.code === readerLanguage)?.nativeName ?? "English";
-
   useEffect(() => {
     let cancelled = false;
     setReaderTranslations(getTranslations(readerLanguage));
@@ -738,10 +804,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setDelayedRevealChecked(true);
       return;
     }
+    if (openedRevealSessionByNoteId.get(id)?.hasRevealed) {
+      setDelayedRevealChecked(true);
+      return;
+    }
     let cancelled = false;
     setResolvedRevealBranding(revealBranding);
     setDelayedRevealChecked(false);
-    void apiRequest<{ readerLanguage?: string; revealBranding?: RevealBranding }>(
+    void apiRequest<{ readerLanguage?: string; revealBranding?: RevealBranding; bodyFont?: string }>(
       `/api/notes/${id}`,
       "GET",
     )
@@ -753,7 +823,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             ? normalizeLanguageCode(meta.readerLanguage)
             : null,
         );
-        setResolvedRevealBranding(meta.revealBranding ?? revealBranding);
+        setResolvedRevealBranding(
+          parseStoredRevealBranding(meta.revealBranding) ?? revealBranding,
+        );
+        setBodyFont(parseRevealBodyFont(meta.bodyFont));
+        setAttachmentViewOnly(parseAttachmentRecipientPermission((meta as { attachmentPermission?: string }).attachmentPermission) === "view-only");
       })
       .catch((err) => {
         if (cancelled) return;
@@ -796,13 +870,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => window.clearTimeout(timer);
   }, [delayedRevealOpensAt]);
 
-  const attachmentPreviewKind = useMemo(
-    () => getAttachmentPreviewKind(attachmentMetadata?.type, attachmentMetadata?.name),
-    [attachmentMetadata?.type, attachmentMetadata?.name],
-  );
-
   const reportAttachmentDecryptProgress = useCallback(
-    (completedChunks: number, totalChunks: number, ratio?: number) => {
+    (completedChunks: number, totalChunks: number, ratio?: number, fileName?: string) => {
       const resolvedRatio =
         typeof ratio === "number" && Number.isFinite(ratio)
           ? Math.min(1, Math.max(0, ratio))
@@ -811,7 +880,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             : 1;
       // Overall ratio already includes download + decrypt weighting.
       const next = Math.max(1, Math.min(100, Math.round(resolvedRatio * 100)));
-      const fullName = attachmentMetadata?.name || "file";
+      const fullName = fileName || previewMetadata?.name || "file";
       const name = formatAttachmentDisplayName(fullName);
       setAttachmentDecryptProgress((prev) => ({
         phase: "decrypt",
@@ -830,13 +899,19 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         footnote: t.attachmentDecryptProgressFootnote,
       }));
     },
-    [attachmentMetadata?.name, t],
+    [previewMetadata?.name, t],
   );
 
-  const decryptAttachmentPreview = useCallback(async (options?: {
-    onProgress?: boolean;
-  }): Promise<{ url: string; mimeType: string } | null> => {
-    if (!noteData?.attachment || !contentKey || !attachmentPreviewKind) return null;
+  const decryptAttachmentPreview = useCallback(async (
+    attachmentIndex: number,
+    options?: {
+      onProgress?: boolean;
+    },
+  ): Promise<{ url: string; mimeType: string; blob: Blob } | null> => {
+    const attachment = revealAttachments[attachmentIndex];
+    const metadata = attachmentMetadataList[attachmentIndex];
+    const previewKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+    if (!attachment || !contentKey || !previewKind || !noteData) return null;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       return null;
     }
@@ -846,11 +921,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       : {};
     const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
     const decryptedParts = await decryptSodiumAttachmentChunks(
-      noteData.attachment,
+      attachment,
       contentKey,
-      async (index) => {
+      async (chunkIndex) => {
         const encryptedChunkBlob = await apiBlobRequest(
-          `/api/notes/${id}/file/chunks/${index}`,
+          attachmentChunkDownloadApiPath(id, attachmentIndex, chunkIndex),
           "GET",
           fileAccessHeaders,
         );
@@ -862,58 +937,75 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               pipeline.completedChunks,
               pipeline.totalChunks,
               pipeline.ratio,
+              metadata?.name,
             );
           }
         : undefined,
     );
     const mimeType = getAttachmentBlobMimeType(
-      attachmentMetadata?.type,
-      attachmentPreviewKind,
-      attachmentMetadata?.name,
+      metadata?.type,
+      previewKind,
+      metadata?.name,
     );
     const blob = new Blob(decryptedParts as BlobPart[], { type: mimeType });
-    const url = await createAttachmentPreviewUrl(blob, attachmentPreviewKind);
-    return { url, mimeType };
+    const url = createAttachmentPreviewUrl(blob);
+    return { url, mimeType, blob };
   }, [
-    attachmentMetadata?.name,
-    attachmentMetadata?.type,
-    attachmentPreviewKind,
+    attachmentMetadataList,
     contentKey,
     id,
     noteData,
     reportAttachmentDecryptProgress,
+    revealAttachments,
   ]);
+
+  const rememberAttachmentPreview = useCallback(
+    (attachmentIndex: number, result: { url: string; mimeType: string; blob: Blob }) => {
+      setPreviewCache((current) => {
+        const previous = current[attachmentIndex];
+        if (previous && previous.url !== result.url) {
+          revokeAttachmentPreviewUrl(previous.url);
+        }
+        return { ...current, [attachmentIndex]: result };
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     thumbnailLoadAttemptedRef.current = false;
-    setPreviewObjectUrl((prev) => {
-      revokeAttachmentPreviewUrl(prev);
-      return null;
+    setPreviewAttachmentIndex(null);
+    setPreviewCache((current) => {
+      for (const preview of Object.values(current)) {
+        revokeAttachmentPreviewUrl(preview.url);
+      }
+      return {};
     });
-    setPreviewMimeType(null);
     setShowInlinePreview(false);
     setIsLoadingThumbnail(false);
     setAudioPlaybackUnsupported(false);
   }, [id]);
 
   useEffect(() => {
-    if (attachmentPreviewKind !== "image" && attachmentPreviewKind !== "audio") return;
-    if (!contentKey || !noteData?.attachment) return;
-    if (previewObjectUrl || thumbnailLoadAttemptedRef.current) return;
-    if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) return;
+    if (revealAttachments.length !== 1) return;
+    const metadata = attachmentMetadataList[0];
+    const previewKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+    if (previewKind !== "image" && previewKind !== "audio") return;
+    if (!contentKey || !revealAttachments[0]) return;
+    if (previewCache[0] || thumbnailLoadAttemptedRef.current) return;
+    if (noteData?.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) return;
 
     thumbnailLoadAttemptedRef.current = true;
     let cancelled = false;
     setIsLoadingThumbnail(true);
-    void decryptAttachmentPreview()
+    setPreviewAttachmentIndex(0);
+    void decryptAttachmentPreview(0)
       .then((result) => {
         if (cancelled || !result) return;
-        setPreviewObjectUrl(result.url);
-        setPreviewMimeType(result.mimeType);
-        if (attachmentPreviewKind === "audio") {
-          setShowInlinePreview(true);
+        rememberAttachmentPreview(0, result);
+        if (previewKind === "audio") {
           setAudioPlaybackUnsupported(
-            !canBrowserPlayVoiceAttachment(result.mimeType, attachmentMetadata?.name),
+            !canBrowserPlayVoiceAttachment(result.mimeType, metadata?.name),
           );
         }
       })
@@ -930,7 +1022,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [attachmentPreviewKind, contentKey, decryptAttachmentPreview, noteData, previewObjectUrl]);
+  }, [
+    attachmentMetadataList,
+    contentKey,
+    decryptAttachmentPreview,
+    noteData,
+    previewCache,
+    rememberAttachmentPreview,
+    revealAttachments,
+  ]);
 
   const requireTrustedUserEvent = (e: React.SyntheticEvent): boolean => {
     if (e.nativeEvent.isTrusted) return true;
@@ -965,6 +1065,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       setError('Invalid note ID');
       setKeyMismatchError(false);
       setIsLoading(false);
+      setRecipientGateLoading(false);
+      return;
+    }
+    if (openedRevealSessionByNoteId.get(id)?.hasRevealed) {
       setRecipientGateLoading(false);
       return;
     }
@@ -1123,12 +1227,13 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     return () => window.clearInterval(interval);
   }, [noteData?.fileAccessTokenExpiresAtMs]);
 
-  // Revoke blob preview URLs when replaced or on unmount (data URLs need no revoke).
   useEffect(() => {
     return () => {
-      revokeAttachmentPreviewUrl(previewObjectUrl);
+      for (const preview of Object.values(previewCacheRef.current)) {
+        revokeAttachmentPreviewUrl(preview.url);
+      }
     };
-  }, [previewObjectUrl]);
+  }, []);
 
   const decryptWithKey = async (
     data: NoteData,
@@ -1154,11 +1259,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
               metadataKey: await importAesGcmKeyFromUrlFragment(key),
             };
       setContentKey(fileWrapKey);
-      if (data.attachment?.v === 2) {
-        const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
-        setAttachmentMetadata(await decryptSodiumAttachmentMetadata(data.attachment, metadataKey, id));
+      const attachments = storedNoteAttachmentsFromPayload(data);
+      if (attachments.length > 0) {
+        setAttachmentMetadataList(await decryptAttachmentMetadataList(attachments, metadataKey, id));
       } else {
-        setAttachmentMetadata(null);
+        setAttachmentMetadataList([]);
       }
 
       // Decrypt the note with AAD for context validation
@@ -1212,8 +1317,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         setSenderSelectedLanguage(normalizeLanguageCode(data.readerLanguage));
       }
       if (data.revealBranding) {
-        setResolvedRevealBranding(data.revealBranding);
+        setResolvedRevealBranding(
+          parseStoredRevealBranding(data.revealBranding) ?? data.revealBranding,
+        );
       }
+      setBodyFont(parseRevealBodyFont((data as { bodyFont?: string }).bodyFont));
+      setAttachmentViewOnly(
+        parseAttachmentRecipientPermission((data as { attachmentPermission?: string }).attachmentPermission) ===
+          "view-only",
+      );
       const receiptAck = data.receiptAck as
         | { required?: boolean; acknowledged?: boolean; acknowledgedAt?: string | null; statement?: string | null }
         | undefined;
@@ -1388,11 +1500,11 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
       setNoteContent(decryptedContent);
       setContentKey(fileWrapKey);
-      if (noteData.attachment?.v === 2) {
-        const { decryptSodiumAttachmentMetadata } = await import("@/utils/libsodiumFileAttachment");
-        setAttachmentMetadata(await decryptSodiumAttachmentMetadata(noteData.attachment, metadataKey, id));
+      const attachments = storedNoteAttachmentsFromPayload(noteData);
+      if (attachments.length > 0) {
+        setAttachmentMetadataList(await decryptAttachmentMetadataList(attachments, metadataKey, id));
       } else {
-        setAttachmentMetadata(null);
+        setAttachmentMetadataList([]);
       }
       if (
         receiptAckRequired &&
@@ -1474,8 +1586,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
   };
 
-  const handleDownloadAttachment = async (downloadFormat: VoiceDownloadFormat = "original") => {
-    if (!noteData?.attachment || !contentKey) return;
+  const handleDownloadAttachment = async (
+    attachmentIndex: number,
+    downloadFormat: VoiceDownloadFormat = "original",
+  ) => {
+    if (attachmentViewOnly) return;
+    const attachment = revealAttachments[attachmentIndex];
+    const metadata = attachmentMetadataList[attachmentIndex];
+    const previewKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+    if (!attachment || !contentKey || !noteData) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       toast({
         title: t.toastFileAccessExpired,
@@ -1488,30 +1607,31 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       ? { "x-file-access-token": noteData.fileAccessToken }
       : {};
     const wantsConversion =
-      attachmentPreviewKind === "audio" &&
+      previewKind === "audio" &&
       downloadFormat !== "original" &&
       canChooseVoiceDownloadFormat;
     setIsDownloadingFile(true);
+    setPreviewAttachmentIndex(attachmentIndex);
     setAttachmentDecryptProgress({
       phase: "decrypt",
       mode: "download",
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
-      detail: attachmentMetadata?.name
-        ? `${formatAttachmentDisplayName(attachmentMetadata.name)} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
+      detail: metadata?.name
+        ? `${formatAttachmentDisplayName(metadata.name)} · ${formatNoteFileSize(metadata.size ?? 0)}`
         : undefined,
-      detailTitle: attachmentMetadata?.name,
+      detailTitle: metadata?.name,
       footnote: t.attachmentDecryptProgressFootnote,
     });
     try {
       let decryptedParts: BlobPart[];
       const { decryptSodiumAttachmentChunks } = await import("@/utils/libsodiumFileAttachment");
       decryptedParts = (await decryptSodiumAttachmentChunks(
-        noteData.attachment,
+        attachment,
         contentKey,
-        async (index) => {
+        async (chunkIndex) => {
           const encryptedChunkBlob = await apiBlobRequest(
-            `/api/notes/${id}/file/chunks/${index}`,
+            attachmentChunkDownloadApiPath(id, attachmentIndex, chunkIndex),
             "GET",
             fileAccessHeaders,
           );
@@ -1522,13 +1642,14 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             pipeline.completedChunks,
             pipeline.totalChunks,
             pipeline.ratio,
+            metadata?.name,
           );
         },
       )) as BlobPart[];
       let blob = new Blob(decryptedParts, {
-        type: attachmentMetadata?.type || "application/octet-stream",
+        type: metadata?.type || "application/octet-stream",
       });
-      let downloadName = attachmentMetadata?.name || "privatenote-file";
+      let downloadName = metadata?.name || "privatenote-file";
       if (wantsConversion) {
         setAttachmentDecryptProgress((prev) =>
           prev
@@ -1539,15 +1660,15 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                   downloadFormat === "wav"
                     ? (t.voiceMessageDecodingToWav ?? "Decoding to WAV…")
                     : (t.voiceMessageDecodingToM4a ?? "Decoding to M4A…"),
-                detailTitle: attachmentMetadata?.name,
+                detailTitle: metadata?.name,
               }
             : prev,
         );
         const converted = await convertVoiceAttachmentForDownload({
           blob,
           format: downloadFormat,
-          sourceFileName: attachmentMetadata?.name,
-          sourceMimeType: attachmentMetadata?.type,
+          sourceFileName: metadata?.name,
+          sourceMimeType: metadata?.type,
         });
         blob = converted.blob;
         downloadName = converted.fileName;
@@ -1579,8 +1700,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
   };
 
-  const handlePreviewAttachment = async () => {
-    if (!noteData?.attachment || !contentKey || !attachmentPreviewKind) return;
+  const handlePreviewAttachment = async (attachmentIndex: number) => {
+    const metadata = attachmentMetadataList[attachmentIndex];
+    const previewKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+    if (!revealAttachments[attachmentIndex] || !contentKey || !previewKind || !noteData) return;
     if (noteData.fileAccessTokenExpiresAtMs && noteData.fileAccessTokenExpiresAtMs <= Date.now()) {
       toast({
         title: t.toastFileAccessExpired,
@@ -1590,34 +1713,36 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       return;
     }
 
-    if (showInlinePreview && previewObjectUrl) {
-      setShowInlinePreview(false);
-      return;
-    }
-    if (previewObjectUrl) {
+    const cachedPreview = previewCache[attachmentIndex];
+    if (cachedPreview) {
+      setPreviewAttachmentIndex(attachmentIndex);
       setShowInlinePreview(true);
       return;
     }
 
     setIsViewingFile(true);
+    setPreviewAttachmentIndex(attachmentIndex);
     setAttachmentDecryptProgress({
       phase: "decrypt",
       mode: "download",
       progress: 0,
       title: t.attachmentDecryptProgressTitle,
-      detail: attachmentMetadata?.name
-        ? `${formatAttachmentDisplayName(attachmentMetadata.name)} · ${formatNoteFileSize(attachmentMetadata.size ?? 0)}`
+      detail: metadata?.name
+        ? `${formatAttachmentDisplayName(metadata.name)} · ${formatNoteFileSize(metadata.size ?? 0)}`
         : undefined,
-      detailTitle: attachmentMetadata?.name,
+      detailTitle: metadata?.name,
       footnote: t.attachmentDecryptProgressFootnote,
     });
     try {
-      const result = await decryptAttachmentPreview({ onProgress: true });
+      const result = await decryptAttachmentPreview(attachmentIndex, { onProgress: true });
       if (!result) return;
-      revokeAttachmentPreviewUrl(previewObjectUrl);
-      setPreviewObjectUrl(result.url);
-      setPreviewMimeType(result.mimeType);
+      rememberAttachmentPreview(attachmentIndex, result);
       setShowInlinePreview(true);
+      if (previewKind === "audio") {
+        setAudioPlaybackUnsupported(
+          !canBrowserPlayVoiceAttachment(result.mimeType, metadata?.name),
+        );
+      }
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Attachment preview/decrypt failed:", error);
@@ -1638,56 +1763,79 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       ? Math.max(0, Math.ceil((noteData.fileAccessTokenExpiresAtMs - fileAccessNowMs) / 1000))
       : null;
   const fileAccessExpired = fileAccessRemainingSeconds === 0;
+  const attachmentOverlayOpen = Boolean(showInlinePreview && previewAttachmentIndex != null);
 
   const handleCreateNew = () => {
     window.location.href = '/';
   };
 
+  const pageRevealBranding = stripTrustedPartnerRevealBanner(activeRevealBranding) ?? activeRevealBranding;
+  const portalSurface = brandingUsesPortalSurface(pageRevealBranding);
+  const wrapRecipient = (
+    node: ReactNode,
+    surface?: RecipientPortalSurface,
+    branding = pageRevealBranding,
+  ) => (
+    <RecipientPortal
+      branding={branding}
+      t={t}
+      language={readerLanguage}
+      onLanguageChange={(next) => {
+        setSenderSelectedLanguage(next);
+        setLanguage(next);
+      }}
+      surface={surface ?? (brandingUsesPortalSurface(branding) ? "card" : "plain")}
+    >
+      {node}
+    </RecipientPortal>
+  );
+
   if (isLoading || recipientGateLoading || !delayedRevealChecked) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+    return wrapRecipient(
+      <div className="flex h-64 items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-primary" />
+      </div>,
+      "plain",
     );
   }
 
   const verificationPending = recipientGateRequired && !recipientGateVerified;
 
   if (delayedRevealOpensAt && !hasRevealed) {
-    return (
+    return wrapRecipient(
       <NoteAccessProblem
         variant="not_yet_available"
         opensAt={delayedRevealOpensAt}
         verificationPending={verificationPending}
         t={t}
-      />
+      />,
     );
   }
 
   if (error) {
     const isNotYetAvailable = error === "note_not_yet_available";
-    return (
+    return wrapRecipient(
       <NoteAccessProblem
         variant={isNotYetAvailable ? "not_yet_available" : "note_gone"}
         keyMismatch={keyMismatchError}
         opensAt={delayedRevealOpensAt}
         verificationPending={isNotYetAvailable && verificationPending}
         t={t}
-      />
+      />,
     );
   }
 
   if (linkKeyMissing && !hasRevealed) {
-    return <NoteAccessProblem variant="link_incomplete" t={t} />;
+    return wrapRecipient(<NoteAccessProblem variant="link_incomplete" t={t} />);
   }
 
   if (linkKeyTruncated && !hasRevealed) {
-    return <NoteAccessProblem variant="key_truncated" t={t} />;
+    return wrapRecipient(<NoteAccessProblem variant="key_truncated" t={t} />);
   }
 
   if (!hasRevealed) {
     if (recipientGateRequired && !recipientGateVerified) {
-      return (
+      return wrapRecipient(
         <section className={NOTE_VIEW_SHELL}>
           <section className={NOTE_VIEW_HERO_SECTION}>
               <h1 className="page-title text-gray-900 dark:text-white">
@@ -1749,26 +1897,25 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 </button>
               </form>
           </section>
-        </section>
+        </section>,
       );
     }
 
-    return (
+    return wrapRecipient(
       <RevealHero
-        noteId={id}
         isRevealing={isRevealing}
         isRevealButtonReady={isRevealButtonReady}
         onReveal={handleReveal}
         branding={activeRevealBranding}
-        readerLanguageLabel={readerLanguageLabel}
         t={t}
-      />
+        compact={portalSurface}
+      />,
     );
   }
 
   // If password protected and not yet decrypted, show password input
   if (isPasswordProtected && !noteContent) {
-    return (
+    return wrapRecipient(
       <section className={NOTE_VIEW_SHELL}>
         <section className={NOTE_VIEW_HERO_SECTION}>
           <div className="text-center">
@@ -1841,37 +1988,27 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             </div>
           </div>
         </section>
-      </section>
+      </section>,
     );
   }
 
-  const brandingLine = getBrandingLine(activeRevealBranding, t);
-  const accentStyle = brandingCtaStyle(activeRevealBranding);
-  const revealedBackgroundStyle = brandingHeroStyle(activeRevealBranding);
-  const revealedLightText = brandingHeroUsesLightText(activeRevealBranding);
-  const framedHero = Boolean(revealedBackgroundStyle);
+  const openedBranding = applyOpenedNoteBranding(activeRevealBranding);
+  const brandingLine = getBrandingLine(openedBranding, t);
+  const accentStyle = brandingCtaStyle(openedBranding);
+  const openedPortalSurface = brandingUsesPortalSurface(openedBranding);
+  const noteTextBorderColor =
+    brandingNoteTextBorderColor(openedBranding) ||
+    brandingNoteTextBorderColor(activeRevealBranding);
 
   // Regular note content view (either after password decryption or for non-password notes)
-  return (
-    <section className={`${NOTE_VIEW_SHELL} max-w-3xl`}>
-      <section
-        className={`${NOTE_VIEW_HERO_SECTION} ${framedHero ? "overflow-hidden rounded-2xl" : ""}`}
-        style={revealedBackgroundStyle}
-      >
-        <div className="mb-8 text-center sm:mb-10">
-          <h1 className="page-title text-primary">{t.privateNote}</h1>
-          <p className="m-0 mt-4 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
-            <span aria-hidden>⚠️</span>
-            {t.noteDeletedWarning}
-          </p>
-          <div className="mt-6">
-            <BrandingIdentity
-              branding={activeRevealBranding}
-              brandingLine={brandingLine}
-              lightText={revealedLightText}
-            />
+  return wrapRecipient(
+    <section className="w-full mx-auto max-w-3xl">
+      <section className={openedPortalSurface ? "relative isolate pb-2 text-center" : NOTE_VIEW_HERO_SECTION}>
+        {openedPortalSurface || openedBranding ? null : (
+          <div className="mb-8 text-center sm:mb-10">
+            <h1 className="page-title text-primary">{t.privateNote}</h1>
           </div>
-        </div>
+        )}
 
         {canImportNoteLabels && importedLabelsPack && noteContent ? (
           <div className="mb-5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-4 py-3 text-left dark:border-amber-800/50 dark:bg-amber-950/30">
@@ -1915,298 +2052,311 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         ) : null}
 
         <article
-          className="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-md dark:border-gray-700 dark:bg-gray-900"
-          aria-label="Note content"
+          className={`overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] dark:bg-gray-900 ${
+            openedPortalSurface
+              ? "border-gray-200/70 shadow-none dark:border-gray-700/80"
+              : "border-gray-200/90 shadow-[0_20px_50px_-28px_rgba(15,23,42,0.45)] dark:border-gray-700 dark:shadow-black/40"
+          }`}
+          style={
+            (openedBranding?.accentColor || activeRevealBranding?.accentColor)
+              ? {
+                  borderTopColor: openedBranding?.accentColor || activeRevealBranding?.accentColor,
+                  borderTopWidth: 3,
+                }
+              : undefined
+          }
+          aria-label={t.revealNoteSheetLabel ?? "Note content"}
         >
-          <div className="px-5 py-6 sm:px-7 sm:py-7">
-            <span className="note-read-content whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.05rem] sm:text-lg leading-relaxed text-gray-900 dark:text-gray-100 font-sans select-text">
-              {noteContent.trimEnd()}
-            </span>
+          {openedBranding ? (
+            <header className="border-b border-black/[0.06] px-5 py-5 sm:px-7 dark:border-white/10">
+              <BrandingIdentity
+                branding={openedBranding}
+                brandingLine={brandingLine}
+                inCard
+              />
+            </header>
+          ) : (
+            <header className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-3 sm:px-7 dark:border-white/10">
+              <p className="m-0 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                <Lock className="h-3.5 w-3.5" aria-hidden />
+                {t.privateNote}
+              </p>
+              <p className="m-0 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+                {t.revealTrustSelfDestructs ?? "Self-destructs after opening"}
+              </p>
+            </header>
+          )}
+          <div className="px-4 py-4 sm:px-6 sm:py-5">
+            <div
+              className="overflow-hidden rounded-xl bg-white text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] dark:bg-[#0f141c]"
+              style={{
+                borderWidth: 2,
+                borderStyle: "solid",
+                borderColor: noteTextBorderColor || "rgba(15, 23, 42, 0.08)",
+              }}
+            >
+              <div className="min-h-[7.5rem] px-6 py-6 sm:min-h-[8.5rem] sm:px-8 sm:py-7">
+                <span
+                  className={`note-read-content block whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-[1.08rem] sm:text-[1.2rem] leading-[1.7] text-gray-900 dark:text-gray-100 select-text ${revealBodyFontClassName(bodyFont)}`}
+                >
+                  {noteContent.trimEnd()}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {noteData?.attachment ? (
-            <div className="border-t border-gray-100 px-4 py-4 sm:px-5 dark:border-gray-800">
-              <div className="rounded-lg border border-gray-200/80 bg-gray-50/80 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    {attachmentPreviewKind === "image" && previewObjectUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowInlinePreview((open) => !open)}
-                        className="flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-primary/30 dark:bg-gray-900 dark:focus-visible:ring-offset-gray-900"
-                        title={showInlinePreview ? "Hide preview" : "Show preview"}
-                      >
-                        <img
-                          src={previewObjectUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      </button>
-                    ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/8 text-primary dark:border-primary/25 dark:bg-primary/15">
-                        {isLoadingThumbnail &&
-                        (attachmentPreviewKind === "image" || attachmentPreviewKind === "audio") ? (
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
-                        ) : attachmentPreviewKind === "pdf" ? (
-                          <FileText className="h-5 w-5" aria-hidden />
-                        ) : attachmentPreviewKind === "audio" ? (
-                          <Mic className="h-5 w-5" aria-hidden />
-                        ) : attachmentPreviewKind === "image" ? (
-                          <ImageIcon className="h-5 w-5" aria-hidden />
-                        ) : (
-                          <Paperclip className="h-5 w-5" aria-hidden />
-                        )}
+          {revealAttachments.length > 0 ? (
+            <div className="flex flex-col gap-3 border-t border-black/[0.06] px-5 py-4 sm:px-7 dark:border-white/10">
+              <div className="space-y-3">
+                {revealAttachments.map((_, attachmentIndex) => {
+                  const metadata = attachmentMetadataList[attachmentIndex];
+                  const itemKind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+                  const itemActive = previewAttachmentIndex === attachmentIndex;
+                  const itemPreviewUrl = previewCache[attachmentIndex]?.url ?? null;
+                  const itemViewing = itemActive && isViewingFile;
+                  const itemLoadingThumb = itemActive && isLoadingThumbnail;
+                  const itemDownloading = itemActive && isDownloadingFile;
+                  return (
+                    <div
+                      key={`attachment-${attachmentIndex}`}
+                      className="rounded-lg border border-gray-200/80 bg-gray-50/80 px-3 py-3 dark:border-gray-700 dark:bg-gray-800/50"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          {itemKind === "image" && itemPreviewUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPreviewAttachmentIndex(attachmentIndex);
+                                setShowInlinePreview(true);
+                              }}
+                              className="flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-primary/30 dark:bg-gray-900 dark:focus-visible:ring-offset-gray-900"
+                              title={t.secureViewerOpen ?? "Open viewer"}
+                            >
+                              <img
+                                src={itemPreviewUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary dark:bg-primary/15">
+                              {itemLoadingThumb &&
+                              (itemKind === "image" || itemKind === "audio") ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
+                              ) : itemKind === "pdf" ? (
+                                <FileText className="h-5 w-5" aria-hidden />
+                              ) : itemKind === "audio" ? (
+                                <Mic className="h-5 w-5" aria-hidden />
+                              ) : itemKind === "video" ? (
+                                <Video className="h-5 w-5" aria-hidden />
+                              ) : itemKind === "image" ? (
+                                <ImageIcon className="h-5 w-5" aria-hidden />
+                              ) : (
+                                <Paperclip className="h-5 w-5" aria-hidden />
+                              )}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                              {metadata?.name ||
+                                (itemKind === "audio"
+                                  ? (t.voiceMessageAttachment ?? "Voice message")
+                                  : "Encrypted attachment")}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {formatAttachmentTypeLabel(metadata?.type, metadata?.name)}
+                              {metadata?.size != null
+                                ? ` · ${formatNoteFileSize(metadata.size)}`
+                                : null}
+                              {fileAccessRemainingSeconds != null && !fileAccessExpired
+                                ? ` · ${t.secureViewerAccessExpires ?? "Access expires in {time}"}`.replace(
+                                    "{time}",
+                                    formatFileAccessRemaining(fileAccessRemainingSeconds),
+                                  )
+                                : null}
+                              {fileAccessExpired ? ` · ${t.secureViewerAccessExpired ?? "Access expired"}` : null}
+                            </p>
+                            {attachmentViewOnly && attachmentIndex === 0 ? (
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {t.secureViewerViewOnlyPolicy ?? "Downloading has been disabled by the sender."}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 sm:shrink-0">
+                          {itemKind ? (
+                            <button
+                              type="button"
+                              onClick={() => void handlePreviewAttachment(attachmentIndex)}
+                              disabled={
+                                isViewingFile
+                                || isDownloadingFile
+                                || (itemLoadingThumb && !itemPreviewUrl && !(itemActive && previewBlob))
+                                || !contentKey
+                                || fileAccessExpired
+                              }
+                              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-white px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/35 dark:bg-gray-900 dark:hover:bg-primary/10 sm:flex-none"
+                            >
+                              <Eye className="h-3.5 w-3.5" aria-hidden />
+                              {itemViewing || (itemLoadingThumb && !itemPreviewUrl && !(itemActive && previewBlob))
+                                ? "Decrypting…"
+                                : itemKind === "pdf"
+                                  ? (t.secureViewerViewPdf ?? "View PDF")
+                                  : (t.secureViewerOpen ?? "View")}
+                            </button>
+                          ) : null}
+                          {attachmentViewOnly ? null : itemKind === "audio" && canChooseVoiceDownloadFormat ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
+                                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                                >
+                                  <Download className="h-3.5 w-3.5" aria-hidden />
+                                  {itemDownloading
+                                    ? (t.voiceMessageDecoding ?? "Decoding…")
+                                    : (t.voiceMessageDownloadFormat ?? "Download")}
+                                  <ChevronDown className="h-3.5 w-3.5 opacity-90" aria-hidden />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="min-w-[12rem]">
+                                <DropdownMenuItem
+                                  onSelect={() => void handleDownloadAttachment(attachmentIndex, "original")}
+                                >
+                                  {t.voiceMessageDownloadOriginal ?? "Original file"}
+                                </DropdownMenuItem>
+                                {isVoiceDownloadConversionAvailable("wav") ? (
+                                  <DropdownMenuItem
+                                    onSelect={() => void handleDownloadAttachment(attachmentIndex, "wav")}
+                                  >
+                                    {t.voiceMessageDownloadWav ?? "WAV (decoded)"}
+                                  </DropdownMenuItem>
+                                ) : null}
+                                {isVoiceDownloadConversionAvailable("m4a") ? (
+                                  <DropdownMenuItem
+                                    onSelect={() => void handleDownloadAttachment(attachmentIndex, "m4a")}
+                                  >
+                                    {t.voiceMessageDownloadM4a ?? "M4A (decoded)"}
+                                  </DropdownMenuItem>
+                                ) : null}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : attachmentViewOnly ? null : (
+                            <button
+                              type="button"
+                              onClick={() => void handleDownloadAttachment(attachmentIndex, "original")}
+                              disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
+                              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                            >
+                              <Download className="h-3.5 w-3.5" aria-hidden />
+                              {itemDownloading ? "Decrypting…" : "Download"}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {attachmentMetadata?.name ||
-                          (attachmentPreviewKind === "audio"
-                            ? (t.voiceMessageAttachment ?? "Voice message")
-                            : "Encrypted attachment")}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {attachmentMetadata?.size != null
-                          ? formatNoteFileSize(attachmentMetadata.size)
-                          : "Encrypted file"}
-                        {fileAccessRemainingSeconds != null && !fileAccessExpired
-                          ? ` · Access expires in ${formatFileAccessRemaining(fileAccessRemainingSeconds)}`
-                          : null}
-                        {fileAccessExpired ? " · Access expired" : null}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 sm:shrink-0">
-                    {attachmentPreviewKind && attachmentPreviewKind !== "audio" && (
-                      <button
-                        type="button"
-                        onClick={() => void handlePreviewAttachment()}
-                        disabled={
-                          isViewingFile
-                          || isDownloadingFile
-                          || (isLoadingThumbnail && !previewObjectUrl)
-                          || !contentKey
-                          || fileAccessExpired
-                        }
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-white px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/35 dark:bg-gray-900 dark:hover:bg-primary/10 sm:flex-none"
-                      >
-                        <Eye className="h-3.5 w-3.5" aria-hidden />
-                        {isViewingFile || (isLoadingThumbnail && !previewObjectUrl)
-                          ? "Decrypting…"
-                          : showInlinePreview
-                            ? "Hide"
-                            : attachmentPreviewKind === "pdf"
-                              ? "View PDF"
-                              : "View"}
-                      </button>
-                    )}
-                    {attachmentPreviewKind === "audio" && canChooseVoiceDownloadFormat ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
-                            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-                          >
-                            <Download className="h-3.5 w-3.5" aria-hidden />
-                            {isDownloadingFile
-                              ? (t.voiceMessageDecoding ?? "Decoding…")
-                              : (t.voiceMessageDownloadFormat ?? "Download")}
-                            <ChevronDown className="h-3.5 w-3.5 opacity-90" aria-hidden />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[12rem]">
-                          <DropdownMenuItem
-                            onSelect={() => void handleDownloadAttachment("original")}
-                          >
-                            {t.voiceMessageDownloadOriginal ?? "Original file"}
-                          </DropdownMenuItem>
-                          {isVoiceDownloadConversionAvailable("wav") ? (
-                            <DropdownMenuItem
-                              onSelect={() => void handleDownloadAttachment("wav")}
-                            >
-                              {t.voiceMessageDownloadWav ?? "WAV (decoded)"}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {isVoiceDownloadConversionAvailable("m4a") ? (
-                            <DropdownMenuItem
-                              onSelect={() => void handleDownloadAttachment("m4a")}
-                            >
-                              {t.voiceMessageDownloadM4a ?? "M4A (decoded)"}
-                            </DropdownMenuItem>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => void handleDownloadAttachment("original")}
-                        disabled={isDownloadingFile || isViewingFile || !contentKey || fileAccessExpired}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
-                      >
-                        <Download className="h-3.5 w-3.5" aria-hidden />
-                        {isDownloadingFile ? "Decrypting…" : "Download"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {fileAccessExpired ? (
-                  <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400" role="alert">
-                    Attachment access expired. Reveal again if the note is still available.
-                  </p>
-                ) : null}
-
-                {isViewingFile ? (
-                  <div
-                    className="mt-3 flex min-h-[12rem] flex-col items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-8 dark:border-gray-600 dark:bg-gray-900/60 sm:min-h-[16rem]"
-                    aria-live="polite"
-                  >
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
-                    <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-                      {attachmentPreviewKind === "pdf"
-                        ? "Decrypting PDF… larger files may take a moment."
-                        : attachmentPreviewKind === "audio"
-                          ? (t.voiceMessageDecrypting ?? "Decrypting voice message…")
-                          : "Decrypting file…"}
-                    </p>
-                  </div>
-                ) : null}
-
-                {attachmentPreviewKind === "audio" &&
-                (isLoadingThumbnail || showInlinePreview) &&
-                !isViewingFile ? (
-                  <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-3 dark:border-gray-600 dark:bg-gray-900/60">
-                    {previewObjectUrl && !audioPlaybackUnsupported ? (
-                      <audio
-                        controls
-                        controlsList="nodownload"
-                        src={previewObjectUrl}
-                        className="w-full"
-                        preload="metadata"
-                        onError={() => setAudioPlaybackUnsupported(true)}
-                      >
-                        {t.recordMessagePreviewUnsupported ??
-                          "Your browser cannot play this voice message."}
-                      </audio>
-                    ) : previewObjectUrl && audioPlaybackUnsupported ? (
-                      <div className="space-y-3">
-                        <p className="text-sm text-gray-700 dark:text-gray-300" role="status">
-                          {t.voiceMessagePlaybackUnsupported ??
-                            "This browser can’t play this voice message inline. Download it to listen."}
+                      {fileAccessExpired && attachmentIndex === 0 ? (
+                        <p className="mt-2 w-full text-xs font-medium text-red-600 dark:text-red-400" role="alert">
+                          Attachment access expired. Reveal again if the note is still available.
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => void handleDownloadAttachment("original")}
-                          disabled={isDownloadingFile || !contentKey || fileAccessExpired}
-                          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                        >
-                          <Download className="h-3.5 w-3.5" aria-hidden />
-                          {isDownloadingFile
-                            ? "Decrypting…"
-                            : (t.voiceMessageDownloadToPlay ?? "Download to play")}
-                        </button>
-                        {canChooseVoiceDownloadFormat && isVoiceDownloadConversionAvailable("wav") ? (
-                          <button
-                            type="button"
-                            onClick={() => void handleDownloadAttachment("wav")}
-                            disabled={isDownloadingFile || !contentKey || fileAccessExpired}
-                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-white px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-primary/35 dark:bg-gray-900 dark:hover:bg-primary/10 sm:w-auto"
-                          >
-                            {t.voiceMessageDownloadWav ?? "Download as WAV (decoded)"}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
-                        {t.voiceMessageDecrypting ?? "Decrypting voice message…"}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-
-                {showInlinePreview &&
-                previewObjectUrl &&
-                !isViewingFile &&
-                attachmentPreviewKind !== "audio" ? (
-                  <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900/60">
-                    <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-3 py-2 dark:border-gray-600">
-                      <p className="min-w-0 truncate text-xs font-medium text-gray-600 dark:text-gray-300">
-                        Preview
-                      </p>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => window.open(previewObjectUrl, "_blank", "noopener,noreferrer")}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 focus:outline-none"
-                        >
-                          <ExternalLink className="h-3 w-3" aria-hidden />
-                          New tab
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowInlinePreview(false)}
-                          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
-                        >
-                          Close
-                        </button>
-                      </div>
+                      ) : null}
+                      {itemViewing ? (
+                        <p className="mt-2 flex w-full items-center gap-2 text-sm text-gray-600 dark:text-gray-400" aria-live="polite">
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
+                          {itemKind === "pdf"
+                            ? (t.secureViewerDecryptingPdf ?? "Decrypting PDF… larger files may take a moment.")
+                            : itemKind === "audio"
+                              ? (t.voiceMessageDecrypting ?? "Decrypting voice message…")
+                              : (t.secureViewerDecrypting ?? "Decrypting file…")}
+                        </p>
+                      ) : null}
                     </div>
-                    <div className="flex items-center justify-center p-3 sm:p-4">
-                      {getAttachmentPreviewKind(previewMimeType ?? attachmentMetadata?.type, attachmentMetadata?.name) === "image" ? (
-                        <img
-                          src={previewObjectUrl}
-                          alt={attachmentMetadata?.name || "Attachment preview"}
-                          className="mx-auto block max-h-[min(60vh,640px)] max-w-full object-contain"
-                        />
-                      ) : (
-                        <iframe
-                          src={previewObjectUrl}
-                          title={attachmentMetadata?.name || "PDF preview"}
-                          className="h-[min(60vh,640px)] w-full bg-white dark:bg-gray-950"
-                        />
-                      )}
-                    </div>
-                  </div>
-                ) : null}
+                  );
+                })}
               </div>
             </div>
           ) : null}
+          <div className="border-t border-black/[0.06] px-5 py-5 sm:px-7 dark:border-white/10">
+            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+              <button
+                type="button"
+                onClick={() => void handleCopy()}
+                style={accentStyle}
+                className={`inline-flex min-w-[170px] items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  accentStyle
+                    ? "focus-visible:ring-gray-400"
+                    : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
+                }`}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                {t.copyNote}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t.createNewNote}
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+              <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
+                <span aria-hidden>⚠️</span>
+                {t.noteDeletedWarning}
+              </p>
+              <p className="m-0 min-h-[1.25rem] text-sm text-emerald-600 dark:text-emerald-400">
+                {copied ? `✔ ${t.copiedToClipboard}` : ""}
+              </p>
+              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
+                {t.saveNoteSecurely}
+              </p>
+            </div>
+          </div>
         </article>
 
-        <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
-          <button
-            type="button"
-            onClick={() => void handleCopy()}
-            style={accentStyle}
-            className={`inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 min-w-[170px] ${
-              accentStyle
-                ? "focus-visible:ring-gray-400"
-                : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
-            }`}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            {t.copyNote}
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateNew}
-            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium border border-primary/25 text-primary/80 rounded-md transition-colors hover:bg-primary/6 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 min-w-[170px]"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t.createNewNote}
-          </button>
-        </div>
-
-        <div className="mt-4 text-center">
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 min-h-[1.25rem]">
-            {copied ? `✔ ${t.copiedToClipboard}` : ""}
-          </p>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {t.saveNoteSecurely}
-          </p>
-        </div>
+          {attachmentOverlayOpen && previewAttachmentIndex != null ? (
+            <SecureAttachmentViewer
+              items={revealAttachments.map((_, attachmentIndex) => {
+                const metadata = attachmentMetadataList[attachmentIndex];
+                const cached = previewCache[attachmentIndex];
+                const kind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+                return {
+                  fileName:
+                    metadata?.name ||
+                    (kind === "audio"
+                      ? (t.voiceMessageAttachment ?? "Voice message")
+                      : "Encrypted attachment"),
+                  kind,
+                  objectUrl: cached?.url ?? null,
+                  blob: cached?.blob ?? null,
+                  mimeType: cached?.mimeType ?? metadata?.type ?? null,
+                  typeLabel: formatAttachmentTypeLabel(metadata?.type, metadata?.name),
+                  audioPlaybackUnsupported:
+                    attachmentIndex === previewAttachmentIndex ? audioPlaybackUnsupported : false,
+                };
+              })}
+              activeIndex={previewAttachmentIndex}
+              onActiveIndexChange={(nextIndex) => {
+                void handlePreviewAttachment(nextIndex);
+              }}
+              allowDownload={!attachmentViewOnly}
+              accessRemainingLabel={
+                fileAccessRemainingSeconds != null && !fileAccessExpired
+                  ? formatFileAccessRemaining(fileAccessRemainingSeconds)
+                  : null
+              }
+              accessExpired={fileAccessExpired}
+              isLoading={isViewingFile && !previewCache[previewAttachmentIndex]}
+              isDownloading={isDownloadingFile}
+              onDownload={() => {
+                void handleDownloadAttachment(previewAttachmentIndex, "original");
+              }}
+              onClose={() => setShowInlinePreview(false)}
+              t={t}
+            />
+          ) : null}
 
         {receiptAckRequired && noteContent ? (
           <div className="mt-6 rounded-lg border border-teal-200/80 bg-teal-50/70 px-4 py-3 text-left dark:border-teal-800/50 dark:bg-teal-950/30 sm:mt-7">
@@ -2249,6 +2399,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
         ) : null}
       </section>
       <AttachmentProgressDialog progress={attachmentDecryptProgress} />
-    </section>
+    </section>,
+    openedPortalSurface ? "wide" : "plain",
+    openedBranding,
   );
 };

@@ -1,6 +1,7 @@
 import type { KVNamespace } from "@cloudflare/workers-types";
 import type { Env } from "./types";
 import { normalizeAccountType, planFeaturesFor } from "@shared/planCatalog";
+import { parseRevealBodyFont } from "@shared/revealBodyFont";
 import { getAccountEntitlements } from "./accountEntitlements";
 import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { buildRecipientVerificationEmailContent } from "@shared/magicLinkEmail";
@@ -1181,6 +1182,7 @@ export async function getUserNoteDefaults(env: Env, userId: string) {
       max_reads: number | null;
       file_access_window_seconds: number | null;
       reader_language: string | null;
+      body_font: string | null;
       notify_on_open: number;
       require_recipient_verification: number;
     }>();
@@ -1194,6 +1196,7 @@ export async function upsertUserNoteDefaults(
     maxReads?: number | null;
     fileAccessWindowSeconds?: number | null;
     readerLanguage?: string | null;
+    bodyFont?: string | null;
     notifyOnOpen?: boolean;
     requireRecipientVerification?: boolean;
   },
@@ -1201,15 +1204,17 @@ export async function upsertUserNoteDefaults(
   if (!env.AUTH_DB) throw new Error("AUTH_DB not configured");
   const accountType = await getUserAccountType(env, userId);
   if (!planFeaturesFor(accountType).savedDefaults) throw new Error("premium_required");
+  const bodyFont = parseRevealBodyFont(body.bodyFont) ?? null;
 
   await env.AUTH_DB.prepare(
-    `INSERT INTO user_note_defaults (user_id, expiry_seconds, max_reads, file_access_window_seconds, reader_language, notify_on_open, require_recipient_verification, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `INSERT INTO user_note_defaults (user_id, expiry_seconds, max_reads, file_access_window_seconds, reader_language, body_font, notify_on_open, require_recipient_verification, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(user_id) DO UPDATE SET
        expiry_seconds = excluded.expiry_seconds,
        max_reads = excluded.max_reads,
        file_access_window_seconds = excluded.file_access_window_seconds,
        reader_language = excluded.reader_language,
+       body_font = excluded.body_font,
        notify_on_open = excluded.notify_on_open,
        require_recipient_verification = excluded.require_recipient_verification,
        updated_at = datetime('now')`,
@@ -1220,6 +1225,7 @@ export async function upsertUserNoteDefaults(
       body.maxReads ?? null,
       body.fileAccessWindowSeconds ?? null,
       body.readerLanguage ?? null,
+      bodyFont,
       body.notifyOnOpen ? 1 : 0,
       body.requireRecipientVerification ? 1 : 0,
     )

@@ -116,6 +116,7 @@ async function wrapFileKey(
   contentKey: CryptoKey,
   noteId: string,
   streamAad: Uint8Array,
+  attachmentIndex = 0,
 ) {
   const wrapAad = jsonAadBytes({
     v: 1,
@@ -123,6 +124,7 @@ async function wrapFileKey(
     alg: SODIUM_ATTACHMENT_ALG,
     noteId,
     streamAad: bytesToBase64(streamAad),
+    attachmentIndex,
   });
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const encryptedKey = await window.crypto.subtle.encrypt(
@@ -143,13 +145,14 @@ async function wrapFileKey(
   };
 }
 
-function metadataAadBytes(noteId: string, totalChunks: number): Uint8Array {
+function metadataAadBytes(noteId: string, totalChunks: number, attachmentIndex = 0): Uint8Array {
   return jsonAadBytes({
     v: 1,
     purpose: "privatenote-attachment-metadata",
     alg: SODIUM_ATTACHMENT_ALG,
     noteId,
     totalChunks,
+    attachmentIndex,
   });
 }
 
@@ -180,8 +183,9 @@ async function encryptSodiumAttachmentMetadata(
   metadataKey: CryptoKey,
   noteId: string,
   totalChunks: number,
+  attachmentIndex = 0,
 ): Promise<SodiumAttachmentEncryptedMetadata> {
-  const aad = metadataAadBytes(noteId, totalChunks);
+  const aad = metadataAadBytes(noteId, totalChunks, attachmentIndex);
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await window.crypto.subtle.encrypt(
     {
@@ -267,6 +271,7 @@ export async function encryptFileToSodiumBlob(
   metadataKey: CryptoKey,
   noteId: string,
   onProgress?: (progress: AttachmentPipelineProgress) => void,
+  attachmentIndex = 0,
 ): Promise<SodiumAttachmentBlobResult> {
   await sodium.ready;
 
@@ -297,6 +302,7 @@ export async function encryptFileToSodiumBlob(
     noteId,
     chunkSize,
     totalChunks,
+    attachmentIndex,
   });
   const encryptedMetadata = await encryptSodiumAttachmentMetadata(
     {
@@ -307,11 +313,12 @@ export async function encryptFileToSodiumBlob(
     metadataKey,
     noteId,
     totalChunks,
+    attachmentIndex,
   );
   await reportEncryptRatio(0.03);
   const fileKey = sodium.crypto_secretstream_xchacha20poly1305_keygen();
   const { state, header } = sodium.crypto_secretstream_xchacha20poly1305_init_push(fileKey);
-  const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad);
+  const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad, attachmentIndex);
   await reportEncryptRatio(0.05);
   const pipelineStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
   let encryptCpuMs = 0;
@@ -430,6 +437,7 @@ export async function encryptFileToSodiumChunks(
   noteId: string,
   onChunk: (chunk: SodiumAttachmentChunk) => Promise<void>,
   onProgress?: (progress: AttachmentPipelineProgress) => void,
+  attachmentIndex = 0,
 ): Promise<SodiumAttachmentMetadata> {
   if (usesSingleBlobAttachmentUpload(file.size)) {
     const { metadata, blob, sha256: digestHex } = await encryptFileToSodiumBlob(
@@ -438,6 +446,7 @@ export async function encryptFileToSodiumChunks(
       metadataKey,
       noteId,
       onProgress,
+      attachmentIndex,
     );
     const encryptedBytes = new Uint8Array(await blob.arrayBuffer());
     await onChunk({
@@ -473,6 +482,7 @@ export async function encryptFileToSodiumChunks(
     noteId,
     chunkSize,
     totalChunks,
+    attachmentIndex,
   });
   const encryptedMetadata = await encryptSodiumAttachmentMetadata(
     {
@@ -483,10 +493,11 @@ export async function encryptFileToSodiumChunks(
     metadataKey,
     noteId,
     totalChunks,
+    attachmentIndex,
   );
   const fileKey = sodium.crypto_secretstream_xchacha20poly1305_keygen();
   const { state, header } = sodium.crypto_secretstream_xchacha20poly1305_init_push(fileKey);
-  const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad);
+  const wrappedKey = await wrapFileKey(fileKey, contentKey, noteId, streamAad, attachmentIndex);
   const chunks: SodiumAttachmentMetadataChunk[] = [];
   let encryptedSize = 0;
   const contentHasher = sha256.create();

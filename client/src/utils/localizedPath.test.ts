@@ -80,6 +80,12 @@ describe("localizedPath", () => {
     assert.equal(localizedPath("/premium", "es"), "/es/premium");
   });
 
+  it("keeps reveal note URLs on /note/:id when switching language", () => {
+    assert.equal(switchLanguagePath("/note/abc123", "de"), "/note/abc123");
+    assert.equal(switchLanguagePath("/de/note/abc123", "fr"), "/note/abc123");
+    assert.equal(localizedPath("/note/abc123", "de"), "/note/abc123");
+  });
+
   it("localizes vpn and password security guides", () => {
     assert.equal(localizedPath("/security-guides/vpn", "en"), "/security-guides/vpn");
     assert.equal(localizedPath("/security-guides/vpn", "de"), "/de/security-guides/vpn");

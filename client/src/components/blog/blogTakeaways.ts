@@ -216,6 +216,12 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "What identifies you in the photo is usually a bigger risk than nudity itself.",
+    "Consent is required and not transferable. Do not involve anyone under 18.",
+    "Encrypt the link and make it expire. Screenshots and a determined recipient remain possible.",
+    "If a photo is used for extortion, keep evidence, do not pay, and use StopNCII.org.",
+  ],
   "secure-client-delivery-for-lawyers": [
     "Protecting privileged communications means thinking about who can later retrieve a written record—not only how it was encrypted during delivery.",
     "Clients need not install Signal or WhatsApp; they open a branded link in a browser.",

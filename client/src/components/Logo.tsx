@@ -3,10 +3,12 @@ import React, { useId } from 'react';
 interface LogoProps {
   className?: string;
   size?: number;
+  /** `inverse` is a white tile so the mark still reads on a brand-blue page. */
+  tile?: "brand" | "inverse";
 }
 
 /** PrivateNote mark: primary tile, cream envelope with blue-outlined flap. */
-export function Logo({ className = '', size = 32 }: LogoProps) {
+export function Logo({ className = '', size = 32, tile = "brand" }: LogoProps) {
   const uid = useId().replace(/:/g, '');
 
   return (
@@ -26,7 +28,14 @@ export function Logo({ className = '', size = 32 }: LogoProps) {
         </linearGradient>
       </defs>
 
-      <rect x="4" y="4" width="56" height="56" rx="14" className="fill-primary" />
+      <rect
+        x="4"
+        y="4"
+        width="56"
+        height="56"
+        rx="14"
+        className={tile === "inverse" ? "fill-white" : "fill-primary"}
+      />
 
       {/* Envelope / letter — nudged up so bbox is centred on the tile (32,32) */}
       <g transform="translate(0 -4.5)">

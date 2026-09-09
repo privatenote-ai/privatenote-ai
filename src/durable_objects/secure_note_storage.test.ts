@@ -231,6 +231,54 @@ describe("SecureNoteStorageSql (mock SQLite)", () => {
     assert.equal(reveal.readerLanguage, "fr");
   });
 
+  it("stores bodyFont metadata and returns it on meta GET and reveal", async () => {
+    const store = createMockStorage();
+    const dox = new SecureNoteStorageSql(makeDurableState(store));
+
+    let res = await dox.fetch(
+      new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createBody({ bodyFont: "source-serif" })),
+      }),
+    );
+    assert.equal(res.status, 201);
+
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, { method: "GET" }));
+    assert.equal(res.status, 200);
+    const meta = (await readJson(res)) as { bodyFont?: string };
+    assert.equal(meta.bodyFont, "source-serif");
+
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}/reveal`, { method: "POST" }));
+    assert.equal(res.status, 200);
+    const reveal = (await readJson(res)) as { bodyFont?: string };
+    assert.equal(reveal.bodyFont, "source-serif");
+  });
+
+  it("stores attachmentPermission metadata and returns it on meta GET and reveal", async () => {
+    const store = createMockStorage();
+    const dox = new SecureNoteStorageSql(makeDurableState(store));
+
+    let res = await dox.fetch(
+      new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createBody({ attachmentPermission: "view-only" })),
+      }),
+    );
+    assert.equal(res.status, 201);
+
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}`, { method: "GET" }));
+    assert.equal(res.status, 200);
+    const meta = (await readJson(res)) as { attachmentPermission?: string };
+    assert.equal(meta.attachmentPermission, "view-only");
+
+    res = await dox.fetch(new Request(`${BASE}/api/notes/${VALID_NOTE_ID}/reveal`, { method: "POST" }));
+    assert.equal(res.status, 200);
+    const reveal = (await readJson(res)) as { attachmentPermission?: string };
+    assert.equal(reveal.attachmentPermission, "view-only");
+  });
+
   it("max_reads 0 allows multiple reveals until expiry", async () => {
     const store = createMockStorage();
     const dox = new SecureNoteStorageSql(makeDurableState(store));

@@ -39,6 +39,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "know-when-secret-link-opened": "2026-08-09T13:00:00.000Z",
   "revoke-unopened-note-proof-of-access": "2026-08-09T14:00:00.000Z",
   "delayed-reveal-scheduled-secret-links": "2026-08-06T12:00:00.000Z",
+  "how-to-send-nudes-safely": "2026-09-03T12:00:00.000Z",
   "secure-client-delivery-for-lawyers": "2026-09-08T12:00:00.000Z",
 };
 
@@ -80,6 +81,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "know-when-secret-link-opened": 6,
   "revoke-unopened-note-proof-of-access": 6,
   "delayed-reveal-scheduled-secret-links": 6,
+  "how-to-send-nudes-safely": 7,
   "secure-client-delivery-for-lawyers": 7,
 };
 
@@ -117,7 +119,7 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
 
   return [
     {
-      id: -36,
+      id: -37,
       title: t.blogSecureClientDeliveryForLawyersTitle,
       excerpt: t.blogSecureClientDeliveryForLawyersExcerpt,
       author: "PrivateNote.ai",
@@ -129,6 +131,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
       published: true,
       createdAt: at("secure-client-delivery-for-lawyers"),
       updatedAt: at("secure-client-delivery-for-lawyers"),
+    },
+    {
+      id: -36,
+      title: t.blogHowToSendNudesSafelyTitle,
+      excerpt: t.blogHowToSendNudesSafelyExcerpt,
+      author: "PrivateNote.ai",
+      slug: "how-to-send-nudes-safely",
+      publishedAt: at("how-to-send-nudes-safely"),
+      tags: JSON.stringify([t.blogTagPrivacy, t.blogTagSecurity]),
+      content: "",
+      coverImage: "/images/blog-how-to-send-nudes-safely-hero.jpg",
+      published: true,
+      createdAt: at("how-to-send-nudes-safely"),
+      updatedAt: at("how-to-send-nudes-safely"),
     },
     {
       id: -35,

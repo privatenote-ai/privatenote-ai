@@ -7,9 +7,11 @@ import { useLanguage } from "@/context/LanguageContext";
 export function BlogArticleTakeaways({
   slug,
   className,
+  variant,
 }: {
   slug: string;
   className?: string;
+  variant?: "card" | "quiet";
 }) {
   const { language, t } = useLanguage();
   const items = getBlogTakeaways(slug, language);
@@ -17,7 +19,7 @@ export function BlogArticleTakeaways({
 
   return (
     <div className={className ?? "mb-10"}>
-      <BlogKeyTakeaways heading={t.blogKeyTakeaways} items={items} />
+      <BlogKeyTakeaways heading={t.blogKeyTakeaways} items={items} variant={variant} />
     </div>
   );
 }

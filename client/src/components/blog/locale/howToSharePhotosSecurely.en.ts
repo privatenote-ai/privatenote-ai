@@ -13,7 +13,7 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
   sections: [
     {
       title: "Why everyday sharing tools fall short",
-      takeaway: "Most tools optimise for convenience and long-term access—not temporary delivery.",
+      takeaway: "Send a handoff, not a souvenir.",
       paragraphs: [
         "None of these services are inherently insecure—they simply optimise for convenience and long-term access. That’s ideal for everyday photos, but not for documents that may still be sensitive years from now. The same retention problem shows up when people [send documents by email](blog:why-email-is-worst-for-secrets) or [paste secrets into chat](blog:secrets-never-send-in-chat).",
       ],
@@ -53,7 +53,7 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
     {
       title: "Don’t overlook hidden metadata",
       takeaway:
-        "EXIF can reveal GPS, timestamps, and device details—PrivateNote can strip them in your browser before encryption.",
+        "Most identity leaks are in the pixels, not the transport.",
       paragraphs: [
         "A photo can reveal far more than what’s visible on the screen.",
         "Many phones can embed metadata such as **EXIF** fields inside an image. Depending on the device, format, and settings, this may include GPS coordinates, capture time, orientation, and camera details. A passport photographed at home could reveal a location; a medical document photographed at a clinic could reveal where it was captured.",
@@ -68,13 +68,14 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
     },
     {
       title: "Sharing sensitive photos more safely",
-      takeaway: "Crop first, strip metadata, encrypt in the browser, then make access temporary.",
+      takeaway: "Their phone is part of the send.",
       paragraphs: [
         "Good security starts before you press Send.",
         "Take a moment to look at the image itself. Does the recipient need the entire document, or would a cropped version be enough? Removing background details, obscuring unrelated personal information, or blurring irrelevant faces reduces exposure. Keep an appropriate original where records, evidence, or future use require it; remove only unnecessary working copies.",
         "Next, clear hidden location data. On PrivateNote that step is built in for common photo formats—leave the metadata toggle on when you attach the file.",
         "Then encrypt before the photo leaves your device. Client-side encryption transforms the image into unreadable ciphertext locally, so the storage server never receives the original file. Even if the server were compromised, the encrypted data would remain unintelligible without the decryption key.",
         "[PrivateNote’s secure file transfer](app:secure-file-transfer) combines those steps: optional in-browser re-encoding for JPEG/PNG/WebP/HEIC, encryption before upload, ciphertext-only storage, a note read limit, and a timed attachment-download window. Recipients can open the link without creating an account; sending a file requires a free PrivateNote account.",
+        "PrivateNote also uses click-to-reveal by default, so a mis-tap on the note page does not immediately decrypt the content.",
         "Finally, treat service access as temporary. Opening a read-once PrivateNote consumes the note read, but its attachment remains downloadable during the configured post-open window: **15 minutes by default**, with eligible plans offering 30 minutes or 1 hour. The recipient may download more than once during that window. Expiration then removes access through PrivateNote; it does not delete copies already saved on the recipient’s device.",
         "Treat the **complete PrivateNote URL as a bearer secret**. It normally contains decryption-key material in the URL fragment, so anyone who obtains the full link before it expires may be able to open the handoff. If you add a passphrase, send it through a different channel. Sending the link and passphrase in the same thread collapses the two layers into one—see [how to share a password securely](blog:how-to-share-a-password-securely).",
         "For passports, medical images, financial records, or evidence, first confirm that the organisation accepts this delivery method. A government agency, bank, insurer, or healthcare provider may require its own authenticated upload portal or retention process.",
@@ -86,7 +87,7 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
     },
     {
       title: "Best practices checklist",
-      takeaway: "A short routine before Send cuts most long-term exposure.",
+      takeaway: "Use the same short routine every time.",
       checklist: [
         "Verify the recipient and channel",
         "Crop or blur anything the recipient does not need",
@@ -100,7 +101,7 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
     },
     {
       title: "Know what this workflow protects",
-      takeaway: "It reduces retained service copies and metadata exposure; it does not make an untrusted endpoint safe.",
+      takeaway: "Reduce exposure, but trust boundaries still matter.",
       paragraphs: [
         "This workflow helps when the main risks are forgotten inbox attachments, long-lived cloud links, readable server-side storage, and common embedded photo metadata. Browser-side encryption means PrivateNote receives encrypted file data rather than the readable image, and expiration limits how long that encrypted handoff remains retrievable.",
         "It does **not** protect against malware or a compromised browser on either device, a malicious or mistaken recipient, exposure of the complete link before expiry, or a recipient saving the decrypted image. Because the web application performs encryption, the code delivered to your browser is also part of the trust model. Use a managed or otherwise trusted device for high-sensitivity documents.",
@@ -108,9 +109,10 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
     },
     {
       title: "Common mistakes",
-      takeaway: "Most photo leaks are leftover access—not Hollywood hacking.",
+      takeaway: "Most leaks come from ordinary habits.",
       paragraphs: [
         "The most common mistakes are surprisingly ordinary. People often leave location data embedded in photos taken at home, assume the recipient will remember to delete the file, or keep permanent cloud-sharing links active long after the exchange is finished. Another frequent error is sending both the encrypted link and its passphrase in the same message, giving an attacker everything they need if that conversation is ever compromised.",
+        "A relationship is not standing consent, and consent to receive is never consent to redistribute.",
         "It’s also worth remembering that no sharing method can prevent a recipient from taking a screenshot or saving the image after opening it. Secure sharing reduces unnecessary copies and limits long-term exposure, but it cannot control what someone does once they have legitimate access.",
       ],
       bullets: [
@@ -163,11 +165,11 @@ export const howToSharePhotosSecurelyEn: HowToSharePhotosSecurelyArticleCopy = {
     },
     {
       title: "The bottom line",
-      takeaway: "Minimise copies and service-access time without promising remote deletion.",
+      takeaway: "Shorter access and fewer copies beat promises.",
       paragraphs: [
         "When sharing sensitive photos, the goal isn’t simply to encrypt the connection—it’s to minimise how many copies exist and how long they survive.",
         "Cropping unnecessary details, re-encoding supported images to remove common metadata, encrypting before upload, and setting short access windows reduce long-term exposure. They do not guarantee that no trace remains: the recipient can retain the decrypted image, and the complete delivery link must itself be protected.",
-        "The same approach works for [sensitive documents](blog:send-sensitive-documents-securely) of any kind—not only photos.",
+        "The same approach works for [sensitive documents](blog:send-sensitive-documents-securely) of any kind—not only photos. For intimate images between adults, see [how to send nudes safely](blog:how-to-send-nudes-safely).",
       ],
     },
   ],

@@ -66,9 +66,10 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
   blob: Blob;
   chunkSha256: string;
   uploadToken: string;
+  attachmentIndex?: number;
   onUploadProgress?: (progress: { loaded: number; total: number }) => void;
 }): Promise<void> {
-  const { noteId, blob, chunkSha256, uploadToken, onUploadProgress } = options;
+  const { noteId, blob, chunkSha256, uploadToken, attachmentIndex = 0, onUploadProgress } = options;
   logFileUpload("info", "presigning R2 direct upload", {
     noteId,
     bodyBytes: blob.size,
@@ -83,7 +84,7 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
     uploadUrl: string;
     expiresIn: number;
     encryptedSize: number;
-  }>(`/api/notes/${noteId}/file/presign`, uploadToken, {});
+  }>(`/api/notes/${noteId}/file/presign`, uploadToken, { attachmentIndex });
 
   const uploadBody =
     blob.type === "application/octet-stream"
@@ -135,6 +136,7 @@ export async function uploadEncryptedAttachmentViaPresignedR2(options: {
   await postUploadJson(`/api/notes/${noteId}/file/complete`, uploadToken, {
     chunkSha256,
     encryptedSize: blob.size,
+    attachmentIndex,
   });
 
   if (onUploadProgress) {

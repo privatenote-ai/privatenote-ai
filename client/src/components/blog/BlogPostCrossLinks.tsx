@@ -24,6 +24,7 @@ export function BlogPostCrossLinks({ slug, className }: BlogPostCrossLinksProps)
     >
       <h2
         id={`blog-cross-links-${slug}`}
+        data-blog-toc-ignore="true"
         className="mb-6 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
       >
         {t.blogCrossLinksHeading}

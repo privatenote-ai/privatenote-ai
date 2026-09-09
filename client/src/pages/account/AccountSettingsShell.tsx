@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { User, Shield, History, SlidersHorizontal } from "lucide-react";
+import { User, Shield, History, Palette, SlidersHorizontal } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -17,7 +17,14 @@ function navItemActive(href: string, location: string): boolean {
   return location === href || location.startsWith(`${href}/`);
 }
 
-export function AccountSettingsShell({ children }: { children: React.ReactNode }) {
+export function AccountSettingsShell({
+  children,
+  wide = false,
+}: {
+  children: React.ReactNode;
+  /** Branding preview needs a laptop-width canvas next to the sidebar. */
+  wide?: boolean;
+}) {
   const [location] = useLocation();
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -26,11 +33,12 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
     { href: "/account", label: tx("account", "Account"), icon: User },
     { href: "/account/security", label: tx("security", "Security"), icon: Shield },
     { href: "/account/activity", label: tx("authNavActivity", "Activity"), icon: History },
+    { href: "/account/branding", label: tx("authNavBranding", "Branding"), icon: Palette },
     { href: "/account/preferences", label: tx("authNavPreferences", "Preferences"), icon: SlidersHorizontal },
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
+    <div className={`mx-auto px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8 ${wide ? "max-w-7xl" : "max-w-5xl"}`}>
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8 lg:gap-10">
         {/* Sidebar: wide enough for long emails; nav stays readable */}
         <aside className="w-full shrink-0 md:min-w-[15rem] md:w-60 lg:min-w-[17rem] lg:w-64">
@@ -75,7 +83,7 @@ export function AccountSettingsShell({ children }: { children: React.ReactNode }
           </nav>
         </aside>
 
-        {/* Page content — shares wider shell with sidebar (max-w-5xl) */}
+        {/* Page content — shares wider shell with sidebar */}
         <div className="min-w-0 flex-1 border-t border-gray-100 pt-6 md:border-t-0 md:pt-0 dark:border-gray-800">
           {children}
         </div>

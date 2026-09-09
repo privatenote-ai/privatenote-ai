@@ -205,6 +205,12 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Was Sie auf dem Foto erkennbar macht, ist meist das größere Risiko als die Nacktheit selbst.",
+    "Einverständnis ist nötig und nicht übertragbar. Beziehen Sie niemanden unter 18 ein.",
+    "Verschlüsseln Sie den Link und setzen Sie ein Ablaufdatum. Screenshots und ein entschlossener Empfänger bleiben möglich.",
+    "Bei Erpressung Beweise sichern, nicht zahlen und StopNCII.org nutzen.",
+  ],
   "secure-client-delivery-for-lawyers": [
     "Der Schutz der anwaltlichen Verschwiegenheit endet nicht bei der Verschlüsselung: entscheidend ist auch, welche Kopien nach der Übermittlung zurückbleiben.",
     "Mandanten müssen keine App installieren; sie öffnen einen Link der Kanzlei im Browser.",
@@ -417,6 +423,12 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "Ce qui permet de vous identifier sur la photo est souvent plus risqué que la nudité elle-même.",
+    "Le consentement est obligatoire et non transférable. N’impliquez personne de moins de 18 ans.",
+    "Chiffrez le lien et faites-le expirer. Les captures d’écran et un destinataire déterminé restent possibles.",
+    "En cas d’extorsion, gardez les preuves, ne payez pas, et utilisez StopNCII.org.",
   ],
   "secure-client-delivery-for-lawyers": [
     "La protection du secret professionnel ne s’arrête pas au chiffrement : il importe aussi de savoir quelles copies restent après l’envoi.",
@@ -631,6 +643,12 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Lo que te identifica en la foto suele ser un riesgo mayor que la desnudez.",
+    "El consentimiento es obligatorio e intransferible. No involucres a nadie menor de 18.",
+    "Cifra el enlace y haz que caduque. Las capturas y un destinatario decidido siguen siendo posibles.",
+    "Si hay extorsión, conserva pruebas, no pagues y usa StopNCII.org.",
+  ],
   "secure-client-delivery-for-lawyers": [
     "La protección del secreto profesional no termina en el cifrado: también importa qué copias de la comunicación confidencial permanecen tras la entrega.",
     "El cliente no instala Signal ni WhatsApp; abre un enlace con la marca del despacho en el navegador.",
@@ -843,6 +861,12 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "Ciò che ti identifica nella foto è di solito un rischio maggiore della nudità.",
+    "Il consenso è necessario e non trasferibile. Non coinvolgere nessuno sotto i 18 anni.",
+    "Cifra il link e fallo scadere. Screenshot e un destinatario determinato restano possibili.",
+    "In caso di estorsione, conserva le prove, non pagare e usa StopNCII.org.",
   ],
   "secure-client-delivery-for-lawyers": [
     "La tutela del segreto professionale non si esaurisce nella cifratura: conta anche quali copie della comunicazione riservata restano dopo la consegna.",
@@ -1057,6 +1081,12 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Wat jou op de foto herkenbaar maakt, is meestal een groter risico dan naaktheid zelf.",
+    "Toestemming is vereist en niet overdraagbaar. Betrek niemand onder de 18.",
+    "Versleutel de link en laat die verlopen. Screenshots en een vastberaden ontvanger blijven mogelijk.",
+    "Bij afpersing: bewijs bewaren, niet betalen, en StopNCII.org gebruiken.",
+  ],
   "secure-client-delivery-for-lawyers": [
     "Bescherming van het beroepsgeheim stopt niet bij versleuteling: het gaat er ook om welke kopieën na de overdracht achterblijven.",
     "Cliënten hoeven Signal of WhatsApp niet te installeren; ze openen een kantoorpagina in de browser.",
@@ -1269,6 +1299,12 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "O que o identifica na foto costuma ser um risco maior do que a nudez.",
+    "O consentimento é obrigatório e intransferível. Não envolva ninguém menor de 18 anos.",
+    "Cifre o link e faça-o expirar. Capturas de tela e um destinatário determinado continuam possíveis.",
+    "Em caso de extorsão, conserve provas, não pague e use StopNCII.org.",
   ],
   "secure-client-delivery-for-lawyers": [
     "A proteção do segredo profissional não se esgota na cifragem: também importa que cópias da comunicação confidencial permanecem após a entrega.",
@@ -1483,6 +1519,12 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
   ],
+  "how-to-send-nudes-safely": [
+    "Ono što vas na fotografiji čini prepoznatljivim obično je veći rizik od golotinje same.",
+    "Saglasnost je neophodna i nije prenosiva. Ne uključujte nikoga mlađeg od 18.",
+    "Šifrujte link i postavite rok. Snimci ekrana i odlučan primalac i dalje su mogući.",
+    "Ako dođe do ucene, sačuvajte dokaze, ne plaćajte i koristite StopNCII.org.",
+  ],
   "secure-client-delivery-for-lawyers": [
     "Zaštita advokatske tajne ne završava se enkripcijom: važno je i koje kopije poverljive komunikacije ostaju nakon dostave.",
     "Klijenti ne moraju da instaliraju Signal ili WhatsApp; link otvaraju direktno u pregledaču.",
@@ -1695,6 +1737,12 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
+  ],
+  "how-to-send-nudes-safely": [
+    "Ono što vas na fotografiji čini prepoznatljivim obično je veći rizik od golotinje same.",
+    "Pristanak je nužan i nije prenosiv. Ne uključujte nikoga mlađeg od 18.",
+    "Šifrirajte poveznicu i postavite rok. Snimke zaslona i odlučan primatelj i dalje su mogući.",
+    "Ako dođe do ucjene, sačuvajte dokaze, ne plaćajte i koristite StopNCII.org.",
   ],
   "secure-client-delivery-for-lawyers": [
     "Zaštita odvjetničke tajne ne završava se šifriranjem: važno je i koje kopije povjerljive komunikacije ostaju nakon dostave.",

@@ -3,7 +3,13 @@ import defaultTheme from "tailwindcss/defaultTheme";
 
 export default {
   darkMode: ["class"],
-  content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
+  // `shared/` builds class strings for the reveal card, so it must be scanned
+  // too or those utilities are never emitted and the logo renders unbounded.
+  content: [
+    "./client/index.html",
+    "./client/src/**/*.{js,jsx,ts,tsx}",
+    "./shared/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
     extend: {
       fontFamily: {

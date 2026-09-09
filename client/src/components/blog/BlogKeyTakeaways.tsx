@@ -1,19 +1,25 @@
 import React from "react";
 import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type BlogKeyTakeawaysProps = {
   heading: string;
   items: string[];
+  variant?: "card" | "quiet";
 };
 
-export function BlogKeyTakeaways({ heading, items }: BlogKeyTakeawaysProps) {
+export function BlogKeyTakeaways({ heading, items, variant = "card" }: BlogKeyTakeawaysProps) {
   if (!items.length) return null;
 
   const headingId = "blog-key-takeaways-heading";
 
   return (
     <section
-      className="rounded-2xl border border-primary/25 bg-primary/[0.06] px-5 py-5 dark:border-primary/30 dark:bg-primary/10 sm:px-6 sm:py-6"
+      className={cn(
+        variant === "card"
+          ? "rounded-2xl border border-primary/25 bg-primary/[0.06] px-5 py-5 dark:border-primary/30 dark:bg-primary/10 sm:px-6 sm:py-6"
+          : "border-l-2 border-primary/40 py-1 pl-5 sm:pl-6",
+      )}
       aria-labelledby={headingId}
     >
       <h2

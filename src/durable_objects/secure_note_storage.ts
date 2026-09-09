@@ -18,6 +18,7 @@ import { isValidNoteId } from "@shared/noteId";
 import {
   NOTE_KEY_DERIVATION_HKDF_ROOT_V2,
   parseStoredNoteAttachmentForNote,
+  parseStoredNoteAttachmentsForNote,
   parseStoredNoteCiphertextForReveal,
   STORED_NOTE_CIPHER_ALG,
   STORED_NOTE_PAYLOAD_VERSION,
@@ -25,6 +26,8 @@ import {
 } from "@shared/storedNotePayload";
 import { isSupportedLanguage } from "@shared/supportedLanguages";
 import { parseStoredRevealBranding } from "@shared/businessBranding";
+import { parseRevealBodyFont } from "@shared/revealBodyFont";
+import { parseAttachmentRecipientPermission } from "@shared/attachmentRecipientPermission";
 
 type StoredCiphertext = ParsedStoredNoteCiphertext;
 
@@ -220,8 +223,11 @@ export class SecureNoteStorageSql {
       kdfParams = undefined,
       keyDerivation = undefined,
       attachment: attachmentRaw = undefined,
+      attachments: attachmentsRaw = undefined,
       fileAccessWindowSeconds: fileAccessWindowSecondsRaw = undefined,
       readerLanguage: readerLanguageRaw = undefined,
+      bodyFont: bodyFontRaw = undefined,
+      attachmentPermission: attachmentPermissionRaw = undefined,
       revealBranding: revealBrandingRaw = undefined,
       opensAt: opensAtRaw = undefined,
     } = body || {};
@@ -410,19 +416,47 @@ export class SecureNoteStorageSql {
 
     const contentTrimmed = content.trim();
     const ivTrimmed = iv.trim();
-    const attachment = parseStoredNoteAttachmentForNote(attachmentRaw, noteId);
-    if (attachmentRaw != null && !attachment) {
+    const attachmentsList = parseStoredNoteAttachmentsForNote(attachmentsRaw, noteId);
+    if (attachmentsRaw != null && !attachmentsList) {
       return new Response(JSON.stringify({ error: "Invalid attachment metadata" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    const singularAttachment = parseStoredNoteAttachmentForNote(attachmentRaw, noteId, 0);
+    if (attachmentRaw != null && !singularAttachment) {
+      return new Response(JSON.stringify({ error: "Invalid attachment metadata" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const attachments =
+      attachmentsList && attachmentsList.length > 0
+        ? attachmentsList
+        : singularAttachment
+          ? [singularAttachment]
+          : [];
+    const attachment = attachments[0];
     const readerLanguage =
       typeof readerLanguageRaw === "string" && isSupportedLanguage(readerLanguageRaw)
         ? readerLanguageRaw
         : undefined;
     if (readerLanguageRaw != null && !readerLanguage) {
       return new Response(JSON.stringify({ error: "Invalid reader language" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const bodyFont = parseRevealBodyFont(bodyFontRaw);
+    if (bodyFontRaw != null && typeof bodyFontRaw !== "string") {
+      return new Response(JSON.stringify({ error: "Invalid body font" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const attachmentPermission = parseAttachmentRecipientPermission(attachmentPermissionRaw);
+    if (attachmentPermissionRaw != null && typeof attachmentPermissionRaw !== "string") {
+      return new Response(JSON.stringify({ error: "Invalid attachment permission" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
@@ -452,8 +486,11 @@ export class SecureNoteStorageSql {
       encryptedKey: null,
       encryptedKeyIv: null,
       ...(attachment ? { attachment } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
       ...(attachment ? { fileAccessWindowSeconds } : {}),
       ...(readerLanguage ? { readerLanguage } : {}),
+      ...(bodyFont ? { bodyFont } : {}),
+      ...(attachmentPermission ? { attachmentPermission } : {}),
       ...(revealBranding ? { revealBranding } : {}),
       ...(normalizedKdfParams ? { kdfParams: normalizedKdfParams } : {}),
       ...(keyDerivation === NOTE_KEY_DERIVATION_HKDF_ROOT_V2
@@ -543,6 +580,10 @@ export class SecureNoteStorageSql {
         expiresAt: row.expires_at,
         ...(row.opens_at ? { opensAt: row.opens_at } : {}),
         ...(ciphertext?.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
+        ...(ciphertext?.bodyFont ? { bodyFont: ciphertext.bodyFont } : {}),
+        ...(ciphertext?.attachmentPermission
+          ? { attachmentPermission: ciphertext.attachmentPermission }
+          : {}),
         // Needed before reveal so the branding frames the confirmation step.
         ...(ciphertext?.revealBranding ? { revealBranding: ciphertext.revealBranding } : {}),
       }),
@@ -621,9 +662,18 @@ export class SecureNoteStorageSql {
           ...(ciphertext.kdfParams ? { kdfParams: ciphertext.kdfParams } : {}),
           ...(ciphertext.keyDerivation ? { keyDerivation: ciphertext.keyDerivation } : {}),
           ...(ciphertext.readerLanguage ? { readerLanguage: ciphertext.readerLanguage } : {}),
+          ...(ciphertext.bodyFont ? { bodyFont: ciphertext.bodyFont } : {}),
+          ...(ciphertext.attachmentPermission
+            ? { attachmentPermission: ciphertext.attachmentPermission }
+            : {}),
           ...(ciphertext.revealBranding ? { revealBranding: ciphertext.revealBranding } : {}),
           ...(ciphertext.attachment ? { attachment: ciphertext.attachment } : {}),
-          ...(ciphertext.attachment
+          ...(ciphertext.attachments && ciphertext.attachments.length > 0
+            ? { attachments: ciphertext.attachments }
+            : ciphertext.attachment
+              ? { attachments: [ciphertext.attachment] }
+              : {}),
+          ...(ciphertext.attachment || (ciphertext.attachments && ciphertext.attachments.length > 0)
             ? {
                 fileAccessWindowSeconds:
                   ciphertext.fileAccessWindowSeconds ?? NOTE_FILE_ACCESS_DEFAULT_SECONDS,

@@ -14,6 +14,10 @@ export type BillingInterval = "month" | "year";
 export type PlanFeatureFlags = {
   hostedAiMonthly: number;
   attachmentMaxBytes: number;
+  /** Max files/media items in one secure transfer (one created link). */
+  attachmentsMaxCount: number;
+  /** Max combined plaintext size of all items in one transfer. */
+  attachmentTransferMaxBytes: number;
   /** Active encrypted payload still live (unread / not burned). */
   activePayloadBufferBytes: number;
   /**
@@ -31,6 +35,10 @@ export type PlanFeatureFlags = {
   maxVoiceMessageSeconds: number;
   recipientLinkDelivery: boolean;
   readerLanguage: boolean;
+  /** Starter+: pick a body typeface for the revealed note sheet. */
+  revealBodyFont: boolean;
+  /** Business: hide the normal download action on the recipient viewer. */
+  attachmentViewOnly: boolean;
   /** Business: company profile / logo / accent on reveal. */
   revealBranding: boolean;
   proofOfAccess: boolean;
@@ -83,14 +91,18 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
     features: {
       hostedAiMonthly: 3,
       attachmentMaxBytes: 25 * MB,
+      attachmentsMaxCount: 5,
+      attachmentTransferMaxBytes: 25 * MB,
       activePayloadBufferBytes: 250 * MB,
       maxAttachmentTransfersPerDay: 10,
-      maxFileAccessWindowSeconds: 15 * 60,
+      maxFileAccessWindowSeconds: 60 * 60,
       maxExpirySeconds: 3 * DAY,
       allowedReadCounts: [1],
       maxVoiceMessageSeconds: 5 * 60,
       recipientLinkDelivery: false,
       readerLanguage: false,
+      revealBodyFont: false,
+      attachmentViewOnly: false,
       revealBranding: false,
       proofOfAccess: false,
       recipientVerification: false,
@@ -116,14 +128,18 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
     features: {
       hostedAiMonthly: 50,
       attachmentMaxBytes: 250 * MB,
+      attachmentsMaxCount: 10,
+      attachmentTransferMaxBytes: 250 * MB,
       activePayloadBufferBytes: 5 * GB,
       maxAttachmentTransfersPerDay: null,
-      maxFileAccessWindowSeconds: 30 * 60,
+      maxFileAccessWindowSeconds: 4 * 60 * 60,
       maxExpirySeconds: 15 * DAY,
       allowedReadCounts: [1, 2, 3],
       maxVoiceMessageSeconds: 15 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
+      revealBodyFont: true,
+      attachmentViewOnly: false,
       revealBranding: false,
       proofOfAccess: true,
       recipientVerification: true,
@@ -149,14 +165,18 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
     features: {
       hostedAiMonthly: 300,
       attachmentMaxBytes: 1 * GB,
+      attachmentsMaxCount: 20,
+      attachmentTransferMaxBytes: 1 * GB,
       activePayloadBufferBytes: 50 * GB,
       maxAttachmentTransfersPerDay: null,
-      maxFileAccessWindowSeconds: 60 * 60,
+      maxFileAccessWindowSeconds: 24 * 60 * 60,
       maxExpirySeconds: 30 * DAY,
       allowedReadCounts: [1, 2, 3, 5],
       maxVoiceMessageSeconds: 30 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,
+      revealBodyFont: true,
+      attachmentViewOnly: true,
       revealBranding: true,
       proofOfAccess: true,
       recipientVerification: true,

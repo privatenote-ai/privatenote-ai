@@ -1,16 +1,21 @@
 import { planFeaturesFor } from "./planCatalog";
 
-export const NOTE_FILE_ACCESS_DEFAULT_SECONDS = 15 * 60;
+/** Default viewing window after first reveal. */
+export const NOTE_FILE_ACCESS_DEFAULT_SECONDS = 60 * 60;
 
 export const NOTE_FILE_ACCESS_WINDOW_OPTIONS = [
-  NOTE_FILE_ACCESS_DEFAULT_SECONDS,
-  30 * 60,
+  15 * 60,
   60 * 60,
+  4 * 60 * 60,
+  24 * 60 * 60,
 ] as const;
+
+/** Notes created before the 15m / 1h / 4h / 24h picker. Still honored on reveal. */
+export const NOTE_FILE_ACCESS_LEGACY_WINDOW_SECONDS = 30 * 60;
 
 export type NoteFileAccessWindowSeconds = (typeof NOTE_FILE_ACCESS_WINDOW_OPTIONS)[number];
 
-export function isNoteFileAccessWindowSeconds(value: unknown): value is NoteFileAccessWindowSeconds {
+export function isNoteFileAccessWindowOption(value: unknown): value is NoteFileAccessWindowSeconds {
   return (
     typeof value === "number" &&
     Number.isInteger(value) &&
@@ -18,11 +23,23 @@ export function isNoteFileAccessWindowSeconds(value: unknown): value is NoteFile
   );
 }
 
+export function isNoteFileAccessWindowSeconds(value: unknown): value is number {
+  return isNoteFileAccessWindowOption(value) || value === NOTE_FILE_ACCESS_LEGACY_WINDOW_SECONDS;
+}
+
 export function maxNoteFileAccessWindowForAccount(
   accountType: string | null | undefined,
-): NoteFileAccessWindowSeconds {
+): number {
   const max = planFeaturesFor(accountType).maxFileAccessWindowSeconds;
-  if (isNoteFileAccessWindowSeconds(max)) return max;
+  if (typeof max === "number" && Number.isInteger(max) && max > 0) return max;
+  return NOTE_FILE_ACCESS_DEFAULT_SECONDS;
+}
+
+export function normalizeNoteFileAccessWindowForPicker(
+  value: unknown,
+): NoteFileAccessWindowSeconds {
+  if (isNoteFileAccessWindowOption(value)) return value;
+  if (value === NOTE_FILE_ACCESS_LEGACY_WINDOW_SECONDS) return 60 * 60;
   return NOTE_FILE_ACCESS_DEFAULT_SECONDS;
 }
 
@@ -33,13 +50,15 @@ export function clampNoteFileAccessWindowForAccount(
   const maxSeconds =
     typeof accountTypeOrIsPremium === "boolean"
       ? accountTypeOrIsPremium
-        ? 60 * 60
+        ? 4 * 60 * 60
         : NOTE_FILE_ACCESS_DEFAULT_SECONDS
       : maxNoteFileAccessWindowForAccount(accountTypeOrIsPremium);
-  if (!isNoteFileAccessWindowSeconds(value) || value > maxSeconds) {
-    return NOTE_FILE_ACCESS_DEFAULT_SECONDS;
-  }
-  return value;
+
+  const candidate = normalizeNoteFileAccessWindowForPicker(value);
+  if (candidate <= maxSeconds) return candidate;
+
+  const allowed = NOTE_FILE_ACCESS_WINDOW_OPTIONS.filter((seconds) => seconds <= maxSeconds);
+  return allowed[allowed.length - 1] ?? NOTE_FILE_ACCESS_WINDOW_OPTIONS[0];
 }
 
 export function parseNoteFileAccessWindowFromBody(
@@ -49,7 +68,7 @@ export function parseNoteFileAccessWindowFromBody(
     | { accountType: string | null | undefined; isPremium?: never; maxSeconds?: never }
     | { maxSeconds: number; isPremium?: never; accountType?: never },
 ):
-  | { ok: true; seconds: NoteFileAccessWindowSeconds }
+  | { ok: true; seconds: number }
   | { ok: false; message: string } {
   const maxSeconds =
     "maxSeconds" in options && typeof options.maxSeconds === "number"
@@ -57,7 +76,7 @@ export function parseNoteFileAccessWindowFromBody(
       : "accountType" in options
         ? maxNoteFileAccessWindowForAccount(options.accountType)
         : options.isPremium
-          ? 60 * 60
+          ? 4 * 60 * 60
           : NOTE_FILE_ACCESS_DEFAULT_SECONDS;
 
   if (value == null) {
@@ -78,7 +97,9 @@ export function parseNoteFileAccessWindowFromBody(
   return { ok: true, seconds: value };
 }
 
-export function formatNoteFileAccessWindow(seconds: NoteFileAccessWindowSeconds): string {
+export function formatNoteFileAccessWindow(seconds: number): string {
+  if (seconds === 24 * 60 * 60) return "24 hours";
+  if (seconds === 4 * 60 * 60) return "4 hours";
   if (seconds === 60 * 60) return "1 hour";
   return `${Math.round(seconds / 60)} minutes`;
 }
