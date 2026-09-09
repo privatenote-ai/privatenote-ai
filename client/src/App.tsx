@@ -58,6 +58,7 @@ const AuthSignIn = lazy(() => import("@/pages/AuthSignIn"));
 const AuthSignUp = lazy(() => import("@/pages/AuthSignUp"));
 const AuthEmailChange = lazy(() => import("@/pages/AuthEmailChange"));
 const AuthTotp = lazy(() => import("@/pages/AuthTotp"));
+const AuthDevice = lazy(() => import("@/pages/AuthDevice"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
@@ -396,6 +397,7 @@ function Router() {
           <Route path="/auth/recovery" component={() => <LazyRoute component={AuthRecovery} />} />
           <Route path="/auth/email-change" component={() => <LazyRoute component={AuthEmailChange} />} />
           <Route path="/auth/totp" component={() => <LazyRoute component={AuthTotp} />} />
+          <Route path="/auth/device" component={() => <LazyRoute component={AuthDevice} />} />
           <Route path="/auth">
             <Redirect to="/auth/sign-in" />
           </Route>

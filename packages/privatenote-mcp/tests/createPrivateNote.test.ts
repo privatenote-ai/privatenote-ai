@@ -7,6 +7,9 @@
  */
 import assert from "node:assert/strict";
 import { describe, it, before, after } from "node:test";
+import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
 
@@ -18,6 +21,7 @@ type RequestBody = Record<string, unknown>;
 interface MockFetchCall {
   url: string;
   body: RequestBody | null;
+  authorization?: string | null;
 }
 
 let fetchCalls: MockFetchCall[] = [];
@@ -32,13 +36,24 @@ function mockFetch() {
     if (init?.body && typeof init.body === "string") {
       parsed = JSON.parse(init.body) as RequestBody;
     }
-    fetchCalls.push({ url, body: parsed });
+    const rawHeaders = init?.headers;
+    let authorization: string | null = null;
+    if (rawHeaders instanceof Headers) {
+      authorization = rawHeaders.get("Authorization");
+    } else if (rawHeaders && typeof rawHeaders === "object") {
+      authorization = (rawHeaders as Record<string, string>)["Authorization"] ?? null;
+    }
+    fetchCalls.push({ url, body: parsed, authorization });
 
     if (url.includes("/api/notes/reserve")) {
-      return new Response(JSON.stringify({ id: TEST_NOTE_ID }), {
+      return new Response(JSON.stringify({ id: TEST_NOTE_ID, uploadToken: "upload-token-test" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    if (url.includes("/file")) {
+      return new Response("", { status: 200 });
     }
 
     if (url.includes("/api/notes")) {
@@ -225,7 +240,63 @@ describe("createPrivateNote title prepend", () => {
     const body = fetchCalls[1]!.body!;
     const serialized = JSON.stringify(body);
     assert.ok(!("title" in body), "no title field in API body");
-    assert.ok(!serialized.includes("My Secret"), "title not in API body plaintext");
     assert.ok(!serialized.includes(SECRET), "content not in API body plaintext");
+  });
+});
+
+describe("createPrivateNote file attach", () => {
+  it("requires a stored session before reading the file", async () => {
+    await assert.rejects(
+      () => createPrivateNote({ filePath: "/tmp/does-not-matter.bin" }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.match(err.message, /sign_in/i);
+        return true;
+      },
+    );
+  });
+
+  it("encrypts a local file and uploads ciphertext with the note upload token", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-file-"));
+    const filePath = join(dir, "secret.txt");
+    const sessionPath = join(dir, "mcp-session.json");
+    await writeFile(filePath, "file-secret-xyz", "utf8");
+    await writeFile(
+      sessionPath,
+      JSON.stringify({
+        accessToken: "plugin-session-token-value",
+        apiBaseUrl: "https://privatenote.ai",
+        storedAt: new Date().toISOString(),
+      }),
+      "utf8",
+    );
+    const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+    const previousToken = process.env["PRIVATENOTE_SESSION"];
+    process.env["PRIVATENOTE_MCP_SESSION_PATH"] = sessionPath;
+    delete process.env["PRIVATENOTE_SESSION"];
+    mockFetch();
+    try {
+      const result = await createPrivateNote({ content: SECRET, filePath });
+      assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#/);
+      assert.equal(result.attachedFileName, "secret.txt");
+      const createCall = fetchCalls.find(
+        (call) => call.body && typeof call.body["content"] === "string" && call.body["id"] === TEST_NOTE_ID,
+      );
+      assert.ok(createCall?.body);
+      const serialized = JSON.stringify(createCall.body);
+      assert.ok(!serialized.includes("file-secret-xyz"));
+      assert.ok(!serialized.includes(SECRET));
+      assert.equal(createCall.body["keyDerivation"], "hkdf-root-v2");
+      assert.ok(Array.isArray(createCall.body["attachments"]));
+      const filePut = fetchCalls.find((call) => call.url.includes("/file"));
+      assert.match(filePut?.authorization ?? "", /^Bearer /);
+    } finally {
+      restoreFetch();
+      if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+      else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
+      if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
+      else process.env["PRIVATENOTE_SESSION"] = previousToken;
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

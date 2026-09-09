@@ -51,14 +51,27 @@ The agent calls `create_private_note` and returns:
 
 Share the `secureUrl` with whoever needs to read it. It self-destructs after the first view.
 
-## Tool: `create_private_note`
+To attach a file, sign in first, then pass a local `filePath` (the file is encrypted in this process; do not paste file bytes into the chat):
+
+> *"Sign in to PrivateNote, then attach ~/Desktop/contract.pdf to a new note."*
+
+## Tools
+
+### `sign_in` / `whoami` / `sign_out`
+
+Device-code sign-in. The MCP server opens `https://privatenote.ai/auth/device`, you approve in the browser, and a plugin session token is stored at `~/.config/privatenote/mcp-session.json`. That token is sent as `Authorization: Bearer` and does **not** replace your website cookie session.
+
+If approval takes longer than three minutes, call `sign_in` again with the returned `pollDeviceCode`.
+
+### `create_private_note`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `content` | string | required | The text to encrypt |
+| `content` | string | — | Text to encrypt (optional when `filePath` is set) |
 | `expiresIn` | `15m` \| `1h` \| `24h` \| `7d` | `24h` | How long the note stays accessible |
 | `burnAfterReading` | boolean | `true` | Destroy after first view |
 | `title` | string | — | Optional title prepended before encryption |
+| `filePath` | string | — | Local file to encrypt and attach (`sign_in` required) |
 
 ## Privacy & security
 
@@ -73,6 +86,7 @@ Share the `secureUrl` with whoever needs to read it. It self-destructs after the
 - Password-protected notes are not supported in v1 (requires browser-only argon2)
 - `burnAfterReading: false` (multi-view) requires a [PrivateNote Premium](https://privatenote.ai) account
 - Rate limits apply the same as browser-created notes
+- File attach requires a signed-in PrivateNote account
 
 ## Local dev / self-hosted
 
