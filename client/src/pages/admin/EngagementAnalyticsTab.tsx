@@ -26,9 +26,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 
 function apiUrl(path: string): string {
-  const base = (import.meta.env.VITE_API_URL || "").trim();
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  const base = hasPagesSameOriginApiProxy(host)
+    ? ""
+    : (import.meta.env.VITE_API_URL || "").trim();
   return base + path;
 }
 

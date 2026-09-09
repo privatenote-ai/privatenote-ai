@@ -8307,7 +8307,7 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         request,
       );
     }
-  } else if (request.method === "POST") {
+  } else if (request.method === "POST" && pathname !== "/api/analytics/event") {
     const clientId = getClientIdentifier(request);
     console.log(`[ROUTES] Rate-limit client bucket: ${clientId}`);
 
@@ -10227,10 +10227,15 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
   // No auth required — only accepts a fixed allow-list of event types.
   if (pathname === "/api/analytics/event" && method === "POST") {
     try {
-      const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+      // text/plain sendBeacon and application/json fetch both land here as JSON text.
+      const body = (await readJsonBody(request)) as Record<string, unknown>;
       const engagement = parsePageEngagementFlush(body);
       if (engagement) {
-        storage.trackPageEngagement(engagement).catch(() => {});
+        try {
+          await storage.trackPageEngagement(engagement);
+        } catch (error) {
+          console.error("Error tracking page engagement:", error);
+        }
         return jsonResponse({ ok: true }, 200, request);
       }
       const allowed = ["wrong_password", "qr_share"] as const;
@@ -10239,7 +10244,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         ? (body.event as AllowedEvent)
         : null;
       if (event) {
-        storage.trackClientEvent(event).catch(() => {});
+        try {
+          await storage.trackClientEvent(event);
+        } catch (error) {
+          console.error("Error tracking client analytics event:", error);
+        }
         return jsonResponse({ ok: true }, 200, request);
       }
       const pageAllowed = ["file-share", "password-share"] as const;
@@ -10248,7 +10257,11 @@ export async function registerRoutes(request: Request, env: Env): Promise<Respon
         ? (body.page as AllowedPage)
         : null;
       if (page) {
-        storage.trackPageView(page).catch(() => {});
+        try {
+          await storage.trackPageView(page);
+        } catch (error) {
+          console.error("Error tracking page view:", error);
+        }
         return jsonResponse({ ok: true }, 200, request);
       }
       return jsonResponse({ message: "Invalid event type" }, 400, request);

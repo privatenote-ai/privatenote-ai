@@ -6,6 +6,7 @@ import {
   type HeatmapCellTriple,
   type PageEngagementKey,
 } from "@shared/pageEngagement";
+import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 
 const FLUSH_MS = 15_000;
 const DWELL_MS = 4_000;
@@ -17,7 +18,10 @@ function isPrerender(): boolean {
 }
 
 function analyticsUrl(): string {
-  const base = (import.meta.env.VITE_API_URL || "").trim();
+  const host = typeof window !== "undefined" ? window.location.hostname : "";
+  const base = hasPagesSameOriginApiProxy(host)
+    ? ""
+    : (import.meta.env.VITE_API_URL || "").trim();
   return `${base}/api/analytics/event`;
 }
 
@@ -55,7 +59,8 @@ function postEngagement(payload: Record<string, unknown>, keepalive: boolean): v
   const url = analyticsUrl();
   if (keepalive && typeof navigator.sendBeacon === "function") {
     try {
-      const ok = navigator.sendBeacon(url, new Blob([json], { type: "application/json" }));
+      // text/plain is CORS-simple if the request is ever cross-origin; Workers parse JSON from the body either way.
+      const ok = navigator.sendBeacon(url, new Blob([json], { type: "text/plain;charset=UTF-8" }));
       if (ok) return;
     } catch {
       /* fall through to fetch */
@@ -92,6 +97,7 @@ class NativePageAnalyticsCollector {
     window.addEventListener("scroll", this.onScroll, { passive: true });
     document.addEventListener("visibilitychange", this.onVisibility);
     window.addEventListener("pagehide", this.onPageHide);
+    this.setPage(window.location.pathname || "/");
     this.armTimers();
   }
 

@@ -395,6 +395,7 @@ function Router() {
         </Switch>
       </main>
       {!isAuthRoute && <Footer />}
+      <NativePageAnalytics />
     </div>
   );
 }
@@ -407,7 +408,6 @@ function App() {
           <AccountEntitlementsProvider>
             <ThemePreferenceRoot />
             <Router />
-            <NativePageAnalytics />
             <DeferredToaster />
           </AccountEntitlementsProvider>
         </AuthProvider>

@@ -59,6 +59,18 @@ describe("parsePageEngagementFlush", () => {
     assert.equal(parsePageEngagementFlush({ kind: "engagement", path: "/", visits: 0 }), null);
   });
 
+  it("accepts a JSON-parsed text/plain sendBeacon body", () => {
+    const parsed = parsePageEngagementFlush(
+      JSON.parse(
+        '{"kind":"engagement","path":"/","visits":1,"visibleMs":1500,"scrollRecorded":false,"clicks":[],"dwell":[]}',
+      ),
+    );
+    assert.ok(parsed);
+    assert.equal(parsed.page, "home");
+    assert.equal(parsed.visits, 1);
+    assert.equal(parsed.visibleMs, 1500);
+  });
+
   it("accepts heatmap cells on public pages", () => {
     const parsed = parsePageEngagementFlush({
       kind: "engagement",
