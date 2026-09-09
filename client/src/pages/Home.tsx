@@ -135,7 +135,7 @@ const Home: React.FC = () => {
         }
       >
         {!isCreateSuccessView && (
-          <section className="relative mx-auto max-w-4xl px-4 pt-2 sm:px-6 sm:pt-5 lg:px-8">
+          <section className="relative mx-auto max-w-4xl px-4 pt-5 sm:px-6 sm:pt-5 lg:px-8">
             <div className="text-center">
               <h1 className="page-title text-gray-900 dark:text-white">
                 <span className="md:hidden">
@@ -166,7 +166,7 @@ const Home: React.FC = () => {
         )}
 
         <div
-          className={`${isCreateSuccessView ? "mt-0" : "mt-2 sm:mt-6 md:mt-10 lg:mt-12"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
+          className={`${isCreateSuccessView ? "mt-0" : "mt-5 sm:mt-6 md:mt-10 lg:mt-12"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
         >
           <div className="mx-auto min-w-0 max-w-4xl">
             {showCreateNote ? (
