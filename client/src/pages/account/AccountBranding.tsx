@@ -2006,9 +2006,9 @@ export default function AccountBranding() {
                             className="overflow-hidden rounded-lg border border-dashed border-gray-300 bg-slate-950 dark:border-gray-700"
                             style={{ aspectRatio: BRANDING_BANNER_ASPECT_RATIO }}
                           >
-                            {openedNoteBranding.bannerUrl || businessBannerUrl ? (
+                            {openedNoteBranding.bannerUrl ? (
                               <img
-                                src={openedNoteBranding.bannerUrl || businessBannerUrl || ""}
+                                src={openedNoteBranding.bannerUrl}
                                 alt=""
                                 className="h-full w-full object-cover"
                                 style={{
@@ -2047,13 +2047,9 @@ export default function AccountBranding() {
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Remove
                               </Button>
-                            ) : businessBannerUrl ? (
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Using the reveal photograph until you upload a new one.
-                              </p>
                             ) : null}
                           </div>
-                          {openedNoteBranding.bannerUrl || businessBannerUrl ? (
+                          {openedNoteBranding.bannerUrl ? (
                             <div>
                               <Label htmlFor="opened-background-zoom" className="mb-2 block text-sm">
                                 Scale {openedBackgroundZoom}%

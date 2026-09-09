@@ -220,7 +220,7 @@ export type OpenedNoteBrandingSettings = {
   showSenderName: boolean;
   showCompanyName: boolean;
   showTrustMessage: boolean;
-  /** Dedicated after-open photograph. When background is `banner` and this is empty, the reveal photo is reused. */
+  /** Dedicated after-open photograph. Empty means no photograph — the reveal page image is not reused. */
   bannerUrl?: string | null;
   backgroundColor?: string | null;
   accentColor?: string | null;
@@ -535,10 +535,14 @@ export function applyOpenedNoteBranding(
     delete next.bannerUrl;
     if (gate.openedBackgroundColor) next.backgroundColor = gate.openedBackgroundColor;
   } else if (background === "banner") {
-    if (gate.openedBannerUrl) next.bannerUrl = gate.openedBannerUrl;
-    if (next.bannerUrl) next.backgroundStyle = "banner";
-    // Absent scale keeps inheriting the reveal page's, which is what older snapshots expect.
-    if (next.bannerUrl && gate.openedBackgroundZoom) next.backgroundZoom = gate.openedBackgroundZoom;
+    if (gate.openedBannerUrl) {
+      next.bannerUrl = gate.openedBannerUrl;
+      next.backgroundStyle = "banner";
+      if (gate.openedBackgroundZoom) next.backgroundZoom = gate.openedBackgroundZoom;
+    } else {
+      delete next.bannerUrl;
+      delete next.backgroundStyle;
+    }
   }
   return next;
 }

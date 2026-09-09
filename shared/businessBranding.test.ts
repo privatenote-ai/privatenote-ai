@@ -819,6 +819,17 @@ describe("opened-note branding", () => {
     assert.equal(opened?.openedAccentColor, undefined);
   });
 
+  it("does not reuse the reveal photograph when the opened page has no upload", () => {
+    const opened = applyOpenedNoteBranding({
+      bannerUrl: "https://acme.example/reveal.jpg",
+      backgroundStyle: "banner",
+      showBrandingAfterReveal: true,
+      openedBackground: "banner",
+    });
+    assert.equal(opened?.bannerUrl, undefined);
+    assert.equal(opened?.backgroundStyle, undefined);
+  });
+
   it("scales the opened photograph independently of the reveal page", () => {
     const gate = {
       bannerUrl: "https://acme.example/reveal.jpg",
