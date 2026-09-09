@@ -670,7 +670,7 @@ export default function AccountPreferences() {
 
                     <div>
                       <Label htmlFor="default-file-window" className="mb-2 block text-sm">
-                        File download window
+                        Access after opening
                       </Label>
                       <select
                         id="default-file-window"
@@ -688,7 +688,7 @@ export default function AccountPreferences() {
                         {NOTE_FILE_ACCESS_WINDOW_OPTIONS.map((seconds) => {
                           const locked = seconds > planCapabilities.maxFileAccessWindowSeconds;
                           const planLabel =
-                            seconds <= 15 * 60 ? null : seconds <= 30 * 60 ? "Starter" : "Business";
+                            seconds <= 60 * 60 ? null : seconds <= 4 * 60 * 60 ? "Starter" : "Business";
                           return (
                             <option
                               key={seconds}

@@ -14,7 +14,6 @@ import {
   BadgeCheck,
   Tags,
   ChevronDown,
-  ChevronUp,
   Lock,
 } from 'lucide-react';
 import { apiBlobRequest, apiRequest, ApiRequestError } from '@/lib/queryClient';
@@ -45,6 +44,7 @@ import {
   canBrowserPlayVoiceAttachment,
 } from '@/utils/voiceMessageRecording';
 import {
+  formatAttachmentTypeLabel,
   getAttachmentBlobMimeType,
   getAttachmentPreviewKind,
 } from '@/utils/attachmentPreviewKind';
@@ -647,7 +647,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const previewCacheRef = useRef(previewCache);
   previewCacheRef.current = previewCache;
   const [showInlinePreview, setShowInlinePreview] = useState(false);
-  const [messageSheetOpen, setMessageSheetOpen] = useState(true);
   const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(false);
   const [audioPlaybackUnsupported, setAudioPlaybackUnsupported] = useState(false);
   const thumbnailLoadAttemptedRef = useRef(false);
@@ -674,11 +673,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     previewAttachmentIndex != null
       ? attachmentMetadataList[previewAttachmentIndex] ?? null
       : attachmentMetadataList[0] ?? null;
-  const activePreview =
-    previewAttachmentIndex != null ? previewCache[previewAttachmentIndex] ?? null : null;
-  const previewObjectUrl = activePreview?.url ?? null;
-  const previewBlob = activePreview?.blob ?? null;
-  const previewMimeType = activePreview?.mimeType ?? null;
+  const previewBlob =
+    previewAttachmentIndex != null ? previewCache[previewAttachmentIndex]?.blob ?? null : null;
   const canImportNoteLabels = entitlements.capabilities.noteLabelPortability === true;
   const importedLabelsPack = useMemo(
     () => (noteContent ? parseNoteLabelsExport(noteContent) : null),
@@ -769,11 +765,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     const timer = window.setTimeout(() => setDelayedRevealOpensAt(null), msUntilOpen + 250);
     return () => window.clearTimeout(timer);
   }, [delayedRevealOpensAt]);
-
-  const attachmentPreviewKind = useMemo(
-    () => getAttachmentPreviewKind(previewMetadata?.type, previewMetadata?.name),
-    [previewMetadata?.type, previewMetadata?.name],
-  );
 
   const reportAttachmentDecryptProgress = useCallback(
     (completedChunks: number, totalChunks: number, ratio?: number, fileName?: string) => {
@@ -887,7 +878,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       return {};
     });
     setShowInlinePreview(false);
-    setMessageSheetOpen(true);
     setIsLoadingThumbnail(false);
     setAudioPlaybackUnsupported(false);
   }, [id]);
@@ -909,14 +899,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       .then((result) => {
         if (cancelled || !result) return;
         rememberAttachmentPreview(0, result);
-        if (previewKind === "audio" || previewKind === "image") {
-          setShowInlinePreview(true);
-          setMessageSheetOpen(false);
-          if (previewKind === "audio") {
-            setAudioPlaybackUnsupported(
-              !canBrowserPlayVoiceAttachment(result.mimeType, metadata?.name),
-            );
-          }
+        if (previewKind === "audio") {
+          setAudioPlaybackUnsupported(
+            !canBrowserPlayVoiceAttachment(result.mimeType, metadata?.name),
+          );
         }
       })
       .catch((error) => {
@@ -1620,15 +1606,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     }
 
     const cachedPreview = previewCache[attachmentIndex];
-    if (previewAttachmentIndex === attachmentIndex && showInlinePreview && cachedPreview) {
-      setShowInlinePreview(false);
-      setMessageSheetOpen(true);
-      return;
-    }
     if (cachedPreview) {
       setPreviewAttachmentIndex(attachmentIndex);
       setShowInlinePreview(true);
-      setMessageSheetOpen(false);
       return;
     }
 
@@ -1650,7 +1630,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       if (!result) return;
       rememberAttachmentPreview(attachmentIndex, result);
       setShowInlinePreview(true);
-      setMessageSheetOpen(false);
       if (previewKind === "audio") {
         setAudioPlaybackUnsupported(
           !canBrowserPlayVoiceAttachment(result.mimeType, metadata?.name),
@@ -1676,9 +1655,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       ? Math.max(0, Math.ceil((noteData.fileAccessTokenExpiresAtMs - fileAccessNowMs) / 1000))
       : null;
   const fileAccessExpired = fileAccessRemainingSeconds === 0;
-  const viewerOpen = Boolean(
-    showInlinePreview && attachmentPreviewKind && !isViewingFile && (previewObjectUrl || previewBlob),
-  );
+  const attachmentOverlayOpen = Boolean(showInlinePreview && previewAttachmentIndex != null);
 
   const handleCreateNew = () => {
     window.location.href = '/';
@@ -1917,9 +1894,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
 
   // Regular note content view (either after password decryption or for non-password notes)
   return wrapRecipient(
-    <section className={`w-full mx-auto ${viewerOpen ? "max-w-6xl" : "max-w-3xl"}`}>
+    <section className="w-full mx-auto max-w-3xl">
       <section className={openedPortalSurface ? "relative isolate pb-2 text-center" : NOTE_VIEW_HERO_SECTION}>
-        {viewerOpen || openedPortalSurface || openedBranding ? null : (
+        {openedPortalSurface || openedBranding ? null : (
           <div className="mb-8 text-center sm:mb-10">
             <h1 className="page-title text-primary">{t.privateNote}</h1>
           </div>
@@ -1966,49 +1943,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
           </div>
         ) : null}
 
-        {viewerOpen && !messageSheetOpen ? (
-          <>
-            {openedBranding ? (
-              <div
-                className={`mb-4 overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] px-5 py-5 dark:bg-gray-900 sm:px-7 ${
-                  openedPortalSurface
-                    ? "border-gray-200/70 dark:border-gray-700/80"
-                    : "border-gray-200/90 dark:border-gray-700"
-                }`}
-                style={
-                  openedBranding.accentColor
-                    ? { borderTopColor: openedBranding.accentColor, borderTopWidth: 3 }
-                    : undefined
-                }
-              >
-                <BrandingIdentity
-                  branding={openedBranding}
-                  brandingLine={brandingLine}
-                  inCard
-                />
-              </div>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setMessageSheetOpen(true)}
-              className={`flex w-full items-center gap-3 rounded-2xl border bg-[rgb(252,251,248)] px-5 py-3 text-left dark:bg-gray-900 ${
-                openedPortalSurface
-                  ? "border-gray-200/70 dark:border-gray-700/80"
-                  : "border-gray-200/90 dark:border-gray-700"
-              }`}
-              aria-expanded={false}
-            >
-              <Lock className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
-              <span className="min-w-0 flex-1 truncate text-sm text-gray-600 dark:text-gray-300">
-                {noteContent.trim().split(/\n/)[0] || (t.revealNoteSheetLabel ?? "Note content")}
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400">
-                {t.secureViewerShowMessage ?? "Message"}
-                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-              </span>
-            </button>
-          </>
-        ) : (
         <article
           className={`overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] dark:bg-gray-900 ${
             openedPortalSurface
@@ -2032,19 +1966,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 brandingLine={brandingLine}
                 inCard
               />
-              {viewerOpen ? (
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setMessageSheetOpen(false)}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                    aria-expanded={true}
-                  >
-                    {t.secureViewerHideMessage ?? "Hide"}
-                    <ChevronUp className="h-3.5 w-3.5" aria-hidden />
-                  </button>
-                </div>
-              ) : null}
             </header>
           ) : (
             <header className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-3 sm:px-7 dark:border-white/10">
@@ -2052,21 +1973,9 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                 <Lock className="h-3.5 w-3.5" aria-hidden />
                 {t.privateNote}
               </p>
-              {viewerOpen ? (
-                <button
-                  type="button"
-                  onClick={() => setMessageSheetOpen(false)}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                  aria-expanded={true}
-                >
-                  {t.secureViewerHideMessage ?? "Hide"}
-                  <ChevronUp className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              ) : (
-                <p className="m-0 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
-                  {t.revealTrustSelfDestructs ?? "Self-destructs after opening"}
-                </p>
-              )}
+              <p className="m-0 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+                {t.revealTrustSelfDestructs ?? "Self-destructs after opening"}
+              </p>
             </header>
           )}
           <div className="px-4 py-4 sm:px-6 sm:py-5">
@@ -2112,7 +2021,6 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                               onClick={() => {
                                 setPreviewAttachmentIndex(attachmentIndex);
                                 setShowInlinePreview(true);
-                                setMessageSheetOpen(false);
                               }}
                               className="flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-primary/20 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-primary/30 dark:bg-gray-900 dark:focus-visible:ring-offset-gray-900"
                               title={t.secureViewerOpen ?? "Open viewer"}
@@ -2149,9 +2057,10 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
                                   : "Encrypted attachment")}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {formatAttachmentTypeLabel(metadata?.type, metadata?.name)}
                               {metadata?.size != null
-                                ? formatNoteFileSize(metadata.size)
-                                : "Encrypted file"}
+                                ? ` · ${formatNoteFileSize(metadata.size)}`
+                                : null}
                               {fileAccessRemainingSeconds != null && !fileAccessExpired
                                 ? ` · ${t.secureViewerAccessExpires ?? "Access expires in {time}"}`.replace(
                                     "{time}",
@@ -2298,84 +2207,48 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
             </div>
           </div>
         </article>
-        )}
 
-          {viewerOpen && attachmentPreviewKind ? (
-            <div className="mt-4">
-                <SecureAttachmentViewer
-                  kind={attachmentPreviewKind}
-                  fileName={
-                    previewMetadata?.name ||
-                    (attachmentPreviewKind === "audio"
+          {attachmentOverlayOpen && previewAttachmentIndex != null ? (
+            <SecureAttachmentViewer
+              items={revealAttachments.map((_, attachmentIndex) => {
+                const metadata = attachmentMetadataList[attachmentIndex];
+                const cached = previewCache[attachmentIndex];
+                const kind = getAttachmentPreviewKind(metadata?.type, metadata?.name);
+                return {
+                  fileName:
+                    metadata?.name ||
+                    (kind === "audio"
                       ? (t.voiceMessageAttachment ?? "Voice message")
-                      : "Encrypted attachment")
-                  }
-                  objectUrl={previewObjectUrl}
-                  blob={previewBlob}
-                  mimeType={previewMimeType ?? previewMetadata?.type ?? null}
-                  allowDownload={!attachmentViewOnly}
-                  accessRemainingLabel={
-                    fileAccessRemainingSeconds != null && !fileAccessExpired
-                      ? formatFileAccessRemaining(fileAccessRemainingSeconds)
-                      : null
-                  }
-                  accessExpired={fileAccessExpired}
-                  isDownloading={isDownloadingFile}
-                  audioPlaybackUnsupported={audioPlaybackUnsupported}
-                  onDownload={() =>
-                    void handleDownloadAttachment(previewAttachmentIndex ?? 0, "original")
-                  }
-                  onClose={() => {
-                    setShowInlinePreview(false);
-                    setMessageSheetOpen(true);
-                  }}
-                  t={t}
-                />
-            </div>
+                      : "Encrypted attachment"),
+                  kind,
+                  objectUrl: cached?.url ?? null,
+                  blob: cached?.blob ?? null,
+                  mimeType: cached?.mimeType ?? metadata?.type ?? null,
+                  typeLabel: formatAttachmentTypeLabel(metadata?.type, metadata?.name),
+                  audioPlaybackUnsupported:
+                    attachmentIndex === previewAttachmentIndex ? audioPlaybackUnsupported : false,
+                };
+              })}
+              activeIndex={previewAttachmentIndex}
+              onActiveIndexChange={(nextIndex) => {
+                void handlePreviewAttachment(nextIndex);
+              }}
+              allowDownload={!attachmentViewOnly}
+              accessRemainingLabel={
+                fileAccessRemainingSeconds != null && !fileAccessExpired
+                  ? formatFileAccessRemaining(fileAccessRemainingSeconds)
+                  : null
+              }
+              accessExpired={fileAccessExpired}
+              isLoading={isViewingFile && !previewCache[previewAttachmentIndex]}
+              isDownloading={isDownloadingFile}
+              onDownload={() => {
+                void handleDownloadAttachment(previewAttachmentIndex, "original");
+              }}
+              onClose={() => setShowInlinePreview(false)}
+              t={t}
+            />
           ) : null}
-
-        {viewerOpen && !messageSheetOpen ? (
-          <div
-            className={`mt-4 overflow-hidden rounded-2xl border bg-[rgb(252,251,248)] px-5 py-5 dark:bg-gray-900 sm:px-7 ${
-              openedPortalSurface
-                ? "border-gray-200/70 dark:border-gray-700/80"
-                : "border-gray-200/90 dark:border-gray-700"
-            }`}
-          >
-            <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-              <button
-                type="button"
-                onClick={() => void handleCopy()}
-                style={accentStyle}
-                className={`inline-flex min-w-[170px] items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                  accentStyle
-                    ? "focus-visible:ring-gray-400"
-                    : "bg-primary text-white hover:bg-primary/90 focus-visible:ring-primary"
-                }`}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                {t.copyNote}
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateNew}
-                className="inline-flex min-w-[170px] items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                {t.createNewNote}
-              </button>
-            </div>
-            <div className="mt-4 flex flex-col items-center gap-2 text-center">
-              <p className="m-0 inline-flex max-w-lg items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-1 text-xs font-medium leading-snug text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/35 dark:text-amber-100">
-                <span aria-hidden>⚠️</span>
-                {t.noteDeletedWarning}
-              </p>
-              <p className="m-0 text-xs text-gray-500 dark:text-gray-400">
-                {t.saveNoteSecurely}
-              </p>
-            </div>
-          </div>
-        ) : null}
 
         {receiptAckRequired && noteContent ? (
           <div className="mt-6 rounded-lg border border-teal-200/80 bg-teal-50/70 px-4 py-3 text-left dark:border-teal-800/50 dark:bg-teal-950/30 sm:mt-7">
@@ -2419,7 +2292,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
       </section>
       <AttachmentProgressDialog progress={attachmentDecryptProgress} />
     </section>,
-    openedPortalSurface && !viewerOpen ? "wide" : "plain",
+    openedPortalSurface ? "wide" : "plain",
     openedBranding,
   );
 };

@@ -71,9 +71,9 @@ describe("planCatalog", () => {
     assert.equal(free.maxAttachmentTransfersPerDay, 10);
     assert.equal(starter.maxAttachmentTransfersPerDay, null);
     assert.equal(business.maxAttachmentTransfersPerDay, null);
-    assert.equal(free.maxFileAccessWindowSeconds, 15 * 60);
-    assert.equal(starter.maxFileAccessWindowSeconds, 30 * 60);
-    assert.equal(business.maxFileAccessWindowSeconds, 60 * 60);
+    assert.equal(free.maxFileAccessWindowSeconds, 60 * 60);
+    assert.equal(starter.maxFileAccessWindowSeconds, 4 * 60 * 60);
+    assert.equal(business.maxFileAccessWindowSeconds, 24 * 60 * 60);
     assert.equal(free.maxVoiceMessageSeconds, 5 * 60);
     assert.equal(starter.maxVoiceMessageSeconds, 15 * 60);
     assert.equal(business.maxVoiceMessageSeconds, 30 * 60);

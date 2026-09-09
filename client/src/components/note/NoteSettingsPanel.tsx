@@ -94,8 +94,8 @@ const LOCKED_OPTION_STYLE: React.CSSProperties = { color: "#9ca3af" };
 /** Starter plan caps (Business is above these). */
 const STARTER_MAX_EXPIRY_SECONDS = 15 * 24 * 60 * 60;
 const FREE_MAX_EXPIRY_SECONDS = 3 * 24 * 60 * 60;
-const STARTER_MAX_FILE_ACCESS_WINDOW_SECONDS = 30 * 60;
-const FREE_MAX_FILE_ACCESS_WINDOW_SECONDS = 15 * 60;
+const STARTER_MAX_FILE_ACCESS_WINDOW_SECONDS = 4 * 60 * 60;
+const FREE_MAX_FILE_ACCESS_WINDOW_SECONDS = 60 * 60;
 
 type PlanUnlockTier = "free" | "starter" | "business";
 
@@ -219,11 +219,14 @@ function translatedFileAccessWindowLabel(
   if (seconds === 15 * 60) {
     return t.fileAccessWindow15Min ?? formatNoteFileAccessWindow(seconds);
   }
-  if (seconds === 30 * 60) {
-    return t.fileAccessWindow30Min ?? formatNoteFileAccessWindow(seconds);
-  }
   if (seconds === 60 * 60) {
     return t.fileAccessWindow1Hour ?? formatNoteFileAccessWindow(seconds);
+  }
+  if (seconds === 4 * 60 * 60) {
+    return t.fileAccessWindow4Hours ?? formatNoteFileAccessWindow(seconds);
+  }
+  if (seconds === 24 * 60 * 60) {
+    return t.fileAccessWindow24Hours ?? formatNoteFileAccessWindow(seconds);
   }
   return formatNoteFileAccessWindow(seconds);
 }
@@ -723,7 +726,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 htmlFor="note-file-access-window"
                 icon={<Timer className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
                 iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
-                label={t.settingsFileDownloads ?? "File downloads"}
+                label={t.settingsFileDownloads ?? "Access after opening"}
                 info={t.settingsFileDownloadsInfo}
               />
             </div>
@@ -739,10 +742,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   if (next > maxFileAccessWindowSeconds) {
                     const requiredPlan = fileAccessPlanUnlock(next);
                     setSelectedPremiumFeature({
-                      title: t.settingsFileDownloads ?? "File downloads",
+                      title: t.settingsFileDownloads ?? "Access after opening",
                       description:
                         t.settingsFileDownloadsInfo ??
-                        "Longer download windows after open are available on Starter and Business.",
+                        "Longer viewing windows after first opening are available on Starter and Business.",
                       plan: requiredPlan === "business" ? "business" : "starter",
                     });
                     return;
@@ -768,7 +771,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               </select>
               <SettingsFieldHelper>
                 {t.settingsFileDownloadsHint ??
-                  "How long attachments stay downloadable after the note is opened."}
+                  "How long recipients can view and download attachments after first opening."}
               </SettingsFieldHelper>
             </div>
           </div>

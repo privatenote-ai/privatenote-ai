@@ -51,6 +51,7 @@ import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   clampNoteFileAccessWindowForAccount,
   isNoteFileAccessWindowSeconds,
+  normalizeNoteFileAccessWindowForPicker,
   type NoteFileAccessWindowSeconds,
 } from "@shared/noteFileAccess";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
@@ -360,12 +361,9 @@ function readCreateNoteAuthDraft(): CreateNoteAuthDraft | null {
         parsed.readCount === 1 || parsed.readCount === 2 || parsed.readCount === 3 || parsed.readCount === 5
           ? parsed.readCount
           : NOTE_READ_LIMIT_DEFAULT,
-      fileAccessWindowSeconds:
-        parsed.fileAccessWindowSeconds === 15 * 60 ||
-        parsed.fileAccessWindowSeconds === 30 * 60 ||
-        parsed.fileAccessWindowSeconds === 60 * 60
-          ? (parsed.fileAccessWindowSeconds as NoteFileAccessWindowSeconds)
-          : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
+      fileAccessWindowSeconds: isNoteFileAccessWindowSeconds(parsed.fileAccessWindowSeconds)
+        ? normalizeNoteFileAccessWindowForPicker(parsed.fileAccessWindowSeconds)
+        : NOTE_FILE_ACCESS_DEFAULT_SECONDS,
       readerLanguage:
         isReaderLanguageSetting(parsed.readerLanguage) ? parsed.readerLanguage : "auto",
       bodyFont: isRevealBodyFont(parsed.bodyFont) ? parsed.bodyFont : "system",
@@ -989,7 +987,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           setReadCount(defaults.maxReads);
         }
         if (isNoteFileAccessWindowSeconds(defaults.fileAccessWindowSeconds)) {
-          setFileAccessWindowSeconds(defaults.fileAccessWindowSeconds);
+          setFileAccessWindowSeconds(
+            clampNoteFileAccessWindowForAccount(defaults.fileAccessWindowSeconds, accountType),
+          );
         }
         if (
           defaults.readerLanguage &&

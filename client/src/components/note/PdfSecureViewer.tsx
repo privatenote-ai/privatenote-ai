@@ -20,6 +20,20 @@ function ensurePdfWorker(): void {
   workerConfigured = true;
 }
 
+function useNarrowViewport(): boolean {
+  const [narrow, setNarrow] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 639px)").matches : false,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 639px)");
+    const onChange = () => setNarrow(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+  return narrow;
+}
+
 export function PdfSecureViewer({
   blob,
   fileName,
@@ -31,11 +45,14 @@ export function PdfSecureViewer({
 }: PdfSecureViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const thumbsRef = useRef<HTMLDivElement | null>(null);
+  const continuousRef = useRef<HTMLDivElement | null>(null);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const [pageCount, setPageCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [thumbReady, setThumbReady] = useState<Record<number, string>>({});
+  const [continuousWidth, setContinuousWidth] = useState(0);
+  const isNarrow = useNarrowViewport();
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +96,7 @@ export function PdfSecureViewer({
   }, [blob]);
 
   useEffect(() => {
+    if (isNarrow) return;
     const pdf = pdfRef.current;
     const canvas = canvasRef.current;
     if (!pdf || !canvas || pageCount < 1) return;
@@ -108,7 +126,17 @@ export function PdfSecureViewer({
       cancelled = true;
       renderTaskRef.current?.cancel();
     };
-  }, [page, pageCount, scale]);
+  }, [isNarrow, page, pageCount, scale]);
+
+  useEffect(() => {
+    const root = continuousRef.current;
+    if (!root || !isNarrow) return;
+    const update = () => setContinuousWidth(Math.floor(root.clientWidth));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [isNarrow, pageCount]);
 
   const renderThumb = useCallback(
     async (pageNumber: number, target: HTMLCanvasElement) => {
@@ -132,7 +160,7 @@ export function PdfSecureViewer({
 
   useEffect(() => {
     const root = thumbsRef.current;
-    if (!root || pageCount < 1) return;
+    if (!root || pageCount < 1 || isNarrow) return;
     const canvases = Array.from(root.querySelectorAll<HTMLCanvasElement>("[data-pdf-thumb]"));
     const observer = new IntersectionObserver(
       (entries) => {
@@ -149,20 +177,75 @@ export function PdfSecureViewer({
     );
     for (const canvas of canvases) observer.observe(canvas);
     return () => observer.disconnect();
-  }, [pageCount, renderThumb]);
+  }, [isNarrow, pageCount, renderThumb]);
 
   useEffect(() => {
+    if (isNarrow) return;
     const selected = thumbsRef.current?.querySelector(`[data-pdf-thumb-wrap="${page}"]`);
     if (selected instanceof HTMLElement) {
       selected.scrollIntoView({ block: "nearest" });
     }
-  }, [page]);
+  }, [isNarrow, page]);
+
+  useEffect(() => {
+    const root = continuousRef.current;
+    if (!root || !isNarrow || pageCount < 1) return;
+    const pages = Array.from(root.querySelectorAll<HTMLElement>("[data-pdf-page]"));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        const next = Number((visible.target as HTMLElement).dataset.pdfPage);
+        if (Number.isInteger(next) && next > 0) onPageChange(next);
+      },
+      { root, threshold: [0.35, 0.55, 0.75] },
+    );
+    for (const node of pages) observer.observe(node);
+    return () => observer.disconnect();
+  }, [isNarrow, onPageChange, pageCount]);
 
   if (error) {
     return (
       <p className="px-4 py-8 text-center text-sm text-gray-600 dark:text-gray-300" role="alert">
         {error}
       </p>
+    );
+  }
+
+  if (isNarrow) {
+    return (
+      <div className={`relative min-h-0 min-w-0 flex-1 ${className ?? ""}`}>
+        <div
+          ref={continuousRef}
+          className="absolute inset-0 overflow-y-auto bg-[#ece9e2] px-3 py-3 dark:bg-gray-950"
+        >
+          {pageCount > 0
+            ? Array.from({ length: pageCount }, (_, index) => {
+                const pageNumber = index + 1;
+                return (
+                  <ContinuousPdfPage
+                    key={pageNumber}
+                    pageNumber={pageNumber}
+                    fileName={fileName}
+                    pdf={pdfRef.current}
+                    width={continuousWidth}
+                  />
+                );
+              })
+            : (
+              <div className="flex min-h-[16rem] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" aria-hidden />
+              </div>
+            )}
+        </div>
+        {pageCount > 0 ? (
+          <p className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white shadow-lg">
+            {page} / {pageCount}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
@@ -209,6 +292,64 @@ export function PdfSecureViewer({
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ContinuousPdfPage({
+  pageNumber,
+  fileName,
+  pdf,
+  width,
+}: {
+  pageNumber: number;
+  fileName: string;
+  pdf: PDFDocumentProxy | null;
+  width: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!pdf || !canvas || width < 32) return;
+    let cancelled = false;
+    const render = async () => {
+      renderTaskRef.current?.cancel();
+      const pdfPage = await pdf.getPage(pageNumber);
+      if (cancelled) return;
+      const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+      const unscaled = pdfPage.getViewport({ scale: 1 });
+      const fitScale = (width - 4) / unscaled.width;
+      const viewport = pdfPage.getViewport({ scale: fitScale * outputScale });
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      canvas.style.width = `${Math.floor(viewport.width / outputScale)}px`;
+      canvas.style.height = `${Math.floor(viewport.height / outputScale)}px`;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      const task = pdfPage.render({ canvasContext: context, viewport });
+      renderTaskRef.current = task;
+      try {
+        await task.promise;
+      } catch {
+        // Cancelled render throws; ignore.
+      }
+    };
+    void render();
+    return () => {
+      cancelled = true;
+      renderTaskRef.current?.cancel();
+    };
+  }, [pageNumber, pdf, width]);
+
+  return (
+    <div data-pdf-page={pageNumber} className="mb-3 flex justify-center last:mb-0">
+      <canvas
+        ref={canvasRef}
+        className="max-w-full bg-white shadow-[0_12px_40px_-24px_rgba(15,23,42,0.55)]"
+        aria-label={`${fileName}, page ${pageNumber}`}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  formatAttachmentTypeLabel,
   formatTextPreview,
   getAttachmentPreviewKind,
 } from "./attachmentPreviewKind.ts";
@@ -25,6 +26,15 @@ describe("getAttachmentPreviewKind", () => {
   it("does not preview archives and office files", () => {
     assert.equal(getAttachmentPreviewKind("application/zip", "bundle.zip"), null);
     assert.equal(getAttachmentPreviewKind("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "letter.docx"), null);
+  });
+});
+
+describe("formatAttachmentTypeLabel", () => {
+  it("prefers a short extension label over a mime subtype", () => {
+    assert.equal(formatAttachmentTypeLabel("image/jpeg", "photo.jpg"), "JPEG");
+    assert.equal(formatAttachmentTypeLabel("application/pdf", "contract.pdf"), "PDF");
+    assert.equal(formatAttachmentTypeLabel("application/zip", "bundle.zip"), "ZIP");
+    assert.equal(formatAttachmentTypeLabel("application/octet-stream"), "FILE");
   });
 });
 

@@ -151,6 +151,36 @@ export function getAttachmentBlobMimeType(
   return previewKind === "image" ? "image/jpeg" : "application/octet-stream";
 }
 
+const TYPE_LABEL_ALIASES: Record<string, string> = {
+  jpg: "JPEG",
+  jpeg: "JPEG",
+  tif: "TIFF",
+  tiff: "TIFF",
+  mpg: "MPEG",
+  mpeg: "MPEG",
+};
+
+export function formatAttachmentTypeLabel(
+  mimeType: string | undefined,
+  fileName?: string,
+): string {
+  const ext = getFileExtension(fileName);
+  if (ext) return TYPE_LABEL_ALIASES[ext] ?? ext.toUpperCase();
+
+  const normalizedMime = mimeType?.trim().toLowerCase();
+  if (!normalizedMime || isGenericAttachmentMimeType(normalizedMime)) return "FILE";
+  if (normalizedMime === "application/pdf" || normalizedMime === "application/x-pdf") return "PDF";
+  if (normalizedMime === "application/zip" || normalizedMime === "application/x-zip-compressed") {
+    return "ZIP";
+  }
+  const slash = normalizedMime.lastIndexOf("/");
+  if (slash >= 0 && slash < normalizedMime.length - 1) {
+    const subtype = normalizedMime.slice(slash + 1).replace(/^x-/, "");
+    if (subtype) return TYPE_LABEL_ALIASES[subtype] ?? subtype.toUpperCase();
+  }
+  return "FILE";
+}
+
 export function formatTextPreview(text: string, mimeType: string | undefined, fileName?: string): string {
   const ext = getFileExtension(fileName);
   const mime = mimeType?.trim().toLowerCase() ?? "";
