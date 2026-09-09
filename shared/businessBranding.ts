@@ -1182,20 +1182,32 @@ export function contrastingTextOn(hex: string): "#ffffff" | "#111827" {
 
 /** Wordmark + logo tile in CSS (`--primary: 240 100% 50%`). */
 export const PRIVATENOTE_MARK_COLOR = "#0000ff";
+/** Language-picker label on a light page (`text-gray-800`). */
+const CHROME_CONTROL_TEXT = "#1f2937";
+/** Language-picker outline on a light page (`border-gray-200`). */
+const CHROME_CONTROL_BORDER = "#e5e7eb";
 
 const CHROME_INK_MIN_CONTRAST = 3;
+const CHROME_BORDER_MIN_CONTRAST = 1.45;
+
+function brandingPageFillHex(branding: RevealBranding | undefined): string {
+  const page = brandingPageBackground(branding);
+  if (page.kind === "image") return "#020617";
+  if (page.kind === "color") return page.backgroundColor;
+  return "#ffffff";
+}
 
 /**
- * Colour for the PrivateNote wordmark and language control on the recipient
- * page. Keeps the brand blue when it still reads; otherwise flips to white or
- * ink so a page colour that matches the mark cannot hide the chrome.
+ * Colour for the PrivateNote wordmark. Keeps the brand blue when it still
+ * reads; otherwise flips so a page colour that matches the wordmark cannot
+ * hide it.
  */
 export function brandingChromeInk(
   branding: RevealBranding | undefined,
 ): "#ffffff" | "#111827" | typeof PRIVATENOTE_MARK_COLOR {
   const page = brandingPageBackground(branding);
   if (page.kind === "image") return "#ffffff";
-  const fill = page.kind === "color" ? page.backgroundColor : "#ffffff";
+  const fill = brandingPageFillHex(branding);
   if (contrastRatio(fill, PRIVATENOTE_MARK_COLOR) >= CHROME_INK_MIN_CONTRAST) {
     return PRIVATENOTE_MARK_COLOR;
   }
@@ -1211,6 +1223,47 @@ export function brandingLogoTileTone(
   return contrastRatio(page.backgroundColor, PRIVATENOTE_MARK_COLOR) >= CHROME_INK_MIN_CONTRAST
     ? "brand"
     : "inverse";
+}
+
+/**
+ * Language-picker colours on a branded page. Default gray text/borders match
+ * the stock Color page (`#e2e8f0`) and disappear; those get a contrasting ink.
+ */
+export function brandingChromeControl(branding: RevealBranding | undefined): {
+  color: string;
+  borderColor: string;
+  backgroundColor: string;
+} {
+  const page = brandingPageBackground(branding);
+  if (page.kind === "image") {
+    return {
+      color: "#ffffff",
+      borderColor: "rgba(255, 255, 255, 0.35)",
+      backgroundColor: "rgba(255, 255, 255, 0.12)",
+    };
+  }
+  const fill = brandingPageFillHex(branding);
+  const ink = contrastingTextOn(fill);
+  if (ink === "#ffffff") {
+    return {
+      color: "#ffffff",
+      borderColor: "rgba(255, 255, 255, 0.35)",
+      backgroundColor: "rgba(255, 255, 255, 0.10)",
+    };
+  }
+  const color =
+    contrastRatio(fill, CHROME_CONTROL_TEXT) >= CHROME_INK_MIN_CONTRAST
+      ? CHROME_CONTROL_TEXT
+      : ink;
+  const borderColor =
+    contrastRatio(fill, CHROME_CONTROL_BORDER) >= CHROME_BORDER_MIN_CONTRAST
+      ? CHROME_CONTROL_BORDER
+      : withHexAlpha(ink, "3d");
+  return {
+    color,
+    borderColor,
+    backgroundColor: "rgba(255, 255, 255, 0.88)",
+  };
 }
 
 function contrastRatio(a: string, b: string): number {

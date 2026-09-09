@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent, type React
 import { Check, ChevronDown, Languages, Lock } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
+  brandingChromeControl,
   brandingChromeInk,
   brandingChromeUsesLightText,
   brandingLogoTileTone,
@@ -211,6 +212,7 @@ export function RecipientPortal({
   };
 
   const brandedFill = page.kind === "color" || page.kind === "image";
+  const chromeControl = brandedFill ? brandingChromeControl(pageBranding) : null;
   const chromeText = brandedFill
     ? ""
     : lightChrome
@@ -296,12 +298,23 @@ export function RecipientPortal({
           <DropdownMenu>
             <DropdownMenuTrigger
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-none ${
-                lightChrome
-                  ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
-                  : brandedFill
-                    ? "border-gray-200 bg-white/80 text-gray-800 hover:bg-white"
+                chromeControl
+                  ? lightChrome
+                    ? "hover:bg-white/15"
+                    : "hover:bg-white"
+                  : lightChrome
+                    ? "border-white/25 bg-white/10 text-white hover:bg-white/15"
                     : "border-gray-200 bg-white/80 text-gray-800 hover:bg-white dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
               }`}
+              style={
+                chromeControl
+                  ? {
+                      color: chromeControl.color,
+                      borderColor: chromeControl.borderColor,
+                      backgroundColor: chromeControl.backgroundColor,
+                    }
+                  : undefined
+              }
               aria-label={`${t.language ?? "Language"}: ${languageLabel}`}
             >
               <Languages className="h-3.5 w-3.5 opacity-80" aria-hidden />
@@ -324,12 +337,21 @@ export function RecipientPortal({
         ) : (
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-none ${
-              lightChrome
-                ? "border-white/25 bg-white/10 text-white"
-                : brandedFill
-                  ? "border-gray-200 bg-white/80 text-gray-800"
+              chromeControl
+                ? ""
+                : lightChrome
+                  ? "border-white/25 bg-white/10 text-white"
                   : "border-gray-200 bg-white/80 text-gray-800 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
             }`}
+            style={
+              chromeControl
+                ? {
+                    color: chromeControl.color,
+                    borderColor: chromeControl.borderColor,
+                    backgroundColor: chromeControl.backgroundColor,
+                  }
+                : undefined
+            }
           >
             <Languages className="h-3.5 w-3.5 opacity-80" aria-hidden />
             {languageLabel}

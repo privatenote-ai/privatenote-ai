@@ -23,6 +23,7 @@ import {
   brandingPortalLayout,
   brandingShowsBanner,
   brandingUsesPortalSurface,
+  brandingChromeControl,
   brandingChromeInk,
   brandingChromeUsesLightText,
   brandingLogoTileTone,
@@ -520,6 +521,23 @@ describe("brandingChromeInk", () => {
     const branding = { backgroundColor: "#2563eb", backgroundStyle: "neutral" } as const;
     assert.equal(brandingChromeInk(branding), "#ffffff");
     assert.equal(brandingLogoTileTone(branding), "inverse");
+  });
+
+  it("darkens language-picker text and border when they match the page colour", () => {
+    const slate = brandingChromeControl({
+      backgroundColor: "#e2e8f0",
+      backgroundStyle: "neutral",
+    });
+    assert.equal(slate.color, "#1f2937");
+    assert.notEqual(slate.borderColor, "#e5e7eb");
+    assert.match(slate.borderColor, /^#111827/i);
+
+    const onInk = brandingChromeControl({
+      backgroundColor: "#1f2937",
+      backgroundStyle: "neutral",
+    });
+    assert.equal(onInk.color, "#ffffff");
+    assert.match(onInk.borderColor, /255,\s*255,\s*255|#ffffff/i);
   });
 });
 
