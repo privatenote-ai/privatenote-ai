@@ -231,7 +231,7 @@ export default function AuthMagic() {
           return;
         }
         setFriendlyMessage(
-          tx("authMagicLowRiskDesc", "You opened the sign-in link from your email. Press Log in below to finish in this browser."),
+          tx("authMagicLowRiskDesc", "You opened the sign-in link from your email. Press Sign in below to finish in this browser."),
         );
         setPhase("confirm");
       } catch (err) {
@@ -329,7 +329,7 @@ export default function AuthMagic() {
               )}
               <Button type="button" size="lg" className="min-w-[200px]" onClick={() => void runConsume()}>
                 {oneTapAllowed && !emailCodeRequired
-                  ? tx("authMagicLoginButton", "Log in")
+                  ? tx("authMagicLoginButton", "Sign in")
                   : tx("authMagicContinueButton", "Continue sign in")}
               </Button>
               {oneTapAllowed && !emailCodeRequired ? (

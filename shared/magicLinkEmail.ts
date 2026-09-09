@@ -1,4 +1,5 @@
 import { escapeHtml } from "./escapeHtml.ts";
+import { PAGES_APEX_HOST, PAGES_PROJECT_LABEL } from "./pagesAppHosts.ts";
 
 export type AuthEmailLocale = "en" | "de" | "fr" | "es" | "nl";
 export type MagicLinkEmailPurpose = "default" | "file_attach";
@@ -50,7 +51,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       codeExpiry: "This code expires after 10 minutes or if you request a new code.",
       linkAlternativeHeading: "Or sign in with one tap",
       linkAlternativeBody: "Finish signing in to {host} below.",
-      cta: "Log in",
+      cta: "Sign in",
       ignore: "If you did not request this email, you can safely ignore it.",
       footer: "End-to-end encrypted private notes — only you and your recipients can read them.",
     },
@@ -107,7 +108,7 @@ const COPY: Record<MagicLinkEmailPurpose, Record<AuthEmailLocale, MagicLinkCopy>
       codeExpiry: "This code expires after 10 minutes or if you request a new code.",
       linkAlternativeHeading: "Or sign in with one tap",
       linkAlternativeBody: "Return to attach encrypted files on {host} below.",
-      cta: "Log in",
+      cta: "Sign in",
       ignore: "If you did not request this email, you can safely ignore it.",
       footer: "End-to-end encrypted notes and file sharing.",
     },
@@ -162,12 +163,41 @@ function substituteHost(template: string, hostLabel: string): string {
   return template.replace(/\{host\}/g, hostLabel);
 }
 
+const CANONICAL_SITE_HOST = "privatenote.ai";
+const STAGING_SITE_HOST = "premium.privatenote.ai";
+const CANONICAL_SITE_ORIGIN = `https://${CANONICAL_SITE_HOST}`;
+
 /** Same origin as the magic link so logo assets resolve on prod, premium, and preview hosts. */
 export function resolveMagicLinkEmailWebOrigin(magicUrl: string): string {
   try {
     return new URL(magicUrl).origin;
   } catch {
-    return "https://privatenote.ai";
+    return CANONICAL_SITE_ORIGIN;
+  }
+}
+
+/**
+ * Host shown in sign-in email copy. Maps Pages preview hosts to the first-party
+ * app host so the body does not look like a phishing pages.dev mail.
+ * The magic-link href itself is left unchanged.
+ */
+export function magicLinkEmailDisplayHost(magicUrl: string, fallback = CANONICAL_SITE_HOST): string {
+  try {
+    const host = new URL(magicUrl).hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") return host;
+    if (host === CANONICAL_SITE_HOST || host === `www.${CANONICAL_SITE_HOST}` || host === `app.${CANONICAL_SITE_HOST}`) {
+      return CANONICAL_SITE_HOST;
+    }
+    if (host === STAGING_SITE_HOST || host === `premium.${PAGES_PROJECT_LABEL}.pages.dev`) {
+      return STAGING_SITE_HOST;
+    }
+    if (host === PAGES_APEX_HOST || host.endsWith(`.${PAGES_PROJECT_LABEL}.pages.dev`)) {
+      return CANONICAL_SITE_HOST;
+    }
+    if (host.endsWith(`.${CANONICAL_SITE_HOST}`)) return host;
+    return fallback;
+  } catch {
+    return fallback;
   }
 }
 
@@ -240,9 +270,7 @@ function buildMagicLinkHtml(copy: MagicLinkCopy, magicUrl: string, signInCode: s
     '        <p style="margin:0 0 4px;font-size:13px;line-height:1.35;font-weight:600;color:#8a8f98;">Copyright &copy; PrivateNote.ai</p>',
     `        <p style="margin:0 0 16px;font-size:12px;line-height:1.35;color:#8a8f98;">${safeFooter}</p>`,
     '        <p style="margin:0;font-size:13px;line-height:1.35;color:#8a8f98;">',
-    '          <a href="https://www.privatenote.ai" style="color:#8a8f98;text-decoration:none;">www.privatenote.ai</a>',
-    '          <span style="padding:0 10px;color:#8a8f98;">|</span>',
-    '          <a href="https://www.linkedin.com/company/privatenote" style="color:#8a8f98;text-decoration:none;">LinkedIn</a>',
+    `          <a href="${CANONICAL_SITE_ORIGIN}" style="color:#8a8f98;text-decoration:none;">${CANONICAL_SITE_HOST}</a>`,
     '        </p>',
     '      </td>',
     '    </tr>',
@@ -273,8 +301,7 @@ function buildMagicLinkText(copy: MagicLinkCopy, magicUrl: string, signInCode: s
     "—",
     "PrivateNote.ai",
     copy.footer,
-    "www.privatenote.ai",
-    "LinkedIn: https://www.linkedin.com/company/privatenote",
+    CANONICAL_SITE_HOST,
   ].join("\n");
 }
 
@@ -419,12 +446,7 @@ export function buildMagicLinkEmailContent(options: {
   const locale = options.locale ?? "en";
   const purpose = options.purpose ?? "default";
   const copy = COPY[purpose][locale];
-  let hostLabel = options.hostLabel?.trim() || "PrivateNote";
-  try {
-    hostLabel = new URL(options.magicUrl).host || hostLabel;
-  } catch {
-    /* keep hostLabel */
-  }
+  const hostLabel = options.hostLabel?.trim() || magicLinkEmailDisplayHost(options.magicUrl);
 
   return {
     subject: copy.subject,

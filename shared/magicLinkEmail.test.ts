@@ -4,6 +4,7 @@ import {
   buildMagicLinkEmailContent,
   buildRecipientVerificationEmailContent,
   detectAuthEmailLocale,
+  magicLinkEmailDisplayHost,
   normalizeMagicLinkEmailPurpose,
 } from "./magicLinkEmail.ts";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "./sanitizeAuthReturnTo.ts";
@@ -23,14 +24,22 @@ describe("magicLinkEmail", () => {
     assert.match(html, /Your PrivateNote sign-in code/);
     assert.match(html, />238242</);
     assert.match(html, /Or sign in with one tap/);
-    assert.match(html, /Finish signing in to premium\.privatenote-ai\.pages\.dev below/);
+    assert.match(html, /Finish signing in to premium\.privatenote\.ai below/);
     assert.match(html, /brand\/privateNote-logo-mark\.png/);
     assert.match(html, />privateNote</);
-    assert.match(html, />Log in</);
+    assert.match(html, />Sign in</);
     assert.match(html, /10 minutes or if you request a new code/);
+    assert.match(html, /href="https:\/\/privatenote\.ai"/);
+    assert.match(html, />privatenote\.ai</);
+    assert.doesNotMatch(html, /www\.privatenote\.ai/);
+    assert.doesNotMatch(html, /linkedin/i);
+    assert.match(html, /premium\.privatenote-ai\.pages\.dev\/magic\?t=abc/);
     assert.match(text, /238242/);
     assert.match(text, /Or sign in with one tap/);
-    assert.match(text, /premium\.privatenote-ai\.pages\.dev/);
+    assert.match(text, /premium\.privatenote\.ai/);
+    assert.match(text, /^privatenote\.ai$/m);
+    assert.doesNotMatch(text, /LinkedIn/);
+    assert.doesNotMatch(text, /www\.privatenote\.ai/);
   });
 
   it("uses file-attach copy with the same code layout", () => {
@@ -95,6 +104,18 @@ describe("magicLinkEmail", () => {
   it("normalizes email purpose", () => {
     assert.equal(normalizeMagicLinkEmailPurpose("file_attach"), "file_attach");
     assert.equal(normalizeMagicLinkEmailPurpose("other"), "default");
+  });
+
+  it("maps pages.dev and www hosts to first-party display hosts", () => {
+    assert.equal(
+      magicLinkEmailDisplayHost("https://premium.privatenote-ai.pages.dev/magic?t=abc"),
+      "premium.privatenote.ai",
+    );
+    assert.equal(magicLinkEmailDisplayHost("https://privatenote-ai.pages.dev/magic?t=abc"), "privatenote.ai");
+    assert.equal(magicLinkEmailDisplayHost("https://abc123.privatenote-ai.pages.dev/magic?t=abc"), "privatenote.ai");
+    assert.equal(magicLinkEmailDisplayHost("https://www.privatenote.ai/magic?t=abc"), "privatenote.ai");
+    assert.equal(magicLinkEmailDisplayHost("https://privatenote.ai/magic?t=abc"), "privatenote.ai");
+    assert.equal(magicLinkEmailDisplayHost("https://premium.privatenote.ai/magic?t=abc"), "premium.privatenote.ai");
   });
 });
 

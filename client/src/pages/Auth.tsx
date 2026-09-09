@@ -172,7 +172,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
         title: tx("authCheckEmailTitle", "Check your email"),
         description: tx(
           "authEmailCodeUnavailableDesc",
-          "Use the Log in button in the email to finish without typing the code.",
+          "Use the Sign in button in the email to finish without typing the code.",
         ),
       });
       return;
@@ -600,7 +600,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                       <label htmlFor="auth-sign-in-code" className="block text-center text-sm font-medium text-gray-700 dark:text-gray-300">
                         {tx(
                           "authCheckEmailCodeHint",
-                          "Enter the 6-digit code from the email below. Prefer not to type it? Use the Log in button in the email.",
+                          "Enter the 6-digit code from the email below. Prefer not to type it? Use the Sign in button in the email.",
                         )}
                       </label>
                       <Input
@@ -637,7 +637,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     <p className="text-sm text-gray-600 dark:text-gray-300">
                       {tx(
                         "authEmailCodeUnavailableInline",
-                        "Use the Log in button in the email to finish. Direct code entry is unavailable for this request.",
+                        "Use the Sign in button in the email to finish. Direct code entry is unavailable for this request.",
                       )}
                     </p>
                   </div>
