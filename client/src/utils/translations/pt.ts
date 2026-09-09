@@ -1924,9 +1924,9 @@ export const pt: Translations = {
   blogRecipientVerificationCodeSubtitle: "Tornar o link incompleto sem um código fora de banda",
   blogRecipientVerificationCodeExcerpt:
     "Um URL de nota privada pode bastar para desencriptar. A verificação do destinatário adiciona um código de seis dígitos específico da nota que partilha em separado—assim um link intercetado não chega sozinho à revelação.",
-  blogRecipientVerificationCodeMetaTitle: "Códigos de verificação do destinatário antes de revelar",
+  blogRecipientVerificationCodeMetaTitle: "Código de verificação antes de revelar",
   blogRecipientVerificationCodeMetaDescription:
-    "Exija um código de verificação específico da nota antes de uma PrivateNote poder ser revelada. Separe o link e o código por canais distintos para entregas mais seguras.",
+    "Exija um código de verificação antes de revelar uma PrivateNote. Separe o link e o código por canais distintos.",
   blogClickToRevealPrivateNotesTitle: "Porque a PrivateNote faz clicar antes de revelar um segredo",
   blogClickToRevealPrivateNotesSubtitle: "Uma pausa deliberada antes da desencriptação no browser",
   blogClickToRevealPrivateNotesExcerpt:
@@ -1940,12 +1940,12 @@ export const pt: Translations = {
     "Deixe de adivinhar se uma entrega chegou. Use alertas por e-mail, em direto no separador e do browser para aberto, destruído e eventos relacionados—nunca o conteúdo da mensagem.",
   blogKnowWhenSecretLinkOpenedMetaTitle: "Saber quando um link secreto foi aberto",
   blogKnowWhenSecretLinkOpenedMetaDescription:
-    "Receba alertas PrivateNote de abertura e destruição por e-mail ou toast em direto—apenas o estado, nunca o conteúdo da nota—para poder rodar credenciais ou fazer follow-up.",
+    "Alertas PrivateNote de abertura e destruição por e-mail ou toast—só o estado, nunca o conteúdo—para rodar credenciais ou fazer follow-up.",
   blogRevokeUnopenedNoteProofOfAccessTitle: "Como revogar uma nota privada antes de ser aberta",
   blogRevokeUnopenedNoteProofOfAccessSubtitle: "Pare o link antes da revelação e mantenha um registo de acesso que respeita a privacidade",
   blogRevokeUnopenedNoteProofOfAccessExcerpt:
     "Enviou uma nota privada por engano? Revogue-a antes de ser aberta e use a prova de acesso para rever eventos-chave de entrega sem expor o conteúdo.",
-  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Como revogar uma nota privada antes de a abrir",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revogar uma nota privada antes de a abrir",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revogue links PrivateNote por abrir e consulte cronologias de prova de acesso dos eventos de entrega—sem pôr segredos no e-mail.",
   blogSecureClientDeliveryForLawyersTitle:

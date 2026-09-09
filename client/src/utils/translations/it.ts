@@ -1917,28 +1917,28 @@ export const it: Translations = {
   blogRecipientVerificationCodeSubtitle: "Rendere il link incompleto senza un codice fuori banda",
   blogRecipientVerificationCodeExcerpt:
     "Un URL di nota privata può bastare per decifrare. La verifica del destinatario aggiunge un codice a sei cifre specifico della nota da condividere separatamente—così un link intercettato non raggiunge da solo la rivelazione.",
-  blogRecipientVerificationCodeMetaTitle: "Codici di verifica del destinatario prima della rivelazione",
+  blogRecipientVerificationCodeMetaTitle: "Codice di verifica prima della rivelazione",
   blogRecipientVerificationCodeMetaDescription:
-    "Richiedi un codice di verifica specifico della nota prima che una PrivateNote possa essere rivelata. Separa link e codice su canali diversi per consegne più sicure.",
+    "Richiedi un codice di verifica prima di rivelare una PrivateNote. Separa link e codice su canali diversi.",
   blogClickToRevealPrivateNotesTitle: "Perché PrivateNote richiede un clic prima di rivelare un segreto",
   blogClickToRevealPrivateNotesSubtitle: "Una pausa deliberata prima della decrittazione nel browser",
   blogClickToRevealPrivateNotesExcerpt:
     "Caricare un link non deve rivelare il suo segreto. PrivateNote attende una conferma esplicita prima che inizi la decrittazione nel browser.",
   blogClickToRevealPrivateNotesMetaTitle: "Clic per rivelare le note private",
   blogClickToRevealPrivateNotesMetaDescription:
-    "Scopri perché PrivateNote richiede un clic esplicito di rivelazione prima della decrittazione nel browser, e come quella pausa aiuta a prevenire aperture accidentali.",
+    "Perché PrivateNote richiede un clic di rivelazione prima della decrittazione nel browser, e come evita aperture accidentali.",
   blogKnowWhenSecretLinkOpenedTitle: "Come sapere quando è stato aperto un link segreto",
   blogKnowWhenSecretLinkOpenedSubtitle: "Avvisi di stato senza inviare il segreto via email",
   blogKnowWhenSecretLinkOpenedExcerpt:
     "Smetti di indovinare se una consegna è arrivata. Usa avvisi email, live nella scheda e del browser per aperto, distrutto ed eventi correlati—mai il contenuto del messaggio.",
-  blogKnowWhenSecretLinkOpenedMetaTitle: "Sapere quando è stato aperto un link segreto",
+  blogKnowWhenSecretLinkOpenedMetaTitle: "Quando è stato aperto un link segreto",
   blogKnowWhenSecretLinkOpenedMetaDescription:
-    "Ricevi avvisi PrivateNote di apertura e distruzione via email o toast live—solo lo stato, mai il contenuto della nota—così puoi ruotare le credenziali o fare follow-up.",
+    "Avvisi PrivateNote di apertura e distruzione via email o toast—solo lo stato, mai il contenuto—per ruotare o fare follow-up.",
   blogRevokeUnopenedNoteProofOfAccessTitle: "Come revocare una nota privata prima che venga aperta",
   blogRevokeUnopenedNoteProofOfAccessSubtitle: "Ferma il link prima della rivelazione e conserva una prova di accesso rispettosa della privacy",
   blogRevokeUnopenedNoteProofOfAccessExcerpt:
     "Hai inviato una nota privata per errore? Revocala prima che venga aperta, poi usa la prova di accesso per rivedere gli eventi chiave di consegna senza esporre il contenuto.",
-  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Come revocare una nota privata prima dell’apertura",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revoca nota privata prima dell’apertura",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoca i link PrivateNote non aperti e consulta le timeline di prova di accesso per gli eventi di consegna—senza mettere segreti nelle email.",
   blogSecureClientDeliveryForLawyersTitle:

@@ -1583,23 +1583,23 @@ export const de: Translations = {
   blogRecipientVerificationCodeSubtitle: "Den Link ohne Out-of-Band-Code unvollständig machen",
   blogRecipientVerificationCodeExcerpt:
     "Eine Private-Note-URL kann zum Entschlüsseln ausreichen. Empfänger-Verifizierung fügt einen notizspezifischen sechsstelligen Code hinzu, den Sie separat teilen—damit ein abgefangener Link allein die Anzeige nicht erreicht.",
-  blogRecipientVerificationCodeMetaTitle: "Empfänger-Verifizierungscodes vor dem Anzeigen",
+  blogRecipientVerificationCodeMetaTitle: "Verifizierungscode vor dem Anzeigen",
   blogRecipientVerificationCodeMetaDescription:
-    "Verlangen Sie einen notizspezifischen Verifizierungscode, bevor eine PrivateNote angezeigt werden kann. Teilen Sie Link und Code über getrennte Kanäle für sicherere Übergaben.",
+    "Verlangen Sie einen Verifizierungscode, bevor eine PrivateNote angezeigt wird. Teilen Sie Link und Code über getrennte Kanäle.",
   blogClickToRevealPrivateNotesTitle: "Warum PrivateNote vor dem Anzeigen eines Geheimnisses einen Klick verlangt",
   blogClickToRevealPrivateNotesSubtitle: "Eine bewusste Pause vor der browserseitigen Entschlüsselung",
   blogClickToRevealPrivateNotesExcerpt:
     "Das Laden eines Links muss das Geheimnis nicht sofort preisgeben. PrivateNote wartet auf eine ausdrückliche Bestätigung, bevor die browserseitige Entschlüsselung beginnt.",
   blogClickToRevealPrivateNotesMetaTitle: "Klick-zum-Anzeigen für private Notizen",
   blogClickToRevealPrivateNotesMetaDescription:
-    "Erfahren Sie, warum PrivateNote vor der browserseitigen Entschlüsselung einen ausdrücklichen Anzeige-Klick verlangt und wie diese Pause versehentliches Öffnen verhindert.",
+    "Warum PrivateNote vor der Entschlüsselung im Browser einen Anzeige-Klick verlangt und wie das versehentliches Öffnen verhindert.",
   blogKnowWhenSecretLinkOpenedTitle: "So erfahren Sie, wann ein Geheim-Link geöffnet wurde",
   blogKnowWhenSecretLinkOpenedSubtitle: "Status-Benachrichtigungen, ohne das Geheimnis per E-Mail zu senden",
   blogKnowWhenSecretLinkOpenedExcerpt:
     "Raten Sie nicht länger, ob eine Übergabe angekommen ist. Nutzen Sie E-Mail-, Live-Tab- und Browser-Benachrichtigungen für geöffnet, zerstört und verwandte Ereignisse—nie die Nachrichteninhalte.",
   blogKnowWhenSecretLinkOpenedMetaTitle: "Wissen, wann ein Geheim-Link geöffnet wurde",
   blogKnowWhenSecretLinkOpenedMetaDescription:
-    "Erhalten Sie PrivateNote-Öffnungs- und Zerstörungsbenachrichtigungen per E-Mail oder Live-Toast—nur Status, nie die Notizinhalte—damit Sie rotieren oder nachfassen können.",
+    "PrivateNote-Öffnungs- und Zerstörungsalarme per E-Mail oder Toast—nur Status, nie Notizinhalte—zum Rotieren oder Nachfassen.",
   blogRevokeUnopenedNoteProofOfAccessTitle: "So widerrufen Sie eine private Notiz, bevor sie geöffnet wird",
   blogRevokeUnopenedNoteProofOfAccessSubtitle: "Den Link vor dem Anzeigen stoppen und einen datenschutzsicheren Zugriffsbeleg behalten",
   blogRevokeUnopenedNoteProofOfAccessExcerpt:

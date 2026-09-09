@@ -1533,7 +1533,7 @@ export const nl: Translations = {
   blogRecipientVerificationCodeSubtitle: "Maak de link incompleet zonder een out-of-band-code",
   blogRecipientVerificationCodeExcerpt:
     "Een privénotitie-URL kan genoeg zijn om te ontsleutelen. Ontvangersverificatie voegt een notitie-specifieke zescijferige code toe die je apart deelt—zodat een onderschepte link alleen de openstap niet bereikt.",
-  blogRecipientVerificationCodeMetaTitle: "Verificatiecodes voor ontvangers vóór openen",
+  blogRecipientVerificationCodeMetaTitle: "Verificatiecode ontvanger vóór openen",
   blogRecipientVerificationCodeMetaDescription:
     "Vereis een notitie-specifieke verificatiecode voordat een PrivateNote kan worden geopend. Splits link en code over aparte kanalen voor veiligere overdrachten.",
   blogClickToRevealPrivateNotesTitle: "Waarom PrivateNote je laat klikken vóór het openen van een secret",

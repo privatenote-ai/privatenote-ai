@@ -1924,7 +1924,7 @@ export const sr: Translations = {
   blogRecipientVerificationCodeSubtitle: "Učinite link nepotpunim bez out-of-band koda",
   blogRecipientVerificationCodeExcerpt:
     "URL privatne beleške može biti dovoljan za dešifrovanje. Verifikacija primaoca dodaje šestocifreni kod specifičan za belešku koji delite odvojeno—tako presretnuti link sam ne može da stigne do otkrivanja.",
-  blogRecipientVerificationCodeMetaTitle: "Verifikacioni kodovi za primaoca pre otkrivanja",
+  blogRecipientVerificationCodeMetaTitle: "Kod za primaoca pre otkrivanja",
   blogRecipientVerificationCodeMetaDescription:
     "Zahtevajte verifikacioni kod specifičan za belešku pre nego što se PrivateNote može otkriti. Podelite link i kod preko različitih kanala za bezbednije predaje.",
   blogClickToRevealPrivateNotesTitle: "Zašto PrivateNote traži klik pre otkrivanja tajne",
@@ -1945,7 +1945,7 @@ export const sr: Translations = {
   blogRevokeUnopenedNoteProofOfAccessSubtitle: "Zaustavite link pre otkrivanja i sačuvajte zapis o pristupu koji štiti privatnost",
   blogRevokeUnopenedNoteProofOfAccessExcerpt:
     "Poslali ste privatnu belešku greškom? Opozovite je pre otvaranja, zatim koristite dokaz pristupa da pregledate ključne događaje isporuke bez izlaganja sadržaja.",
-  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Kako da opozovete privatnu belešku pre otvaranja",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Opozovite privatnu belešku pre otvaranja",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Opozovite neotvorene PrivateNote linkove i pregledajte vremenske linije dokaza pristupa za događaje isporuke—bez stavljanja tajni u e-poštu.",
   blogSecureClientDeliveryForLawyersTitle:

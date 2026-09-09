@@ -1949,7 +1949,7 @@ export const en: Translations = {
   blogRevokeUnopenedNoteProofOfAccessSubtitle: "Stop the Link Before Reveal and Keep a Privacy-Safe Access Record",
   blogRevokeUnopenedNoteProofOfAccessExcerpt:
     "Sent a private note by mistake? Revoke it before it is opened, then use proof of access to review key delivery events without exposing its contents.",
-  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "How to revoke a private note before it is opened",
+  blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revoke a private note before it is opened",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoke unopened PrivateNote links and view proof-of-access timelines for delivery events—without putting secrets into email.",
   blogDelayedRevealTitle: "Delayed Reveal for One-Time Secret Links",
