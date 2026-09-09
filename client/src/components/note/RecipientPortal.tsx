@@ -295,7 +295,7 @@ export function RecipientPortal({
         </a>
 
         {languageControl ? (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-none ${
                 chromeControl
