@@ -134,6 +134,7 @@ export function VoiceMessageRecorderDialog({
   };
 
   const attachLiveVideo = (stream: MediaStream) => {
+    setLiveStream(stream);
     const video = videoRef.current;
     if (!video) return;
     video.srcObject = stream;
@@ -327,6 +328,7 @@ export function VoiceMessageRecorderDialog({
     previewGenerationRef.current += 1;
     stopMediaStream(streamRef.current);
     streamRef.current = null;
+    setLiveStream(null);
     if (videoRef.current) videoRef.current.srcObject = null;
     recordModeRef.current = nextMode;
     recordedModeRef.current = nextMode;
@@ -422,6 +424,7 @@ export function VoiceMessageRecorderDialog({
       clearTimer();
       stopMediaStream(streamRef.current);
       streamRef.current = null;
+      setLiveStream(null);
       if (videoRef.current) videoRef.current.srcObject = null;
       mediaRecorderRef.current = null;
       const type = recorder.mimeType || strategy.mimeType || "video/webm";
@@ -718,10 +721,6 @@ export function VoiceMessageRecorderDialog({
             </div>
           ) : null}
 
-          {recordMode === "audio" && phase === "recording" ? (
-            <LiveAmplitudeMeter stream={liveStream} active className="w-full" />
-          ) : null}
-
           {phase === "preview" && previewUrl ? (
             previewIsVideo ? (
               <div className="relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full shrink-0 aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-full sm:max-h-full sm:min-h-0 sm:flex-1">
@@ -753,7 +752,15 @@ export function VoiceMessageRecorderDialog({
                 className="w-full"
               />
             )
-          ) : null}
+          ) : (
+            <div className="flex min-h-[3.75rem] w-full shrink-0 items-center">
+              <LiveAmplitudeMeter
+                stream={liveStream}
+                active={phase === "recording"}
+                className="w-full"
+              />
+            </div>
+          )}
 
           {errorMessage ? (
             <p className="text-center text-sm text-red-600 dark:text-red-400" role="alert">

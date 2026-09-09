@@ -407,12 +407,15 @@ export function LiveAmplitudeMeter({
       ref={containerRef}
       id={meterId}
       className={cn(
-        "flex h-12 w-full items-center rounded-xl bg-red-500/[0.06] px-2 dark:bg-red-500/10",
+        "flex h-[3.75rem] w-full items-center rounded-xl px-2",
+        active
+          ? "bg-red-500/[0.06] dark:bg-red-500/10"
+          : "bg-gray-100/90 dark:bg-gray-800/70",
         className,
       )}
       aria-hidden
     >
-      <AmplitudeBars peaks={peaks} progress={1} playingTone />
+      <AmplitudeBars peaks={peaks} progress={active ? 1 : 0} playingTone={active} />
     </div>
   );
 }
