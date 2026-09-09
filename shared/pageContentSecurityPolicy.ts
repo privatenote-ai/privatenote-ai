@@ -40,12 +40,12 @@ const PAGE_CSP_BASE_DIRECTIVES = [
   `connect-src ${PAGE_CSP_CONNECT_SRC}`,
   "img-src 'self' data: https: blob:",
   "media-src 'self' blob:",
-  "frame-src https://challenges.cloudflare.com blob: data:",
+  "frame-src 'self' https://challenges.cloudflare.com blob: data:",
   "worker-src 'self' blob:",
   "base-uri 'none'",
   "form-action 'self'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self'",
 ] as const;
 
 /** Cryptographically random nonce suitable for CSP `script-src 'nonce-…'`. */

@@ -189,7 +189,7 @@ export default defineConfig({
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "credentialless",
       "Content-Security-Policy": devContentSecurityPolicy,
-      "X-Frame-Options": "DENY",
+      "X-Frame-Options": "SAMEORIGIN",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
     },

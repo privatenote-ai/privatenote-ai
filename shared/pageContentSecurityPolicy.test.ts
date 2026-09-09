@@ -30,6 +30,13 @@ describe("page content security policy", () => {
     assert.match(csp, /frame-src[^;]*data:/);
   });
 
+  it("allows same-origin page iframes for admin heatmap previews", () => {
+    const csp = buildPageContentSecurityPolicy("abc123");
+    assert.match(csp, /frame-src 'self'/);
+    assert.match(csp, /frame-ancestors 'self'/);
+    assert.doesNotMatch(csp, /frame-ancestors 'none'/);
+  });
+
   it("allows direct uploads to both production and staging API Workers", () => {
     const csp = buildPageContentSecurityPolicy("abc123");
     assert.match(csp, /https:\/\/privatenote-api\.marjan-skrobot\.workers\.dev/);

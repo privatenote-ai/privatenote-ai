@@ -1,20 +1,30 @@
 import {
   canonicalizeAnalyticsPath,
   documentPointToCell,
+  HEATMAP_VERSION,
   MAX_ENGAGEMENT_CELLS_PER_FLUSH,
   pageAllowsHeatmap,
+  type AnalyticsPageId,
   type HeatmapCellTriple,
-  type PageEngagementKey,
 } from "@shared/pageEngagement";
 import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
 
 const FLUSH_MS = 15_000;
-const DWELL_MS = 4_000;
+const DWELL_MS = 2_500;
 
 type CellMap = Map<string, number>;
 
 function isPrerender(): boolean {
   return Boolean((window as Window & { __PRERENDER__?: boolean }).__PRERENDER__);
+}
+
+function isEmbeddedPreview(): boolean {
+  try {
+    if (window.self !== window.top) return true;
+  } catch {
+    return true;
+  }
+  return new URLSearchParams(window.location.search).get("pnHeatmapPreview") === "1";
 }
 
 function analyticsUrl(): string {
@@ -54,6 +64,15 @@ function currentScrollMaxPct(): number {
   return Math.min(100, Math.max(0, Math.round((window.scrollY / max) * 100)));
 }
 
+function pageSize(): { width: number; height: number } {
+  const el = document.documentElement;
+  const body = document.body;
+  return {
+    width: Math.max(el.scrollWidth, body?.scrollWidth || 0, window.innerWidth),
+    height: Math.max(el.scrollHeight, body?.scrollHeight || 0, window.innerHeight),
+  };
+}
+
 function postEngagement(payload: Record<string, unknown>, keepalive: boolean): void {
   const json = JSON.stringify(payload);
   const url = analyticsUrl();
@@ -76,7 +95,7 @@ function postEngagement(payload: Record<string, unknown>, keepalive: boolean): v
 }
 
 class NativePageAnalyticsCollector {
-  private page: PageEngagementKey | null = null;
+  private page: AnalyticsPageId | null = null;
   private path = "/";
   private visitsPending = 0;
   private visibleStartedAt = 0;
@@ -90,7 +109,7 @@ class NativePageAnalyticsCollector {
   private started = false;
 
   start(): void {
-    if (this.started || isPrerender()) return;
+    if (this.started || isPrerender() || isEmbeddedPreview()) return;
     this.started = true;
     window.addEventListener("click", this.onClick, { capture: true, passive: true });
     window.addEventListener("mousemove", this.onMouseMove, { passive: true });
@@ -157,12 +176,8 @@ class NativePageAnalyticsCollector {
 
   private onClick = (event: MouseEvent): void => {
     if (!this.page || !pageAllowsHeatmap(this.page)) return;
-    const cell = documentPointToCell(
-      event.pageX,
-      event.pageY,
-      document.documentElement.scrollWidth,
-      document.documentElement.scrollHeight,
-    );
+    const size = pageSize();
+    const cell = documentPointToCell(event.pageX, event.pageY, size.width, size.height);
     if (cell) bump(this.clicks, cell.row, cell.col);
   };
 
@@ -198,8 +213,7 @@ class NativePageAnalyticsCollector {
   private sampleDwell(): void {
     if (!this.page || !pageAllowsHeatmap(this.page)) return;
     if (document.visibilityState !== "visible") return;
-    const width = document.documentElement.scrollWidth;
-    const height = document.documentElement.scrollHeight;
+    const size = pageSize();
     let x: number;
     let y: number;
     if (this.lastMouse) {
@@ -209,7 +223,7 @@ class NativePageAnalyticsCollector {
       x = window.scrollX + window.innerWidth / 2;
       y = window.scrollY + window.innerHeight / 2;
     }
-    const cell = documentPointToCell(x, y, width, height);
+    const cell = documentPointToCell(x, y, size.width, size.height);
     if (cell) bump(this.dwell, cell.row, cell.col);
   }
 
@@ -237,6 +251,7 @@ class NativePageAnalyticsCollector {
       {
         kind: "engagement",
         path: this.path,
+        hv: HEATMAP_VERSION,
         visits,
         visibleMs,
         scrollRecorded,
@@ -254,7 +269,7 @@ class NativePageAnalyticsCollector {
 let collector: NativePageAnalyticsCollector | null = null;
 
 export function startNativePageAnalytics(): () => void {
-  if (typeof window === "undefined" || isPrerender()) return () => {};
+  if (typeof window === "undefined" || isPrerender() || isEmbeddedPreview()) return () => {};
   if (!collector) collector = new NativePageAnalyticsCollector();
   collector.start();
   return () => collector?.stop();

@@ -6,8 +6,9 @@ import {
 } from "@/utils/nativePageAnalytics";
 
 /**
- * First-party page engagement tracker (visits, visible time, coarse heatmaps).
- * Mounted once in the app shell; skipped on admin/internal routes by the shared allow-list.
+ * First-party page engagement tracker (visits, visible time, heatmaps).
+ * Mounted once in the app shell; skipped on admin/internal routes, iframes,
+ * and heatmap previews.
  */
 export function NativePageAnalytics() {
   const [location] = useLocation();
