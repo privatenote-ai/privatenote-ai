@@ -14,6 +14,14 @@ import {
   type AccountType,
   type PlanFeatureFlags,
 } from "@shared/planCatalog";
+import {
+  DEFAULT_BRANDING_PORTAL_LAYOUT,
+  brandingPortalLayout,
+  openedSettingsFromAccountColumns,
+  DEFAULT_OPENED_NOTE_BRANDING,
+  type BrandingPortalLayout,
+  type OpenedNoteBrandingSettings,
+} from "@shared/businessBranding";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/context/AuthContext";
 import { ACCOUNT_ENTITLEMENTS_INVALIDATED_EVENT } from "@/utils/accountEntitlementEvents";
@@ -37,7 +45,9 @@ export type AccountEntitlementSnapshot = {
   businessSenderRole: string | null;
   businessTrustMessage: string | null;
   businessBannerUrl: string | null;
-  businessBackgroundStyle: "neutral" | "gradient" | "banner";
+  businessBackgroundStyle: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
+  businessPortalLayout: BrandingPortalLayout;
+  businessOpenedBranding: OpenedNoteBrandingSettings;
   hostedAiUsage: {
     used: number;
     limit: number;
@@ -67,6 +77,8 @@ const FREE_SNAPSHOT: AccountEntitlementSnapshot = {
   businessTrustMessage: null,
   businessBannerUrl: null,
   businessBackgroundStyle: "neutral",
+  businessPortalLayout: { ...DEFAULT_BRANDING_PORTAL_LAYOUT },
+  businessOpenedBranding: { ...DEFAULT_OPENED_NOTE_BRANDING },
   hostedAiUsage: {
     used: 0,
     limit: planFeaturesFor("free").hostedAiMonthly,
@@ -129,7 +141,10 @@ export function AccountEntitlementsProvider({
       businessSenderRole?: string | null;
       businessTrustMessage?: string | null;
       businessBannerUrl?: string | null;
-      businessBackgroundStyle?: "neutral" | "gradient" | "banner";
+      businessBackgroundStyle?: "neutral" | "gradient" | "vignette" | "glow" | "mesh" | "banner";
+      businessPortalLayout?: BrandingPortalLayout | null;
+      businessOpenedBranding?: OpenedNoteBrandingSettings | null;
+      businessShowBrandingAfterReveal?: boolean;
       hostedAiUsage?: {
         used?: number;
         limit?: number;
@@ -172,6 +187,11 @@ export function AccountEntitlementsProvider({
           businessTrustMessage: summary.businessTrustMessage ?? null,
           businessBannerUrl: summary.businessBannerUrl ?? null,
           businessBackgroundStyle: summary.businessBackgroundStyle ?? "neutral",
+          businessPortalLayout: brandingPortalLayout(summary.businessPortalLayout ?? undefined),
+          businessOpenedBranding: openedSettingsFromAccountColumns(
+            summary.businessOpenedBranding,
+            summary.businessShowBrandingAfterReveal,
+          ),
           hostedAiUsage: {
             used: Math.max(0, Number(summary.hostedAiUsage?.used ?? 0)),
             limit: Math.max(

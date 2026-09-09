@@ -14,6 +14,7 @@ import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
 import { AccountEntitlementsProvider } from "@/context/AccountEntitlementsContext";
 import Home from "@/pages/Home";
+import AccountBranding from "@/pages/account/AccountBranding";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -96,7 +97,7 @@ function LazyPage({ children }: { children: ReactNode }) {
 
 type LazyRouteErrorBoundaryState = { error: Error | null };
 
-const LAZY_CHUNK_RELOAD_KEY = "pn:lazy-chunk-reload-at";
+const LAZY_CHUNK_RELOAD_KEY = "pn:lazy-chunk-reload-count";
 
 function isLikelyStaleChunkLoadError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -107,9 +108,9 @@ function isLikelyStaleChunkLoadError(error: unknown): boolean {
 
 function reloadOnceForStaleChunk(): boolean {
   try {
-    const last = Number(sessionStorage.getItem(LAZY_CHUNK_RELOAD_KEY) || "0");
-    if (Number.isFinite(last) && Date.now() - last < 15_000) return false;
-    sessionStorage.setItem(LAZY_CHUNK_RELOAD_KEY, String(Date.now()));
+    const attempts = Number(sessionStorage.getItem(LAZY_CHUNK_RELOAD_KEY) || "0");
+    if (Number.isFinite(attempts) && attempts >= 2) return false;
+    sessionStorage.setItem(LAZY_CHUNK_RELOAD_KEY, String((Number.isFinite(attempts) ? attempts : 0) + 1));
   } catch {
     /* private mode / quota */
   }
@@ -165,6 +166,11 @@ function LazyRoute({ component: Page }: { component: ComponentType }) {
       </LazyPage>
     </LazyRouteErrorBoundary>
   );
+}
+
+/** Stable identity so language changes do not remount the one-time reveal session. */
+function ViewNoteRoute() {
+  return <LazyRoute component={ViewNote} />;
 }
 
 function pathWithoutQueryOrHash(loc: string): string {
@@ -254,6 +260,13 @@ function LocalizedRoute({
   );
 }
 
+function AccountPreferencesRoute() {
+  if (typeof window !== "undefined" && window.location.hash === "#reveal-branding") {
+    return <Redirect to="/account/branding" />;
+  }
+  return <LazyRoute component={AccountPreferences} />;
+}
+
 function Router() {
   const [location] = useLocation();
   const { t } = useLanguage();
@@ -286,19 +299,21 @@ function Router() {
     return () => cancelAnimationFrame(frame);
   }, [location]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
+  const isNoteRoute = location.startsWith("/note/");
   const showNavbar =
-    !isAuthRoute ||
-    location.startsWith("/auth/magic") ||
-    location === "/magic" ||
-    location.startsWith("/auth/email-change") ||
-    location.startsWith("/auth/totp");
+    !isNoteRoute &&
+    (!isAuthRoute ||
+      location.startsWith("/auth/magic") ||
+      location === "/magic" ||
+      location.startsWith("/auth/email-change") ||
+      location.startsWith("/auth/totp"));
 
   const showInternalRoutes = canAccessInternalAppRoutes();
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col">
       {showNavbar && <Navbar />}
-      <main className={`min-w-0 flex-grow ${isAuthRoute ? "pt-6" : "pt-16"}`}>
+      <main className={`min-w-0 flex-grow ${isNoteRoute ? "pt-0" : isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
           {/*
@@ -339,7 +354,7 @@ function Router() {
               <Route path={`/${language}/security-guides/:topicId`} component={() => <LocalizedRoute language={language} component={SecurityGuideDetail} />} />
             </Fragment>
           ))}
-          <Route path="/note/:id" component={() => <LazyRoute component={ViewNote} />} />
+          <Route path="/note/:id" component={ViewNoteRoute} />
           <Route path="/password-generator" component={() => <LazyRoute component={PasswordGenerator} />} />
           <Route path="/secure-file-transfer" component={() => <LazyRoute component={SecureFileTransfer} />} />
           <Route path="/privacy-tools" component={() => <LazyRoute component={PrivacyTools} />} />
@@ -389,12 +404,13 @@ function Router() {
           <Route path="/account/notifications">
             <Redirect to="/account/activity" />
           </Route>
-          <Route path="/account/preferences" component={() => <LazyRoute component={AccountPreferences} />} />
+          <Route path="/account/branding" component={() => <LazyRoute component={AccountBranding} />} />
+          <Route path="/account/preferences" component={AccountPreferencesRoute} />
           <Route path="/account" component={() => <LazyRoute component={AccountOverview} />} />
           <Route component={() => <LazyRoute component={NotFound} />} />
         </Switch>
       </main>
-      {!isAuthRoute && <Footer />}
+      {!isAuthRoute && !isNoteRoute && <Footer />}
       <NativePageAnalytics />
     </div>
   );

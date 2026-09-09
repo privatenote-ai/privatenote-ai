@@ -53,7 +53,7 @@ const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
 /** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */
 const UNIQUE_TITLE_CHECKS = [
   { file: "premium.html", mustContain: "Pricing" },
-  { file: "de/premium.html", mustContain: "Pricing" },
+  { file: "de/premium.html", mustContain: "Preise" },
   { file: "developers.html", mustContain: "Developer integrations" },
   { file: "contact.html", mustContain: "Contact" },
   { file: "fr/contact.html", mustContain: "Contact" },

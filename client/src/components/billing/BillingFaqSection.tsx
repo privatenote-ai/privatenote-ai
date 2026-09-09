@@ -20,9 +20,11 @@ function isHttp(href: string): boolean {
 
 export function BillingFaqSection({
   schemaId,
+  title,
   intro,
 }: {
   schemaId: string;
+  title?: string;
   intro?: string;
 }) {
   const { language } = useLanguage();
@@ -57,7 +59,7 @@ export function BillingFaqSection({
   return (
     <section id={BILLING_FAQ_ANCHOR} className="scroll-mt-28">
       <h2 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-        Billing FAQ
+        {title ?? "Billing FAQ"}
       </h2>
       {intro ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-400">{intro}</p>

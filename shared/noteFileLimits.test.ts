@@ -8,8 +8,10 @@ import {
   NOTE_FILE_STARTER_MAX_BYTES,
   NOTE_FILE_STARTER_TOTAL_STORAGE_BYTES,
   formatNoteFileSize,
+  noteFileAttachmentsMaxCountForAccount,
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
+  noteFileTransferLimitBytesForAccount,
   noteFileTransfersPerDayForAccount,
   resolveFileSizeUpgradePlan,
 } from "./noteFileLimits.ts";
@@ -51,6 +53,15 @@ describe("noteFileLimits", () => {
     assert.equal(noteFileTransfersPerDayForAccount("personal_premium"), null);
     assert.equal(noteFileTransfersPerDayForAccount("business_premium"), null);
     assert.equal(noteFileTransfersPerDayForAccount(true), null);
+  });
+
+  it("tiers per-transfer file count and combined size", () => {
+    assert.equal(noteFileAttachmentsMaxCountForAccount("free"), 5);
+    assert.equal(noteFileAttachmentsMaxCountForAccount("personal_premium"), 10);
+    assert.equal(noteFileAttachmentsMaxCountForAccount("business_premium"), 20);
+    assert.equal(noteFileTransferLimitBytesForAccount("free"), NOTE_FILE_FREE_MAX_BYTES);
+    assert.equal(noteFileTransferLimitBytesForAccount("personal_premium"), NOTE_FILE_STARTER_MAX_BYTES);
+    assert.equal(noteFileTransferLimitBytesForAccount("business_premium"), NOTE_FILE_BUSINESS_MAX_BYTES);
   });
 
   it("resolves Free→Starter and Starter→Business upgrade targets for oversized files", () => {

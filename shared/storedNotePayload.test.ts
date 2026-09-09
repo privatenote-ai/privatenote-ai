@@ -51,7 +51,11 @@ function b64Json(value: Record<string, unknown>): string {
   return btoa(JSON.stringify(value));
 }
 
-function validAttachment(over: Record<string, unknown> = {}, noteId = attachmentNoteId): Record<string, unknown> {
+function validAttachment(
+  over: Record<string, unknown> = {},
+  noteId = attachmentNoteId,
+  attachmentIndex = 0,
+): Record<string, unknown> {
   const chunkSize = 4 * 1024 * 1024;
   const totalChunks = 2;
   const streamAad = b64Json({
@@ -61,6 +65,7 @@ function validAttachment(over: Record<string, unknown> = {}, noteId = attachment
     noteId,
     chunkSize,
     totalChunks,
+    ...(attachmentIndex > 0 ? { attachmentIndex } : {}),
   });
   return {
     v: 2,
@@ -79,6 +84,7 @@ function validAttachment(over: Record<string, unknown> = {}, noteId = attachment
         alg: attachmentAlg,
         noteId,
         totalChunks,
+        ...(attachmentIndex > 0 ? { attachmentIndex } : {}),
       }),
       ciphertext: btoa("encrypted-name-type-size"),
     },
@@ -91,6 +97,7 @@ function validAttachment(over: Record<string, unknown> = {}, noteId = attachment
         alg: attachmentAlg,
         noteId,
         streamAad,
+        ...(attachmentIndex > 0 ? { attachmentIndex } : {}),
       }),
       encryptedKey: btoa("wrapped-file-key"),
     },
@@ -119,9 +126,56 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     assert.equal(p!.readerLanguage, "fr");
   });
 
-  it("rejects unsupported reader language metadata", () => {
-    const raw = JSON.stringify(basePayload({ readerLanguage: "ja" }));
-    assert.equal(parseStoredNoteCiphertextForReveal(raw), null);
+  it("accepts allowlisted body font metadata and drops unknown ids", () => {
+    const stored = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "source-serif" })),
+    );
+    assert.ok(stored);
+    assert.equal(stored!.bodyFont, "source-serif");
+    const satoshi = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "satoshi" })),
+    );
+    assert.ok(satoshi);
+    assert.equal(satoshi!.bodyFont, "satoshi");
+    const omitted = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "system" })),
+    );
+    assert.ok(omitted);
+    assert.equal(omitted!.bodyFont, undefined);
+    const dropped = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ bodyFont: "Comic Sans MS" })),
+    );
+    assert.ok(dropped);
+    assert.equal(dropped!.bodyFont, undefined);
+  });
+
+  it("accepts view-only attachment permission and drops unknown tokens", () => {
+    const stored = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ attachmentPermission: "view-only" })),
+    );
+    assert.ok(stored);
+    assert.equal(stored!.attachmentPermission, "view-only");
+    const omitted = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ attachmentPermission: "download" })),
+    );
+    assert.ok(omitted);
+    assert.equal(omitted!.attachmentPermission, undefined);
+    const dropped = parseStoredNoteCiphertextForReveal(
+      JSON.stringify(basePayload({ attachmentPermission: "print" })),
+    );
+    assert.ok(dropped);
+    assert.equal(dropped!.attachmentPermission, undefined);
+    assert.equal(
+      parseStoredNoteCiphertextForReveal(JSON.stringify(basePayload({ attachmentPermission: { id: "view-only" } }))),
+      null,
+    );
+  });
+
+  it("rejects non-string body font metadata", () => {
+    assert.equal(
+      parseStoredNoteCiphertextForReveal(JSON.stringify(basePayload({ bodyFont: { id: "source-serif" } }))),
+      null,
+    );
   });
 
   it("accepts password-protected payload with v2 kdfParams", () => {
@@ -313,4 +367,45 @@ describe("parseStoredNoteCiphertextForReveal", () => {
     );
     assert.equal(parseStoredNoteCiphertextForReveal(raw), null);
   });
+
+  it("accepts a dual-written attachments list and keeps legacy attachment as the first item", () => {
+    const first = validAttachment();
+    const second = validAttachment({}, attachmentNoteId, 1);
+    const raw = JSON.stringify(
+      basePayload({
+        attachment: first,
+        attachments: [first, second],
+      }),
+    );
+    const p = parseStoredNoteCiphertextForReveal(raw, attachmentNoteId);
+    assert.ok(p);
+    assert.equal(p!.attachments?.length, 2);
+    assert.equal(p!.attachment?.encryptedSize, first.encryptedSize);
+    assert.deepEqual(p!.attachments?.[0], p!.attachment);
+  });
+
+  it("rejects an attachments list when a later item is bound to index 0", () => {
+    const first = validAttachment();
+    const second = validAttachment();
+    const raw = JSON.stringify(
+      basePayload({
+        attachment: first,
+        attachments: [first, second],
+      }),
+    );
+    assert.equal(parseStoredNoteCiphertextForReveal(raw, attachmentNoteId), null);
+  });
+
+  it("rejects dual-write when singular attachment does not match the first list item", () => {
+    const first = validAttachment();
+    const second = validAttachment({}, attachmentNoteId, 1);
+    const raw = JSON.stringify(
+      basePayload({
+        attachment: second,
+        attachments: [first, second],
+      }),
+    );
+    assert.equal(parseStoredNoteCiphertextForReveal(raw, attachmentNoteId), null);
+  });
+
 });

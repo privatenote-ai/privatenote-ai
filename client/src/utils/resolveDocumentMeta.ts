@@ -167,6 +167,11 @@ function blogSlugStaticMeta(
         title: buildDocumentTitle(t.blogDelayedRevealMetaTitle),
         description: t.blogDelayedRevealMetaDescription,
       };
+    case "how-to-send-nudes-safely":
+      return {
+        title: buildDocumentTitle(t.blogHowToSendNudesSafelyMetaTitle),
+        description: t.blogHowToSendNudesSafelyMetaDescription,
+      };
     case "secure-client-delivery-for-lawyers":
       return {
         title: buildDocumentTitle(t.blogSecureClientDeliveryForLawyersMetaTitle),
@@ -306,9 +311,8 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "premium":
       return {
-        title: buildDocumentTitle("Pricing"),
-        description:
-          "Compare Free, Starter, and Business plans. Billing FAQ: cancel vs withdraw, invoices, VAT IDs, failed cards, and what to do if you paid but still see Free.",
+        title: buildDocumentTitle(t.documentMetaPremiumTitle),
+        description: t.documentMetaPremiumDescription,
       };
     case "about":
       return {
@@ -489,6 +493,13 @@ function metaForAccountSegments(segments: string[], t: Translations): { title: s
       return {
         title: buildDocumentTitle(t.documentMetaAccountPreferencesTitle),
         description: t.documentMetaAccountPreferencesDescription,
+      };
+    case "branding":
+      return {
+        title: buildDocumentTitle(t.documentMetaAccountBrandingTitle ?? "Branding"),
+        description:
+          t.documentMetaAccountBrandingDescription ??
+          "Company identity and the page recipients see when they open a note.",
       };
     default:
       return notFoundDocumentMeta(t);

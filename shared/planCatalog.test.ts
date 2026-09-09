@@ -71,21 +71,30 @@ describe("planCatalog", () => {
     assert.equal(free.maxAttachmentTransfersPerDay, 10);
     assert.equal(starter.maxAttachmentTransfersPerDay, null);
     assert.equal(business.maxAttachmentTransfersPerDay, null);
-    assert.equal(free.maxFileAccessWindowSeconds, 15 * 60);
-    assert.equal(starter.maxFileAccessWindowSeconds, 30 * 60);
-    assert.equal(business.maxFileAccessWindowSeconds, 60 * 60);
+    assert.equal(free.maxFileAccessWindowSeconds, 60 * 60);
+    assert.equal(starter.maxFileAccessWindowSeconds, 4 * 60 * 60);
+    assert.equal(business.maxFileAccessWindowSeconds, 24 * 60 * 60);
     assert.equal(free.maxVoiceMessageSeconds, 5 * 60);
     assert.equal(starter.maxVoiceMessageSeconds, 15 * 60);
     assert.equal(business.maxVoiceMessageSeconds, 30 * 60);
+    assert.equal(free.attachmentsMaxCount, 5);
+    assert.equal(starter.attachmentsMaxCount, 10);
+    assert.equal(business.attachmentsMaxCount, 20);
+    assert.equal(free.attachmentTransferMaxBytes, 25 * 1024 * 1024);
+    assert.equal(starter.attachmentTransferMaxBytes, 250 * 1024 * 1024);
+    assert.equal(business.attachmentTransferMaxBytes, 1024 * 1024 * 1024);
   });
 
   it("enables workflow on Starter and branding on Business", () => {
     assert.equal(planDefinitionFor("free").features.proofOfAccess, false);
     assert.equal(planDefinitionFor("personal_premium").features.proofOfAccess, true);
+    assert.equal(planFeaturesFor("personal_premium").revealBodyFont, true);
     assert.equal(planFeaturesFor("personal_premium").revealBranding, false);
     assert.equal(planFeaturesFor("personal_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("personal_premium").customPromptTemplates, false);
     assert.equal(planFeaturesFor("business_premium").revealBranding, true);
+    assert.equal(planFeaturesFor("personal_premium").attachmentViewOnly, false);
+    assert.equal(planFeaturesFor("business_premium").attachmentViewOnly, true);
     assert.equal(planFeaturesFor("business_premium").premiumTemplatePacks, true);
     assert.equal(planFeaturesFor("business_premium").customPromptTemplates, true);
     assert.equal(planFeaturesFor("personal_premium").noteLabelPortability, false);
@@ -107,7 +116,9 @@ describe("planCatalog", () => {
     assert.deepEqual(starter.allowedReadCounts, [1, 2, 3]);
     assert.equal(starter.recipientLinkDelivery, true);
     assert.equal(starter.readerLanguage, true);
+    assert.equal(starter.revealBodyFont, true);
     assert.equal(starter.delayedReveal, true);
+    assert.equal(free.revealBodyFont, false);
     assert.equal(free.receiptAcknowledgment, false);
     assert.equal(starter.receiptAcknowledgment, true);
   });

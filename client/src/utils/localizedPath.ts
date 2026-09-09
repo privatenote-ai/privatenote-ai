@@ -155,6 +155,11 @@ export function isLocaleSiteHomeHref(href: string): boolean {
 
 export function switchLanguagePath(pathname: string, language: SupportedLanguage): string {
   const { pathWithoutLanguage } = splitLanguagePrefix(pathname);
+  // Reveal URLs are not locale-prefixed. Navigating to /de/note/:id remounts the
+  // page and a second reveal call looks like the one-time note was consumed.
+  if (/^\/note\/[^/]+$/.test(pathWithoutLanguage)) {
+    return pathWithoutLanguage;
+  }
   const guideMatch = pathWithoutLanguage.match(/^\/security-guides\/([^/]+)$/);
   if (guideMatch && isLocalizedSecurityGuideTopic(guideMatch[1]!)) {
     return localizedSecurityGuidePath(guideMatch[1]!, language);

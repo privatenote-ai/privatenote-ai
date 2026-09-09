@@ -85,7 +85,7 @@ function ArticleParagraph({
     <p
       className={cn(
         "leading-[1.85] text-gray-700 dark:text-gray-300",
-        lead ? "text-xl font-medium leading-relaxed text-gray-900 dark:text-gray-100" : "text-lg",
+        lead ? "text-lg font-medium leading-relaxed text-gray-900 dark:text-gray-100" : "text-base",
       )}
     >
       {renderInlineContent(text, resolveLink)}
@@ -105,7 +105,7 @@ function BulletList({
       {items.map((item) => (
         <li className="flex gap-3" key={item}>
           <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-          <span className="text-lg leading-[1.85] text-gray-700 dark:text-gray-300">
+          <span className="text-base leading-[1.85] text-gray-700 dark:text-gray-300">
             {renderInlineContent(item, resolveLink)}
           </span>
         </li>
@@ -147,14 +147,14 @@ function ArticleSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-5 sm:space-y-6">
-      <div className="space-y-2">
+    <section className="space-y-6 sm:space-y-7">
+      <div className="space-y-3">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h2>
         {takeaway ? (
-          <p className="text-sm font-medium leading-snug text-primary sm:text-[0.95rem]">{takeaway}</p>
+          <p className="text-base font-semibold leading-relaxed text-primary">{takeaway}</p>
         ) : null}
       </div>
-      <div className="space-y-5 sm:space-y-6">{children}</div>
+      <div className="space-y-6 sm:space-y-7">{children}</div>
     </section>
   );
 }
@@ -191,7 +191,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
           title={t.blogHowToSharePhotosSecurelyTitle}
           subtitle={t.blogHowToSharePhotosSecurelySubtitle}
           excerpt={t.blogHowToSharePhotosSecurelyExcerpt}
-          excerptClassName="max-w-3xl text-xl leading-relaxed text-gray-700 dark:text-gray-300 sm:text-[1.35rem] sm:leading-[1.65]"
+          excerptClassName="max-w-3xl text-lg leading-relaxed text-gray-700 dark:text-gray-300"
           faqs={faqs}
           headerClassName="mb-14 sm:mb-16"
         >
@@ -211,7 +211,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
 
         <BlogArticleTakeaways slug={slug} />
 
-        <div className="space-y-12 text-lg leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-14">
+        <div className="space-y-14 text-base leading-[1.85] text-gray-700 dark:text-gray-300 sm:space-y-16">
           <div className="space-y-5 sm:space-y-6">
             {article.intro.map((paragraph, index) => (
               <ArticleParagraph
@@ -285,7 +285,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
 
               {section.midCta ? (
                 <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] px-5 py-5 dark:border-primary/25 dark:bg-primary/[0.08] sm:px-6">
-                  <p className="text-lg leading-relaxed text-gray-800 dark:text-gray-200">
+                  <p className="text-base leading-relaxed text-gray-800 dark:text-gray-200">
                     {section.midCta.body}
                   </p>
                   <Link
@@ -299,7 +299,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
               ) : null}
 
               {section.callout ? (
-                <blockquote className="rounded-2xl border border-gray-200 bg-gray-50/80 px-5 py-4 text-lg leading-relaxed text-gray-800 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-200 sm:px-6">
+                <blockquote className="rounded-2xl border border-gray-200 bg-gray-50/80 px-5 py-4 text-base leading-relaxed text-gray-800 dark:border-gray-800 dark:bg-gray-900/40 dark:text-gray-200 sm:px-6">
                   {section.calloutTitle ? (
                     <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-900 dark:text-white">
                       {section.calloutTitle}
@@ -310,9 +310,9 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
               ) : null}
 
               {section.faqs ? (
-                <div className="space-y-6">
+                <div className="space-y-7">
                   {section.faqs.map((faq) => (
-                    <div key={faq.question} className="space-y-2">
+                    <div key={faq.question} className="space-y-3">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{faq.question}</h3>
                       <ArticleParagraph text={faq.answer} resolveLink={resolveLink} />
                     </div>
@@ -327,7 +327,7 @@ export const HowToSharePhotosSecurelyPost: React.FC = () => {
               <Shield className="mt-1 h-6 w-6 shrink-0 text-primary" aria-hidden />
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{article.ctaTitle}</h2>
-                <p className="mt-4 text-lg leading-relaxed text-gray-700 dark:text-gray-300">
+                <p className="mt-4 text-base leading-relaxed text-gray-700 dark:text-gray-300">
                   {article.ctaBody}
                 </p>
                 <Link

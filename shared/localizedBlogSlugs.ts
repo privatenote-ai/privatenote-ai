@@ -36,6 +36,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "know-when-secret-link-opened",
   "revoke-unopened-note-proof-of-access",
   "delayed-reveal-scheduled-secret-links",
+  "how-to-send-nudes-safely",
   "secure-client-delivery-for-lawyers",
 ] as const;
 
@@ -444,6 +445,17 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "revelacao-adiada-links-secretos-agendados",
     sr: "odlozeno-otkrivanje-zakazani-tajni-linkovi",
     hr: "odgodeno-otkrivanje-zakazani-tajni-linkovi",
+  },
+  "how-to-send-nudes-safely": {
+    en: "how-to-send-nudes-safely",
+    de: "wie-man-aktfotos-sicher-sendet",
+    fr: "comment-envoyer-des-nudes-en-securite",
+    es: "como-enviar-nudes-de-forma-segura",
+    it: "come-inviare-nudes-in-modo-sicuro",
+    nl: "hoe-stuur-je-nudes-veilig",
+    pt: "como-enviar-nudes-com-seguranca",
+    sr: "kako-bezbedno-poslati-intimne-fotografije",
+    hr: "kako-sigurno-poslati-intimne-fotografije",
   },
   "secure-client-delivery-for-lawyers": {
     en: "secure-client-delivery-for-lawyers",

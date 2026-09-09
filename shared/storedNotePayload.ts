@@ -16,6 +16,14 @@ import {
   parseStoredRevealBranding,
   type RevealBranding,
 } from "./businessBranding.ts";
+import {
+  parseRevealBodyFont,
+  type StoredRevealBodyFont,
+} from "./revealBodyFont.ts";
+import {
+  parseAttachmentRecipientPermission,
+  type StoredAttachmentRecipientPermission,
+} from "./attachmentRecipientPermission.ts";
 
 export const STORED_NOTE_PAYLOAD_VERSION = 1 as const;
 export const STORED_NOTE_CIPHER_ALG = "AES-GCM" as const;
@@ -67,8 +75,14 @@ export interface ParsedStoredNoteCiphertext {
   kdfParams?: KdfParamsV2;
   keyDerivation?: typeof NOTE_KEY_DERIVATION_HKDF_ROOT_V2;
   attachment?: StoredNoteAttachment;
+  /** One or more files in a single transfer. Prefer this over `attachment`. */
+  attachments?: StoredNoteAttachment[];
   fileAccessWindowSeconds?: number;
   readerLanguage?: SupportedLanguage;
+  /** Optional Starter+ body typeface snapshotted at create time. */
+  bodyFont?: StoredRevealBodyFont;
+  /** Optional Business view-only handling policy for the attachment. */
+  attachmentPermission?: StoredAttachmentRecipientPermission;
   /** Optional Business branded reveal chrome snapshotted at create time. */
   revealBranding?: RevealBranding;
 }
@@ -94,19 +108,34 @@ function attachmentAadMatches(
     wrappedKey: { aad: string };
   },
   noteId?: string,
+  attachmentIndex?: number,
 ): boolean {
   if (!noteId) return true;
   const streamAad = decodeJsonAad(attachment.aad);
   const metadataAad = decodeJsonAad(attachment.encryptedMetadata.aad);
   const wrappedKeyAad = decodeJsonAad(attachment.wrappedKey.aad);
   if (!streamAad || !metadataAad || !wrappedKeyAad) return false;
+  const expectedIndex = attachmentIndex ?? 0;
+  const streamIndex =
+    typeof streamAad.attachmentIndex === "number" && Number.isInteger(streamAad.attachmentIndex)
+      ? streamAad.attachmentIndex
+      : 0;
+  const metadataIndex =
+    typeof metadataAad.attachmentIndex === "number" && Number.isInteger(metadataAad.attachmentIndex)
+      ? metadataAad.attachmentIndex
+      : 0;
+  const wrapIndex =
+    typeof wrappedKeyAad.attachmentIndex === "number" && Number.isInteger(wrappedKeyAad.attachmentIndex)
+      ? wrappedKeyAad.attachmentIndex
+      : 0;
   if (
     streamAad.v !== 1 ||
     streamAad.purpose !== "privatenote-attachment-stream" ||
     streamAad.alg !== ATTACHMENT_ALG ||
     streamAad.noteId !== noteId ||
     streamAad.chunkSize !== attachment.chunkSize ||
-    streamAad.totalChunks !== attachment.totalChunks
+    streamAad.totalChunks !== attachment.totalChunks ||
+    streamIndex !== expectedIndex
   ) {
     return false;
   }
@@ -115,7 +144,8 @@ function attachmentAadMatches(
     metadataAad.purpose !== "privatenote-attachment-metadata" ||
     metadataAad.alg !== ATTACHMENT_ALG ||
     metadataAad.noteId !== noteId ||
-    metadataAad.totalChunks !== attachment.totalChunks
+    metadataAad.totalChunks !== attachment.totalChunks ||
+    metadataIndex !== expectedIndex
   ) {
     return false;
   }
@@ -124,13 +154,15 @@ function attachmentAadMatches(
     wrappedKeyAad.purpose === "privatenote-attachment-key-wrap" &&
     wrappedKeyAad.alg === ATTACHMENT_ALG &&
     wrappedKeyAad.noteId === noteId &&
-    wrappedKeyAad.streamAad === attachment.aad
+    wrappedKeyAad.streamAad === attachment.aad &&
+    wrapIndex === expectedIndex
   );
 }
 
 export function parseStoredNoteAttachmentForNote(
   raw: unknown,
   noteId?: string,
+  attachmentIndex?: number,
 ): StoredNoteAttachment | null {
   if (raw == null) return null;
   if (typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -224,7 +256,25 @@ export function parseStoredNoteAttachmentForNote(
     },
     chunks,
   } satisfies StoredNoteAttachment;
-  return attachmentAadMatches(parsedAttachment, noteId) ? parsedAttachment : null;
+  return attachmentAadMatches(parsedAttachment, noteId, attachmentIndex) ? parsedAttachment : null;
+}
+
+const MAX_STORED_NOTE_ATTACHMENTS = 20;
+
+export function parseStoredNoteAttachmentsForNote(
+  raw: unknown,
+  noteId?: string,
+): StoredNoteAttachment[] | null {
+  if (raw == null) return [];
+  if (!Array.isArray(raw)) return null;
+  if (raw.length > MAX_STORED_NOTE_ATTACHMENTS) return null;
+  const attachments: StoredNoteAttachment[] = [];
+  for (let index = 0; index < raw.length; index += 1) {
+    const parsed = parseStoredNoteAttachmentForNote(raw[index], noteId, index);
+    if (!parsed) return null;
+    attachments.push(parsed);
+  }
+  return attachments;
 }
 
 /**
@@ -330,10 +380,35 @@ export function parseStoredNoteCiphertextForReveal(
   } else if (o.readerLanguage != null) {
     return null;
   }
-  const attachment = parseStoredNoteAttachmentForNote(o.attachment, noteId);
-  if (o.attachment != null && !attachment) return null;
+  // Unknown font ids are dropped rather than failing reveal — decoration only.
+  const bodyFont = parseRevealBodyFont(o.bodyFont);
+  if (bodyFont) {
+    ciphertext.bodyFont = bodyFont;
+  } else if (o.bodyFont != null && typeof o.bodyFont !== "string") {
+    return null;
+  }
+  const attachmentPermission = parseAttachmentRecipientPermission(o.attachmentPermission);
+  if (attachmentPermission) {
+    ciphertext.attachmentPermission = attachmentPermission;
+  } else if (o.attachmentPermission != null && typeof o.attachmentPermission !== "string") {
+    return null;
+  }
+  const attachmentsList = parseStoredNoteAttachmentsForNote(o.attachments, noteId);
+  if (o.attachments != null && !attachmentsList) return null;
+  const singularAttachment = parseStoredNoteAttachmentForNote(o.attachment, noteId, 0);
+  if (o.attachment != null && !singularAttachment) return null;
+  if (attachmentsList && attachmentsList.length > 0 && singularAttachment) {
+    if (JSON.stringify(attachmentsList[0]) !== JSON.stringify(singularAttachment)) return null;
+  }
+  const attachment =
+    attachmentsList && attachmentsList.length > 0 ? attachmentsList[0] : singularAttachment;
   if (attachment) {
     ciphertext.attachment = attachment;
+  }
+  if (attachmentsList && attachmentsList.length > 0) {
+    ciphertext.attachments = attachmentsList;
+  } else if (singularAttachment) {
+    ciphertext.attachments = [singularAttachment];
   }
   if (o.fileAccessWindowSeconds != null) {
     if (!isNoteFileAccessWindowSeconds(o.fileAccessWindowSeconds)) return null;

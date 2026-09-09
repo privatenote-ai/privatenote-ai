@@ -3,6 +3,11 @@ import { normalizeAccountType, planFeaturesFor, type AccountType } from "./planC
 export const NOTE_FILE_FREE_MAX_BYTES = 25 * 1024 * 1024;
 export const NOTE_FILE_STARTER_MAX_BYTES = 250 * 1024 * 1024;
 export const NOTE_FILE_BUSINESS_MAX_BYTES = 1024 * 1024 * 1024;
+export const NOTE_FILE_FREE_MAX_COUNT = 5;
+export const NOTE_FILE_STARTER_MAX_COUNT = 10;
+export const NOTE_FILE_BUSINESS_MAX_COUNT = 20;
+/** Absolute cap regardless of plan — must match Business attachmentsMaxCount. */
+export const NOTE_FILE_ATTACHMENTS_HARD_MAX = NOTE_FILE_BUSINESS_MAX_COUNT;
 /** @deprecated Use NOTE_FILE_BUSINESS_MAX_BYTES — kept for older call sites/tests. */
 export const NOTE_FILE_PREMIUM_MAX_BYTES = NOTE_FILE_BUSINESS_MAX_BYTES;
 
@@ -37,6 +42,30 @@ export function noteFileLimitBytesForAccount(
       : NOTE_FILE_FREE_MAX_BYTES;
   }
   return planFeaturesFor(accountTypeOrIsPremium).attachmentMaxBytes;
+}
+
+/** Combined plaintext cap for every file/media item in one transfer. */
+export function noteFileTransferLimitBytesForAccount(
+  accountTypeOrIsPremium: string | boolean | null | undefined,
+): number {
+  if (typeof accountTypeOrIsPremium === "boolean") {
+    return accountTypeOrIsPremium
+      ? NOTE_FILE_BUSINESS_MAX_BYTES
+      : NOTE_FILE_FREE_MAX_BYTES;
+  }
+  return planFeaturesFor(accountTypeOrIsPremium).attachmentTransferMaxBytes;
+}
+
+/** Max discrete files/media items in one created link. */
+export function noteFileAttachmentsMaxCountForAccount(
+  accountTypeOrIsPremium: string | boolean | null | undefined,
+): number {
+  if (typeof accountTypeOrIsPremium === "boolean") {
+    return accountTypeOrIsPremium
+      ? NOTE_FILE_BUSINESS_MAX_COUNT
+      : NOTE_FILE_FREE_MAX_COUNT;
+  }
+  return planFeaturesFor(accountTypeOrIsPremium).attachmentsMaxCount;
 }
 
 /**
