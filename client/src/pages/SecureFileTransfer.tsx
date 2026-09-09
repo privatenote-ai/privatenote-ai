@@ -85,14 +85,20 @@ const SecureFileTransfer: React.FC = () => {
         {!isCreateSuccessView ? (
           <section className="relative isolate mx-auto max-w-4xl px-4 pb-2 text-center sm:px-6 sm:pb-4 lg:px-8">
             <h1 className="page-title text-gray-900 dark:text-white">
-              <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
-                {t.sftHeroPrefix}
-              </span>
-              <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
-                {t.sftHeroAccent}
+              <span className="md:hidden">{t.sftHeroMobileTitle ?? t.sftHeroPrefix}</span>
+              <span className="hidden md:block">
+                <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                  {t.sftHeroPrefix}
+                </span>
+                <span className="mt-1 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                  {t.sftHeroAccent}
+                </span>
               </span>
             </h1>
-            <p className="mx-auto mt-4 max-w-3xl text-lg text-gray-500 dark:text-gray-400 sm:text-xl md:mt-6">
+            <p className="mx-auto mt-3 max-w-3xl text-base text-gray-500 dark:text-gray-400 md:hidden">
+              {t.sftHeroMobileSubtitle ?? t.sftHeroSubtitle}
+            </p>
+            <p className="mx-auto mt-6 hidden max-w-3xl text-xl text-gray-500 dark:text-gray-400 md:block">
               {t.sftHeroSubtitle}
             </p>
           </section>

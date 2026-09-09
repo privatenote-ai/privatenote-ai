@@ -138,14 +138,27 @@ const Home: React.FC = () => {
           <section className="relative mx-auto max-w-4xl px-4 pt-2 sm:px-6 sm:pt-5 lg:px-8">
             <div className="text-center">
               <h1 className="page-title text-gray-900 dark:text-white">
-                <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
-                  {t.homeHeroLine1}
+                <span className="md:hidden">
+                  <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                    {t.homeHeroMobileLine1 ?? t.homeHeroLine1}
+                  </span>
+                  <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                    {t.homeHeroMobileLine2 ?? t.homeHeroLine2}
+                  </span>
                 </span>
-                <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both sm:mt-1 [animation-delay:120ms]">
-                  {t.homeHeroLine2}
+                <span className="hidden md:block">
+                  <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                    {t.homeHeroLine1}
+                  </span>
+                  <span className="mt-1 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                    {t.homeHeroLine2}
+                  </span>
                 </span>
               </h1>
-              <p className="mx-auto mt-1.5 max-w-4xl text-base leading-snug text-gray-500 dark:text-gray-400 sm:mt-3 sm:text-xl sm:leading-normal md:mt-6 md:max-w-5xl md:text-[1.375rem]">
+              <p className="mx-auto mt-1.5 max-w-4xl text-base leading-snug text-gray-500 dark:text-gray-400 md:hidden">
+                {t.homeHeroMobileSubtitle ?? t.homeHeroSubtitle}
+              </p>
+              <p className="mx-auto mt-6 hidden max-w-4xl text-xl leading-normal text-gray-500 dark:text-gray-400 md:block md:max-w-5xl md:text-[1.375rem]">
                 {t.homeHeroSubtitle}
               </p>
             </div>

@@ -6,11 +6,13 @@ export const en: Translations = {
   sharePassword: "Share a Password",
   shareFile: "Share a File",
   sftHeroTitle: "Secure File Transfer. Encrypted Before Upload.",
+  sftHeroMobileTitle: "Secure file transfer",
   sftHeroPrefix: "Secure File Transfer.",
   sftHeroAccent: "Encrypted Before Upload.",
   sftHeroSuffix: "",
   sftHeroSubtitle:
     "Your files are encrypted directly in your browser before leaving your device. We can’t read their contents, and we never scan them.",
+  sftHeroMobileSubtitle: "Encrypted in your browser before upload.",
   sftSeoHeading: "Encrypted file sharing without exposing your files",
   sftSeoBody1:
     "PrivateNote sends files through expiring encrypted links. Files are encrypted in your browser before upload, so the server stores only ciphertext — never the original contents.",
@@ -595,8 +597,11 @@ export const en: Translations = {
   closeNavigationMenu: "Close menu",
   homeHeroLine1: "Your Messages,",
   homeHeroLine2: "Your Privacy",
+  homeHeroMobileLine1: "Your Messages,",
+  homeHeroMobileLine2: "Your Privacy",
   homeHeroSubtitle:
     "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
+  homeHeroMobileSubtitle: "Encrypted notes and files that disappear.",
   whyPrivateNote: "Why PrivateNote",
   shareSensitiveHeading: "Share sensitive notes with confidence.",
   shareSensitiveBody:
