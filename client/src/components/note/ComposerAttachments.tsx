@@ -2,6 +2,7 @@ import { Camera, ChevronDown, File, FolderArchive, Loader2, Mic, Paperclip, Plus
 import { formatNoteFileSize } from "@shared/noteFileLimits";
 import { formatAttachmentDisplayName } from "@/utils/formatAttachmentDisplayName";
 import { isVoiceMessageFile } from "@/utils/voiceMessageRecording";
+import { cn } from "@/lib/utils";
 import {
   Drawer,
   DrawerContent,
@@ -21,7 +22,7 @@ function isImageFile(file: File): boolean {
 }
 
 function AttachmentTypeIcon({ file }: { file: File }) {
-  const className = "h-4 w-4 shrink-0 text-primary";
+  const className = "h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500";
   if (isVoiceMessageFile(file)) return <Mic className={className} aria-hidden />;
   if (isImageFile(file)) return <Camera className={className} aria-hidden />;
   if (file.type === "application/zip" || file.name.toLowerCase().endsWith(".zip")) {
@@ -34,39 +35,53 @@ export function ComposerAttachmentList({
   files,
   onRemove,
   removeLabel,
+  attached = false,
 }: {
   files: File[];
   onRemove: (index: number) => void;
   removeLabel: string;
+  attached?: boolean;
 }) {
   if (files.length === 0) return null;
+  const scrollable = files.length > 4;
   return (
-    <ul className="max-h-[min(40vh,16rem)] space-y-0 overflow-y-auto">
-      {files.map((file, index) => (
-        <li
-          key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-          className="flex items-center gap-3 border-b border-gray-100 py-2 last:border-b-0 dark:border-gray-800"
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/8">
-            <AttachmentTypeIcon file={file} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100" title={file.name}>
-              {formatAttachmentDisplayName(file.name)}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{formatNoteFileSize(file.size)}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => onRemove(index)}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-            aria-label={`${removeLabel}: ${formatAttachmentDisplayName(file.name)}`}
+    <div
+      className={cn(
+        "overflow-hidden bg-gray-50/80 dark:bg-gray-900/45",
+        attached
+          ? "-mt-px rounded-b-lg border border-t-0 border-primary/60 dark:border-primary/40"
+          : "rounded-lg border border-gray-200 dark:border-gray-700",
+      )}
+    >
+      <ul className={scrollable ? "max-h-[13rem] overflow-y-auto" : undefined}>
+        {files.map((file, index) => (
+          <li
+            key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+            className="flex h-12 items-center gap-2 border-b border-gray-200/70 px-2.5 last:border-b-0 dark:border-gray-800"
           >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
-        </li>
-      ))}
-    </ul>
+            <AttachmentTypeIcon file={file} />
+            <p
+              className="min-w-0 flex-1 truncate text-[13px] leading-none text-gray-600 dark:text-gray-300"
+              title={file.name}
+            >
+              {formatAttachmentDisplayName(file.name)}
+              <span className="text-gray-400 dark:text-gray-500">
+                {" · "}
+                {formatNoteFileSize(file.size)}
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-200/70 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              aria-label={`${removeLabel}: ${formatAttachmentDisplayName(file.name)}`}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

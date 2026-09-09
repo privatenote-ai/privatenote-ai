@@ -3292,9 +3292,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   )
                 }
                 rows={6}
-                className="w-full resize-none overflow-y-auto overflow-x-hidden px-4 py-3 rounded-lg border border-primary/60 dark:border-primary/40 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className={`w-full resize-none overflow-y-auto overflow-x-hidden border border-primary/60 px-4 py-3 bg-white text-gray-900 transition-colors focus:border-primary focus:ring-2 focus:ring-primary dark:border-primary/40 dark:bg-gray-900 dark:text-gray-100 ${
+                  hasAttachments ? "rounded-t-lg rounded-b-none" : "rounded-lg"
+                }`}
                 placeholder={t.typeHere}
                 required={!hasAttachments}
+              />
+              <ComposerAttachmentList
+                files={selectedFiles}
+                onRemove={(index) =>
+                  setSelectedFiles((current) => current.filter((_, i) => i !== index))
+                }
+                removeLabel={t.removeSelectedFile ?? "Remove selected file"}
+                attached
               />
             </div>
           ) : null}
@@ -3597,15 +3607,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              {hasAttachments ? (
-                <ComposerAttachmentList
-                  files={selectedFiles}
-                  onRemove={(index) =>
-                    setSelectedFiles((current) => current.filter((_, i) => i !== index))
-                  }
-                  removeLabel={t.removeSelectedFile ?? "Remove selected file"}
-                />
-              ) : null}
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-2">
                 <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
                     <button
