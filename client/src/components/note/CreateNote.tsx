@@ -809,10 +809,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const recordMessageButtonLabel =
     selectedFileIsVoice || selectedFileIsVideo
       ? formatAttachmentDisplayName(selectedFile!.name)
-      : (t.recordMessage ?? "Record message");
+      : !canAttachFiles
+        ? (t.signInToRecordMessage ?? t.signInToAttachFiles ?? t.recordMessage ?? "Record message")
+        : (t.recordMessage ?? "Record message");
   const takePhotoButtonLabel = selectedFileIsPhoto
     ? formatAttachmentDisplayName(selectedFile!.name)
-    : (t.takePhoto ?? "Take photo");
+    : !canAttachFiles
+      ? (t.signInToTakePhoto ?? t.signInToAttachFiles ?? t.takePhoto ?? "Take photo")
+      : (t.takePhoto ?? "Take photo");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { passwordStrength, breachState, breachCount } = usePasswordBreachCheck(password);

@@ -77,6 +77,7 @@ import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
 import {
   buildMagicLinkEmailContent,
   detectAuthEmailLocale,
+  normalizeMagicLinkEmailPurpose,
   type AuthEmailLocale,
   type MagicLinkEmailPurpose,
 } from "@shared/magicLinkEmail";
@@ -6582,6 +6583,7 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
           const sendResult = await sendMagicLinkEmail(env, email, magicUrl, {
             signInCode,
             locale,
+            purpose: normalizeMagicLinkEmailPurpose(body?.purpose),
           });
           if (!sendResult.ok) {
             console.error("[MAGIC_LINK] Resend did not send email:", sendResult.error);

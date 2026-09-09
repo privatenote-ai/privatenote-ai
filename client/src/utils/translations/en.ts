@@ -199,7 +199,11 @@ export const en: Translations = {
     "Please try again, or open Account to manage an existing subscription.",
   attachFileMaxSizeHint: "Up to {limit} per file",
   signInToAttachFiles: "Sign in to attach files",
-  signInToAttachFilesHint: "Sign in to add encrypted file attachments.",
+  signInToAttachFilesHint: "Sign in to add encrypted photos, files, or voice messages.",
+  signInToRecordMessage: "Sign in to record a message",
+  signInToTakePhoto: "Sign in to take a photo",
+  authFileAttachSubtitle:
+    "Enter your email to sign in. You’ll return to your note to add a photo, file, or voice message.",
   howItWorks: "How It Works",
   resources: "Resources",
   navResourcesLearn: "Learn",

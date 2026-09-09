@@ -97,9 +97,12 @@ function passkeyFailureDescription(error: unknown, t: Translations): string {
 
 type AuthMode = "sign-in" | "sign-up";
 
-function normalizeSignInPurpose(raw: unknown): "default" | "cloud_assist" {
+function normalizeSignInPurpose(raw: unknown): "default" | "cloud_assist" | "file_attach" {
   if (typeof raw !== "string") return "default";
-  return raw.trim().toLowerCase() === "cloud_assist" ? "cloud_assist" : "default";
+  const purpose = raw.trim().toLowerCase();
+  if (purpose === "cloud_assist") return "cloud_assist";
+  if (purpose === "file_attach") return "file_attach";
+  return "default";
 }
 
 export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
@@ -135,6 +138,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
     };
   }, []);
   const isCloudAssistSignIn = signInContext.purpose === "cloud_assist";
+  const isFileAttachSignIn = signInContext.purpose === "file_attach";
 
   const resetAuthTurnstile = useCallback(() => {
     setTurnstileToken(null);
@@ -304,7 +308,7 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
       }>(
         "/api/auth/magic/send",
         "POST",
-        { email: trimmedEmail, turnstileToken, locale: language, returnTo: signInContext.returnTo },
+        { email: trimmedEmail, turnstileToken, locale: language, returnTo: signInContext.returnTo, purpose: signInContext.purpose },
       );
       if (import.meta.env.DEV && response.debugMagicLink) {
         setDebugMagicLink(response.debugMagicLink);
@@ -438,7 +442,9 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
               {isCloudAssistSignIn
                 ? tx("authCloudAssistTitle", "Sign in to use Cloud Assist")
-                : tx("authContinueTitle", "Continue to PrivateNote")}
+                : isFileAttachSignIn
+                  ? tx("signInToAttachFiles", "Sign in to attach files")
+                  : tx("authContinueTitle", "Continue to PrivateNote")}
             </h1>
             <p className="text-base text-gray-600 dark:text-gray-300">
               {isCloudAssistSignIn
@@ -446,7 +452,12 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
                     "authCloudAssistSubtitle",
                     "Enter your email to sign in. You'll return to your note to generate a hosted AI draft.",
                   )
-                : tx("authUnifiedSubtitle", "Enter your email to continue. If you're new, we'll create your account.")}
+                : isFileAttachSignIn
+                  ? tx(
+                      "authFileAttachSubtitle",
+                      "Enter your email to sign in. You'll return to your note to add a photo, file, or voice message.",
+                    )
+                  : tx("authUnifiedSubtitle", "Enter your email to continue. If you're new, we'll create your account.")}
             </p>
           </div>
 
