@@ -311,9 +311,8 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "premium":
       return {
-        title: buildDocumentTitle("Pricing"),
-        description:
-          "Compare Free, Starter, and Business plans. Billing FAQ: cancel vs withdraw, invoices, VAT IDs, failed cards, and what to do if you paid but still see Free.",
+        title: buildDocumentTitle(t.documentMetaPremiumTitle),
+        description: t.documentMetaPremiumDescription,
       };
     case "about":
       return {

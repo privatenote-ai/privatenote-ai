@@ -28,6 +28,7 @@ import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
 import { BillingFaqSection } from "@/components/billing/BillingFaqSection";
 import { BILLING_FAQ_ANCHOR } from "@shared/billingFaq";
+import type { Translations } from "@/utils/translations/types";
 
 const PLAN_ORDER: AccountType[] = ["free", "personal_premium", "business_premium"];
 const HIGHLIGHTED_PLAN: AccountType = "personal_premium";
@@ -63,24 +64,30 @@ function planAmountFor(
   return planPriceFor(planId, currency, interval);
 }
 
-function formatBytesLabel(bytes: number): string {
-  if (bytes >= GB) return `${Math.round(bytes / GB)} GB`;
-  return `${Math.round(bytes / MB)} MB`;
+function formatBytesLabel(bytes: number, t: Translations): string {
+  if (bytes >= GB) return `${Math.round(bytes / GB)} ${t.pricingGb}`;
+  return `${Math.round(bytes / MB)} ${t.pricingMb}`;
 }
 
-function formatFileWindowLabel(seconds: number): string {
+function formatFileWindowLabel(seconds: number, t: Translations): string {
   const minutes = Math.round(seconds / 60);
   if (minutes >= 60) {
     const hours = Math.round(minutes / 60);
-    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+    return `${hours} ${hours === 1 ? t.pricingHour : t.pricingHours}`;
   }
-  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  return `${minutes} ${minutes === 1 ? t.pricingMinute : t.pricingMinutes}`;
 }
 
-function planStory(planId: AccountType): string {
-  if (planId === "free") return "Send securely";
-  if (planId === "personal_premium") return "Verify & control";
-  return "Brand & professionalize";
+function planStory(planId: AccountType, t: Translations): string {
+  if (planId === "free") return t.pricingStoryFree;
+  if (planId === "personal_premium") return t.pricingStoryStarter;
+  return t.pricingStoryBusiness;
+}
+
+function planTagline(planId: AccountType, t: Translations): string {
+  if (planId === "free") return t.pricingTaglineFree;
+  if (planId === "personal_premium") return t.pricingTaglineStarter;
+  return t.pricingTaglineBusiness;
 }
 
 function isDowngradeCta(planId: AccountType, currentPlan?: AccountType | null): boolean {
@@ -89,38 +96,35 @@ function isDowngradeCta(planId: AccountType, currentPlan?: AccountType | null): 
 
 function planCta(
   planId: AccountType,
+  t: Translations,
   options?: {
     isCurrent?: boolean;
     currentPlan?: AccountType | null;
     signedIn?: boolean;
   },
 ): string {
-  if (options?.isCurrent) return "Your current plan";
+  if (options?.isCurrent) return t.pricingCtaCurrent;
   if (planId === "free") {
-    return options?.signedIn ? "Included" : "Start free";
+    return options?.signedIn ? t.pricingCtaIncluded : t.pricingCtaStartFree;
   }
 
   const current = options?.currentPlan ?? null;
   if (planId === "personal_premium") {
-    if (options?.signedIn && (!current || current === "free")) return "Upgrade to Starter";
-    if (current === "business_premium") return "Downgrade to Starter";
-    return "Choose Starter";
+    if (options?.signedIn && (!current || current === "free")) return t.pricingCtaUpgradeStarter;
+    if (current === "business_premium") return t.pricingCtaDowngradeStarter;
+    return t.pricingCtaChooseStarter;
   }
 
   if (options?.signedIn && (current === "free" || current === "personal_premium" || !current)) {
-    return "Upgrade to Business";
+    return t.pricingCtaUpgradeBusiness;
   }
-  return "Choose Business";
+  return t.pricingCtaChooseBusiness;
 }
 
-function currentPlanAcknowledgement(plan: AccountType): string {
-  if (plan === "free") {
-    return "You're on Free. Starter and Business are available when you need higher limits.";
-  }
-  if (plan === "personal_premium") {
-    return "You're on Starter. Upgrade to Business for branding and larger files.";
-  }
-  return "You're on Business — thanks for supporting PrivateNote.";
+function currentPlanAcknowledgement(plan: AccountType, t: Translations): string {
+  if (plan === "free") return t.pricingAckFree;
+  if (plan === "personal_premium") return t.pricingAckStarter;
+  return t.pricingAckBusiness;
 }
 
 function billingErrorCode(error: unknown): string | null {
@@ -134,181 +138,190 @@ function billingErrorCode(error: unknown): string | null {
 }
 
 /** Short outcome bullets for cards; capacity details live in the comparison table. */
-function planHighlights(planId: AccountType): string[] {
-  if (planId === "free") {
-    return [
-      "Unlimited basic encrypted notes · fair use",
-      "Up to 10 file, photo, audio, or recording transfers per day",
-      "Burn after reading and password protection",
-      "Open notes without creating an account",
-      "Open notifications with a free account",
-      "On-device AI templates · 3 hosted drafts a month, signed in",
-    ];
-  }
-  if (planId === "personal_premium") {
-    return [
-      "Everything in Free",
-      "Unlimited file, photo, audio, and recording transfers",
-      "Proof of access and recipient verification",
-      "Sent-notes dashboard and revoke unopened",
-      "Open-source typefaces on the opened note",
-      "Larger attachments and longer expiry",
-      "Document summary and privacy check AI templates",
-      "Note defaults synchronized across devices",
-    ];
-  }
-  return [
-    "Everything in Starter",
-    "Recipient branding on secure delivery pages",
-    "View-only file access for confidential documents",
-    "Custom AI prompt templates, saved in this browser",
-    "Largest attachments, buffer, and transfer capacity",
-    "Highest hosted AI draft allowance",
-    "One professional account — no team seats",
-  ];
+function planHighlights(planId: AccountType, t: Translations): string[] {
+  const items =
+    planId === "free"
+      ? [
+          t.pricingFreeH1,
+          t.pricingFreeH2,
+          t.pricingFreeH3,
+          t.pricingFreeH4,
+          t.pricingFreeH5,
+          t.pricingFreeH6,
+          t.pricingFreeH7,
+        ]
+      : planId === "personal_premium"
+        ? [
+            t.pricingStarterH1,
+            t.pricingStarterH2,
+            t.pricingStarterH3,
+            t.pricingStarterH4,
+            t.pricingStarterH5,
+            t.pricingStarterH6,
+            t.pricingStarterH7,
+            t.pricingStarterH8,
+            t.pricingStarterH9,
+          ]
+        : [
+            t.pricingBusinessH1,
+            t.pricingBusinessH2,
+            t.pricingBusinessH3,
+            t.pricingBusinessH4,
+            t.pricingBusinessH5,
+            t.pricingBusinessH6,
+            t.pricingBusinessH7,
+            t.pricingBusinessH8,
+            t.pricingBusinessH9,
+          ];
+  return items.filter((feature) => Boolean(feature));
 }
 
 /** `note` carries a condition that would otherwise make a bare "Included" misleading. */
-type ComparisonCell = { value: string; note?: string };
+type ComparisonCell = { value: string; note?: string; kind?: "yes" | "no" | "text" };
 
-const cell = (value: string, note?: string): ComparisonCell => ({ value, note });
-const flag = (on: boolean, note?: string): ComparisonCell =>
-  on ? cell("Included", note) : cell("No");
+const cell = (value: string, note?: string): ComparisonCell => ({ value, note, kind: "text" });
+const flag = (on: boolean, included: string, note?: string): ComparisonCell =>
+  on ? { value: included, note, kind: "yes" } : { value: "", kind: "no" };
 
-function comparisonValue(planId: AccountType, key: string): ComparisonCell {
+function comparisonValue(planId: AccountType, key: string, t: Translations): ComparisonCell {
   const features = PLAN_CATALOG[planId].features;
-  // Free is sold as needing no account, but the two features it shares with the
-  // paid plans both run off a signed-in, verified sender.
-  const freeAccountNote = planId === "free" ? "with a free account" : undefined;
+  const freeAccountNote = planId === "free" ? t.pricingWithFreeAccount : undefined;
   switch (key) {
     case "encryptedNotes":
     case "burnAfterReading":
     case "passwordProtection":
-      return flag(true);
+      return flag(true, t.pricingIncluded);
     case "openNotifications":
-      return flag(features.openNotifications, freeAccountNote);
+      return flag(features.openNotifications, t.pricingIncluded, freeAccountNote);
     case "proofOfAccess":
-      return flag(features.proofOfAccess);
+      return flag(features.proofOfAccess, t.pricingIncluded);
     case "recipientVerification":
-      return flag(features.recipientVerification);
+      return flag(features.recipientVerification, t.pricingIncluded);
     case "recipientLinkDelivery":
-      return flag(features.recipientLinkDelivery);
+      return flag(features.recipientLinkDelivery, t.pricingIncluded);
     case "delayedReveal":
-      return flag(features.delayedReveal);
+      return flag(features.delayedReveal, t.pricingIncluded);
     case "receiptAcknowledgment":
-      return flag(features.receiptAcknowledgment);
+      return flag(features.receiptAcknowledgment, t.pricingIncluded);
     case "sentNotesDashboard":
-      return flag(features.sentNotesDashboard);
+      return flag(features.sentNotesDashboard, t.pricingIncluded);
     case "revokeUnopened":
-      return flag(features.revokeUnopened);
+      return flag(features.revokeUnopened, t.pricingIncluded);
     case "revealBranding":
-      return flag(features.revealBranding);
+      return flag(features.revealBranding, t.pricingIncluded);
     case "revealBodyFont":
-      return flag(features.revealBodyFont);
+      return flag(features.revealBodyFont, t.pricingIncluded);
     case "attachmentViewOnly":
-      return flag(features.attachmentViewOnly);
+      return flag(features.attachmentViewOnly, t.pricingIncluded);
     case "attachments":
-      return cell(formatBytesLabel(features.attachmentMaxBytes));
-    case "attachmentTransfers":
-      return features.maxAttachmentTransfersPerDay == null
-        ? cell("Unlimited")
-        : cell(`${features.maxAttachmentTransfersPerDay} / day`, "file, photo, audio, recording");
+      return cell(formatBytesLabel(features.attachmentMaxBytes, t));
+    case "fileTransfers":
+      if (features.maxAttachmentTransfersPerDay == null) {
+        return cell(t.pricingFileTransfersUnlimited);
+      }
+      return cell(
+        t.pricingFileTransfersNPerDay.replace("{n}", String(features.maxAttachmentTransfersPerDay)),
+        planId === "personal_premium" ? t.pricingStarterTransfersNote : freeAccountNote,
+      );
     case "payloadBuffer":
       return cell(
-        formatBytesLabel(features.activePayloadBufferBytes),
-        "encrypted attachments",
+        formatBytesLabel(features.activePayloadBufferBytes, t),
+        t.pricingEncryptedAttachments,
       );
     case "expiry":
-      return cell(`Up to ${Math.round(features.maxExpirySeconds / DAY)} days`);
+      return cell(t.pricingUpToDays.replace("{n}", String(Math.round(features.maxExpirySeconds / DAY))));
     case "readCounts":
       return cell(features.allowedReadCounts.join(", "));
     case "fileWindow":
-      return cell(formatFileWindowLabel(features.maxFileAccessWindowSeconds));
+      return cell(formatFileWindowLabel(features.maxFileAccessWindowSeconds, t));
     case "hostedAi":
-      return cell(`${features.hostedAiMonthly} / month`, freeAccountNote);
+      return cell(t.pricingNPerMonth.replace("{n}", String(features.hostedAiMonthly)), freeAccountNote);
     case "templates":
       if (features.customPromptTemplates) {
-        return cell("All + custom", "saved in this browser");
+        return cell(t.pricingAllPlusCustom, t.pricingSavedInBrowser);
       }
-      if (features.premiumTemplatePacks) return cell("All templates");
-      return cell("Standard templates");
+      if (features.premiumTemplatePacks) return cell(t.pricingAllTemplates);
+      return cell(t.pricingStandardTemplates);
     default:
       return cell("—");
   }
 }
 
-const comparisonSections: {
+function comparisonSections(t: Translations): {
   title: string;
   description: string;
   rows: { key: string; label: string }[];
-}[] = [
-  {
-    title: "Core",
-    description: "Encryption, expiry, and how many times a note can be opened.",
-    rows: [
-      { key: "encryptedNotes", label: "Encrypted secure notes" },
-      { key: "burnAfterReading", label: "Burn after reading" },
-      { key: "passwordProtection", label: "Password protection" },
-      { key: "expiry", label: "Note expiry" },
-      { key: "readCounts", label: "Permitted opens per note" },
-    ],
-  },
-  {
-    title: "Delivery and verification",
-    description: "Who can open a note, how it is sent, and what the sender can prove.",
-    rows: [
-      { key: "openNotifications", label: "Open and destroy notifications" },
-      { key: "proofOfAccess", label: "Proof of access" },
-      { key: "recipientVerification", label: "Recipient verification" },
-      { key: "recipientLinkDelivery", label: "Email link to recipient" },
-      { key: "delayedReveal", label: "Delayed reveal" },
-      { key: "receiptAcknowledgment", label: "Receipt confirmation" },
-      { key: "sentNotesDashboard", label: "Sent-notes dashboard" },
-      { key: "revokeUnopened", label: "Revoke unopened notes" },
-      { key: "revealBodyFont", label: "Reveal typeface" },
-      { key: "attachmentViewOnly", label: "View-only files" },
-      { key: "revealBranding", label: "Recipient branding" },
-    ],
-  },
-  {
-    title: "Capacity and AI",
-    description:
-      "Attachment size, daily file/photo/audio/recording transfers, download window, and hosted drafting limits.",
-    rows: [
-      { key: "attachments", label: "Max attachment size" },
-      { key: "attachmentTransfers", label: "File / photo / audio / recording transfers" },
-      { key: "payloadBuffer", label: "Active payload buffer" },
-      { key: "fileWindow", label: "Post-open download window" },
-      { key: "hostedAi", label: "Hosted AI drafts" },
-      { key: "templates", label: "Prompt templates" },
-    ],
-  },
-];
+}[] {
+  return [
+    {
+      title: t.pricingSectionCore,
+      description: t.pricingSectionCoreDesc,
+      rows: [
+        { key: "encryptedNotes", label: t.pricingRowEncryptedNotes },
+        { key: "burnAfterReading", label: t.pricingRowBurnAfterReading },
+        { key: "passwordProtection", label: t.pricingRowPasswordProtection },
+        { key: "expiry", label: t.pricingRowExpiry },
+        { key: "readCounts", label: t.pricingRowReadCounts },
+      ],
+    },
+    {
+      title: t.pricingSectionDelivery,
+      description: t.pricingSectionDeliveryDesc,
+      rows: [
+        { key: "openNotifications", label: t.pricingRowOpenNotifications },
+        { key: "proofOfAccess", label: t.pricingRowProofOfAccess },
+        { key: "recipientVerification", label: t.pricingRowRecipientVerification },
+        { key: "recipientLinkDelivery", label: t.pricingRowRecipientLinkDelivery },
+        { key: "delayedReveal", label: t.pricingRowDelayedReveal },
+        { key: "receiptAcknowledgment", label: t.pricingRowReceiptAcknowledgment },
+        { key: "sentNotesDashboard", label: t.pricingRowSentNotesDashboard },
+        { key: "revokeUnopened", label: t.pricingRowRevokeUnopened },
+        { key: "revealBodyFont", label: t.pricingRowRevealBodyFont },
+        { key: "attachmentViewOnly", label: t.pricingRowAttachmentViewOnly },
+        { key: "revealBranding", label: t.pricingRowRevealBranding },
+      ],
+    },
+    {
+      title: t.pricingSectionCapacity,
+      description: t.pricingSectionCapacityDesc,
+      rows: [
+        { key: "attachments", label: t.pricingRowAttachments },
+        { key: "fileTransfers", label: t.pricingRowFileTransfers },
+        { key: "payloadBuffer", label: t.pricingRowPayloadBuffer },
+        { key: "fileWindow", label: t.pricingRowFileWindow },
+        { key: "hostedAi", label: t.pricingRowHostedAi },
+        { key: "templates", label: t.pricingRowTemplates },
+      ],
+    },
+  ];
+}
 
-const featureCards = [
-  {
-    icon: Bell,
-    title: "Open notifications",
-    text: "Know when a note is opened or destroyed — available once you are signed in.",
-  },
-  {
-    icon: MailCheck,
-    title: "Recipient verification",
-    text: "Starter and Business can restrict reveal to the intended recipient.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Proof of access",
-    text: "Privacy-safe access records for the sender without storing message content.",
-  },
-  {
-    icon: Building2,
-    title: "Recipient branding",
-    text: "Business adds company profile, logo, colours, and a Default or Custom reveal page.",
-  },
-];
+function featureCards(t: Translations) {
+  return [
+    {
+      icon: Bell,
+      title: t.pricingCardNotifyTitle,
+      text: t.pricingCardNotifyText,
+    },
+    {
+      icon: MailCheck,
+      title: t.pricingCardVerifyTitle,
+      text: t.pricingCardVerifyText,
+    },
+    {
+      icon: ShieldCheck,
+      title: t.pricingCardProofTitle,
+      text: t.pricingCardProofText,
+    },
+    {
+      icon: Building2,
+      title: t.pricingCardBrandTitle,
+      text: t.pricingCardBrandText,
+    },
+  ];
+}
 
-function buildFaqs(currency: BillingCurrency) {
+function buildFaqs(currency: BillingCurrency, t: Translations) {
   const starterMonthly = formatMoney(
     planPriceFor("personal_premium", currency, "month"),
     currency,
@@ -326,36 +339,27 @@ function buildFaqs(currency: BillingCurrency) {
     currency,
   );
   return [
+    { q: t.pricingFaqEncryptionQ, a: t.pricingFaqEncryptionA },
     {
-      q: "Do paid plans change the encryption?",
-      a: "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher capacity, and Business branding — not a different crypto promise.",
+      q: t.pricingFaqDifferenceQ,
+      a: t.pricingFaqDifferenceA
+        .replace("{starterMonthly}", starterMonthly)
+        .replace("{businessMonthly}", businessMonthly),
     },
     {
-      q: "What are the Free plan file and transfer limits?",
-      a: "Free signed-in accounts can attach up to 25 MB per file, keep up to 250 MB of active encrypted attachments, and start up to 10 file, photo, audio, or recording transfers per day. Text-only notes stay unlimited under fair use. Starter and Business raise file size and buffer limits and remove the daily transfer cap.",
+      q: t.pricingFaqAnnualQ,
+      a: t.pricingFaqAnnualA
+        .replace("{starterYearly}", starterYearly)
+        .replace("{businessYearly}", businessYearly),
     },
-    {
-      q: "What is the difference between Starter and Business?",
-      a: `Starter (${starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes dashboard, reveal typefaces, unlimited attachment transfers, and higher size limits. Business (${businessMonthly}/month) adds recipient branding on secure delivery pages, browser-saved custom AI prompt templates, and the largest attachment and buffer limits — still one professional account, not team seats.`,
-    },
-    {
-      q: "How does annual billing work?",
-      a: `Annual plans are charged once per year at ${starterYearly} for Starter and ${businessYearly} for Business — two months free versus paying monthly. Stripe charges USD or EUR based on your region at checkout.`,
-    },
-    {
-      q: "Can I pay online today?",
-      a: "Yes. Choose a plan, sign in or create an account, then complete Stripe Checkout from the subscription page. The final total, including any tax, is shown before you pay.",
-    },
-    {
-      q: "What happens if I downgrade?",
-      a: "Existing paid-plan notes keep the conditions under which they were created. New notes follow your current plan: Free again applies the 10 transfers-per-day and Free size limits, and Starter/Business-only controls lock until you renew.",
-    },
+    { q: t.pricingFaqPayOnlineQ, a: t.pricingFaqPayOnlineA },
+    { q: t.pricingFaqDowngradeQ, a: t.pricingFaqDowngradeA },
   ];
 }
 
-function FeatureValue({ cell }: { cell: ComparisonCell }) {
-  const yes = cell.value === "Included";
-  const no = cell.value === "No";
+function FeatureValue({ cell, t }: { cell: ComparisonCell; t: Translations }) {
+  const yes = cell.kind === "yes";
+  const no = cell.kind === "no";
   return (
     <span
       className={[
@@ -366,17 +370,17 @@ function FeatureValue({ cell }: { cell: ComparisonCell }) {
       {yes ? (
         <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
           <Check className="h-4 w-4" aria-hidden />
-          <span className="sr-only">Included</span>
+          <span className="sr-only">{t.pricingIncluded}</span>
         </span>
       ) : no ? (
-        <span className="text-base leading-none text-gray-300 dark:text-gray-700" aria-label="Not included">
+        <span className="text-base leading-none text-gray-300 dark:text-gray-700" aria-label={t.pricingNotIncluded}>
           —
         </span>
       ) : (
         <span className="font-medium text-gray-900 dark:text-gray-100">{cell.value}</span>
       )}
       {cell.note ? (
-        <span className="mt-0.5 max-w-[11rem] text-[11px] leading-4 text-gray-500 dark:text-gray-500">
+        <span className="mt-0.5 max-w-[14rem] text-[11px] leading-4 text-gray-500 dark:text-gray-500">
           {cell.note}
         </span>
       ) : null}
@@ -394,6 +398,7 @@ function PlanCard({
   isCurrent,
   currentPlan,
   signedIn,
+  t,
 }: {
   planId: AccountType;
   interval: BillingInterval;
@@ -404,6 +409,7 @@ function PlanCard({
   isCurrent?: boolean;
   currentPlan?: AccountType | null;
   signedIn?: boolean;
+  t: Translations;
 }) {
   const plan = PLAN_CATALOG[planId];
   const downgrade = isDowngradeCta(planId, currentPlan);
@@ -412,13 +418,13 @@ function PlanCard({
   const isFree = planId === "free";
   const displayAmount = planAmountFor(planId, currency, interval);
   const priceNote = isFree
-    ? "No payment required."
+    ? t.pricingNoPayment
     : interval === "month"
-      ? "Billed monthly. Cancel anytime before renewal."
-      : `Billed annually · about ${annualSavings}% less than monthly. Cancel anytime before renewal.`;
-  const ctaLabel = planCta(planId, { isCurrent, currentPlan, signedIn });
+      ? t.pricingBilledMonthly
+      : t.pricingBilledAnnually.replace("{pct}", String(annualSavings));
+  const ctaLabel = planCta(planId, t, { isCurrent, currentPlan, signedIn });
   const primaryCta =
-    !isCurrent && !downgrade && (highlighted || ctaLabel === "Upgrade to Business");
+    !isCurrent && !downgrade && (highlighted || ctaLabel === t.pricingCtaUpgradeBusiness);
 
   const buttonClassName = [
     "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-[15px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60",
@@ -434,7 +440,7 @@ function PlanCard({
       {ctaLabel}
     </>
   ) : checkoutBusy ? (
-    "Opening checkout…"
+    t.pricingOpeningCheckout
   ) : (
     ctaLabel
   );
@@ -452,19 +458,19 @@ function PlanCard({
     >
       {isCurrent ? (
         <div className="absolute right-4 top-4 rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white">
-          Current plan
+          {t.pricingCurrentPlanBadge}
         </div>
       ) : highlighted ? (
         <div className="absolute right-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
-          Most popular
+          {t.pricingMostPopular}
         </div>
       ) : null}
       <h2 className="pr-28 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
         {plan.label}
       </h2>
-      <p className="mt-1 text-sm font-medium text-primary">{planStory(planId)}</p>
+      <p className="mt-1 text-sm font-medium text-primary">{planStory(planId, t)}</p>
       <p className="mt-3 min-h-[5.25rem] text-base leading-7 text-gray-600 dark:text-gray-400">
-        {plan.tagline}
+        {planTagline(planId, t)}
       </p>
       <div className="mt-6">
         {isFree ? (
@@ -472,7 +478,7 @@ function PlanCard({
             <span className="text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
               {formatMoney(0, currency)}
             </span>
-            <span className="pb-1.5 text-sm text-gray-500 dark:text-gray-400">forever</span>
+            <span className="pb-1.5 text-sm text-gray-500 dark:text-gray-400">{t.pricingForever}</span>
           </div>
         ) : (
           <>
@@ -481,7 +487,7 @@ function PlanCard({
                 {formatMoney(displayAmount, currency)}
               </span>
               <span className="pb-1.5 text-sm text-gray-500 dark:text-gray-400">
-                {interval === "month" ? "per month" : "per year"}
+                {interval === "month" ? t.pricingPerMonth : t.pricingPerYear}
               </span>
             </div>
           </>
@@ -490,8 +496,7 @@ function PlanCard({
       <p className="mt-2 text-sm leading-5 text-gray-500 dark:text-gray-400">{priceNote}</p>
       {!isFree ? (
         <p className="mt-1 text-xs leading-5 text-gray-400 dark:text-gray-500">
-          Shown in {currency.toUpperCase()} for your region. Final charge currency is confirmed
-          at Stripe Checkout.
+          {t.pricingRegionCharge.replace("{currency}", currency.toUpperCase())}
         </p>
       ) : null}
       {isCurrent || (signedIn && planId === "free" && currentPlan && currentPlan !== "free") ? (
@@ -513,10 +518,10 @@ function PlanCard({
         </Link>
       )}
       <p className="mt-7 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        Includes
+        {t.pricingIncludes}
       </p>
       <ul className="mt-4 space-y-3.5">
-        {planHighlights(planId).map((feature) => (
+        {planHighlights(planId, t).map((feature) => (
           <li
             key={feature}
             className="flex gap-3 text-[15px] leading-6 text-gray-700 dark:text-gray-300"
@@ -531,8 +536,7 @@ function PlanCard({
       </ul>
       {planId === "business_premium" ? (
         <p className="mt-6 rounded-lg border border-blue-100 bg-blue-50/70 px-3.5 py-2.5 text-sm leading-6 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">
-          Branded delivery for solo professionals and consultants. Team seats and organization
-          administration are not included.
+          {t.pricingBusinessNote}
         </p>
       ) : null}
     </article>
@@ -540,7 +544,7 @@ function PlanCard({
 }
 
 export default function Premium() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { user } = useAuth();
   const { entitlements } = useAccountEntitlements();
   const { toast } = useToast();
@@ -557,7 +561,7 @@ export default function Premium() {
     [billingStatus?.billingCurrency, language],
   );
   const starterSavings = annualPlanSavingsPercent("personal_premium", displayCurrency);
-  const faqs = useMemo(() => buildFaqs(displayCurrency), [displayCurrency]);
+  const faqs = useMemo(() => buildFaqs(displayCurrency, t), [displayCurrency, t]);
   const currentPlan: AccountType | null = user
     ? billingStatus?.accountType ?? entitlements.accountType
     : null;
@@ -589,13 +593,13 @@ export default function Premium() {
       window.location.assign(portal.url);
     } catch {
       toast({
-        title: "Could not open billing",
-        description: "Open Account to manage your subscription.",
+        title: t.pricingToastBillingTitle,
+        description: t.pricingToastBillingDesc,
         variant: "destructive",
       });
       setCheckoutBusyPlan(null);
     }
-  }, [toast]);
+  }, [t, toast]);
 
   const startCheckout = useCallback(
     async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
@@ -618,14 +622,14 @@ export default function Premium() {
           return;
         }
         toast({
-          title: "Could not start checkout",
-          description: "Please try again, or open Account to manage an existing subscription.",
+          title: t.pricingToastCheckoutTitle,
+          description: t.pricingToastCheckoutDesc,
           variant: "destructive",
         });
         setCheckoutBusyPlan(null);
       }
     },
-    [billingInterval, currentPlan, openPortal, toast],
+    [billingInterval, currentPlan, openPortal, t, toast],
   );
 
   const planHref = useMemo(
@@ -677,21 +681,25 @@ export default function Premium() {
     ),
     displayCurrency,
   );
-  const intervalLabel = billingInterval === "year" ? "/year" : "/month";
+  const intervalLabel =
+    billingInterval === "year" ? t.pricingIntervalYear : t.pricingIntervalMonth;
+  const saveHint =
+    billingInterval === "year"
+      ? t.pricingYearlySave.replace("{pct}", String(starterSavings))
+      : t.pricingMonthlySaveHint.replace("{pct}", String(starterSavings));
 
   return (
     <MarketingDocShell className="mx-auto max-w-7xl">
       <section className="text-center">
         <h1 className="mx-auto max-w-3xl text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-          Simple plans for secure sharing.
+          {t.pricingHeroTitle}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 dark:text-gray-300 sm:text-lg">
-          Send encrypted notes, passwords, and files for free. Upgrade when you need verified
-          recipients, proof of access, higher limits, or your own branding.
+          {t.pricingHeroSubtitle}
         </p>
         {currentPlan ? (
           <p className="mx-auto mt-4 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-sm font-medium text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
-            {currentPlanAcknowledgement(currentPlan)}
+            {currentPlanAcknowledgement(currentPlan, t)}
           </p>
         ) : null}
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
@@ -705,7 +713,7 @@ export default function Premium() {
                 : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
             ].join(" ")}
           >
-            Pay monthly
+            {t.pricingPayMonthly}
           </button>
           <button
             type="button"
@@ -717,17 +725,19 @@ export default function Premium() {
                 : "text-gray-600 hover:text-gray-950 dark:text-gray-400 dark:hover:text-white",
             ].join(" ")}
           >
-            Pay yearly
+            {t.pricingPayYearly}
           </button>
         </div>
         <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Starter {starterPrice}
-          {intervalLabel} · Business {businessPrice}
-          {intervalLabel}.
-          {billingInterval === "year"
-            ? ` Save about ${starterSavings}% versus monthly.`
-            : ` Yearly saves about ${starterSavings}%.`}{" "}
-          Prices shown in {displayCurrency.toUpperCase()}; checkout confirms the charge currency.
+          {t.pricingPriceSummary
+            .replace("{starter}", starterPrice)
+            .replace("{business}", businessPrice)
+            .replace("{interval}", intervalLabel)
+            .replace("{interval}", intervalLabel)}
+          {saveHint}
+          {t.pricingCurrencyNote?.trim()
+            ? ` ${t.pricingCurrencyNote.replace("{currency}", displayCurrency.toUpperCase())}`
+            : ""}
         </p>
       </section>
 
@@ -748,19 +758,20 @@ export default function Premium() {
             isCurrent={Boolean(user) && currentPlan === planId}
             currentPlan={currentPlan}
             signedIn={Boolean(user)}
+            t={t}
           />
         ))}
       </section>
 
       <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-6 text-gray-500 dark:text-gray-400">
-        Client-side encryption on every plan · Self-serve Stripe checkout ·{" "}
+        {t.pricingFooterLine}{" "}
         <a href={`#${BILLING_FAQ_ANCHOR}`} className="underline-offset-2 hover:underline">
-          Cancel anytime before renewal
+          {t.pricingCancelAnytime}
         </a>
       </p>
 
       <section className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {featureCards.map(({ icon: Icon, title, text }) => (
+        {featureCards(t).map(({ icon: Icon, title, text }) => (
           <div key={title} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-950">
             <Icon className="h-5 w-5 text-primary" aria-hidden />
             <h2 className="mt-4 text-sm font-semibold text-gray-950 dark:text-white">{title}</h2>
@@ -773,20 +784,20 @@ export default function Premium() {
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-              Plan comparison
+              {t.pricingCompareKicker}
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-              Plans and features
+              {t.pricingCompareTitle}
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-400">
-              Limits and capabilities come from the shared plan catalog used by billing and the app.
+              {t.pricingCompareSubtitle}
             </p>
           </div>
           <Link
             href={user ? lp("/account") : lp("/auth/sign-up")}
             className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
           >
-            {user ? "Go to account" : "Create account to subscribe"}
+            {user ? t.pricingGoToAccount : t.pricingCreateAccountToSubscribe}
           </Link>
         </div>
 
@@ -794,7 +805,7 @@ export default function Premium() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-left sm:min-w-[720px]">
               <caption className="sr-only">
-                Feature comparison for Free, Starter, and Business plans
+                {t.pricingCompareCaption}
               </caption>
               <colgroup>
                 <col className="w-[24%] sm:w-[28%] lg:w-[32%]" />
@@ -805,7 +816,7 @@ export default function Premium() {
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-400">
                   <th scope="col" className="sticky left-0 z-[1] bg-gray-50 px-3 py-3 sm:px-5 sm:py-3.5 dark:bg-gray-900/70">
-                    Feature
+                    {t.pricingFeatureColumn}
                   </th>
                   {PLAN_ORDER.map((planId) => (
                     <th
@@ -823,7 +834,7 @@ export default function Premium() {
                   ))}
                 </tr>
               </thead>
-              {comparisonSections.map((section) => (
+              {comparisonSections(t).map((section) => (
                 <tbody key={section.title} className="[&>tr:last-child]:border-b-0">
                   <tr className="border-y border-gray-200 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/50">
                     <th
@@ -868,7 +879,7 @@ export default function Premium() {
                               : "",
                           ].join(" ")}
                         >
-                          <FeatureValue cell={comparisonValue(planId, row.key)} />
+                          <FeatureValue cell={comparisonValue(planId, row.key, t)} t={t} />
                         </td>
                       ))}
                     </tr>
@@ -886,11 +897,10 @@ export default function Premium() {
             <Sparkles className="mt-0.5 h-5 w-5 text-amber-700 dark:text-amber-300" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-amber-950 dark:text-amber-100">
-                Paid plans do not change the encryption promise.
+                {t.pricingEncryptionTitle}
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900/85 dark:text-amber-100/80">
-                Notes are still encrypted in your browser before upload. Starter and Business add
-                delivery controls, capacity, and branding — not plaintext access for PrivateNote.
+                {t.pricingEncryptionBody}
               </p>
             </div>
           </div>
@@ -898,14 +908,14 @@ export default function Premium() {
             href={lp("/how-it-works")}
             className="inline-flex shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
           >
-            How encryption works
+            {t.pricingHowEncryptionWorks}
           </Link>
         </div>
       </section>
 
       <section className="mt-16">
         <h2 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-          Questions & answers
+          {t.pricingQaTitle}
         </h2>
         <div className="mt-5 divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-950">
           {faqs.map(({ q, a }) => (
@@ -923,7 +933,8 @@ export default function Premium() {
       <div className="mt-16">
         <BillingFaqSection
           schemaId="premium-billing-faq"
-          intro="Cancel versus withdraw, invoices, VAT IDs, failed cards, and what to do if you paid but still see Free. Same answers as on Contact."
+          title={t.pricingBillingFaqTitle}
+          intro={t.pricingBillingFaqIntro}
         />
       </div>
     </MarketingDocShell>
