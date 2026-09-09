@@ -231,20 +231,24 @@ export function ComposerAddActions({
     zipping: labels.zipping,
   };
   const actionClass = `${attachActionButtonClass} disabled:cursor-not-allowed disabled:opacity-50`;
-  const actions = (
+  void isMobile;
+
+  return (
     <>
-      <ComposerAttachControl
-        disabled={disabled}
-        isPreparingFolder={isPreparingFolder}
-        showFolder={showFolder}
-        addDisabledReason={addDisabledReason}
-        fileInputId={fileInputId}
-        onAddFile={onAddFile}
-        onAddFolder={onAddFolder}
-        labels={attachLabels}
-        buttonClassName={actionClass}
-        iconOnlyOnMobile
-      />
+      <div className="flex min-w-0 max-lg:flex-1">
+        <ComposerAttachControl
+          disabled={disabled}
+          isPreparingFolder={isPreparingFolder}
+          showFolder={showFolder}
+          addDisabledReason={addDisabledReason}
+          fileInputId={fileInputId}
+          onAddFile={onAddFile}
+          onAddFolder={onAddFolder}
+          labels={attachLabels}
+          buttonClassName={`${actionClass} w-full`}
+          iconOnlyOnMobile
+        />
+      </div>
       <button
         type="button"
         disabled={disabled}
@@ -254,7 +258,7 @@ export function ComposerAddActions({
         className={actionClass}
       >
         <Camera className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-        <span className="hidden max-w-full truncate lg:inline">{labels.takePhoto}</span>
+        <span className="hidden min-w-0 max-w-full truncate lg:inline">{labels.takePhoto}</span>
       </button>
       <button
         type="button"
@@ -265,11 +269,8 @@ export function ComposerAddActions({
         className={actionClass}
       >
         <Mic className="h-5 w-5 shrink-0 lg:h-4 lg:w-4" aria-hidden />
-        <span className="hidden max-w-full truncate lg:inline">{labels.record}</span>
+        <span className="hidden min-w-0 max-w-full truncate lg:inline">{labels.record}</span>
       </button>
     </>
   );
-
-  if (isMobile) return actions;
-  return <div className="flex flex-wrap items-center gap-2">{actions}</div>;
 }

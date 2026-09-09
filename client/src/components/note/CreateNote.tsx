@@ -676,11 +676,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   };
 
   const secondaryActionButtonClass =
-    "flex min-w-0 items-center justify-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:text-blue-300 dark:hover:bg-gray-800/80 max-lg:flex-col max-lg:gap-1 lg:flex-row lg:gap-1.5 lg:px-5";
+    "flex min-w-0 items-center justify-center overflow-hidden rounded-lg border border-gray-300 bg-transparent !shadow-none px-4 py-2.5 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-gray-50/80 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-transparent dark:text-blue-300 dark:hover:bg-gray-800/80 lg:gap-1.5 lg:px-5";
   const attachActionButtonClass =
-    "flex min-w-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/8 px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-300 dark:hover:bg-blue-400/15 max-lg:flex-col max-lg:gap-1 lg:flex-row lg:gap-1.5 lg:px-5";
+    "flex min-w-0 items-center justify-center overflow-hidden rounded-lg border border-primary/30 bg-transparent !shadow-none px-4 py-2.5 text-sm font-medium text-primary transition-all duration-150 hover:bg-primary/12 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-blue-400/40 dark:bg-transparent dark:text-blue-300 dark:hover:bg-blue-400/15 lg:bg-primary/8 lg:gap-1.5 lg:px-5 dark:lg:bg-blue-400/10";
   const composeToolButtonClass =
-    "max-lg:h-11 max-lg:min-h-11 max-lg:flex-1 max-lg:flex-row max-lg:px-2 max-lg:py-0";
+    "max-lg:h-11 max-lg:w-full max-lg:min-w-0 max-lg:flex-1 max-lg:gap-0 max-lg:px-0";
 
   const saveAuthRedirectDraft = useCallback(
     (overrides?: Partial<CreateNoteAuthDraft>) => {
@@ -3514,7 +3514,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </p>
                 </>
               ) : isFileTransferMode && hasAttachments ? (
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-nowrap items-center gap-2">
                   <input
                     ref={fileInputRef}
                     id={canAttachFiles ? fileTransferFileInputId : undefined}
@@ -3524,7 +3524,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                     tabIndex={-1}
                     onChange={handleAttachFileSelected}
                   />
-                  <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
+                  <div className="flex min-w-0 flex-nowrap items-center gap-2 max-lg:flex-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -3534,7 +3534,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                         setShowAdvancedOptions(!showAdvancedOptions);
                       }
                     }}
-                    className={`${secondaryActionButtonClass} ${composeToolButtonClass} lg:flex-none`}
+                    className={`${secondaryActionButtonClass} ${composeToolButtonClass} lg:min-w-0 lg:max-w-[11rem] lg:shrink-0`}
                     aria-label={
                       customizeSheetExperiment || !showAdvancedOptions
                         ? t.customize
@@ -3583,7 +3583,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto lg:min-w-[180px]"
+                    className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
                   >
                     {isLoading ? (
                       <>
@@ -3592,8 +3592,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                       </>
                     ) : (
                       <>
-                        <Lock className="mr-1.5 h-4 w-4" />
-                        {t.sharePrivateNote}
+                        <Lock className="mr-1.5 h-4 w-4 shrink-0" />
+                        <span className="min-w-0 truncate">{t.sharePrivateNote}</span>
                       </>
                     )}
                   </button>
@@ -3609,8 +3609,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-2">
-                <div className="flex min-w-0 w-full flex-nowrap items-stretch gap-2 lg:flex-1">
+              <div className="flex flex-nowrap items-center gap-2">
+                <div className="flex min-w-0 flex-nowrap items-center gap-2 max-lg:flex-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -3620,7 +3620,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                           setShowAdvancedOptions(!showAdvancedOptions);
                         }
                       }}
-                      className={`${secondaryActionButtonClass} ${composeToolButtonClass} lg:flex-none`}
+                      className={`${secondaryActionButtonClass} ${composeToolButtonClass} lg:min-w-0 lg:max-w-[11rem] lg:shrink-0`}
                       aria-label={
                         customizeSheetExperiment || !showAdvancedOptions
                           ? t.customize
@@ -3670,36 +3670,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex w-full shrink-0 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-6 py-2.5 text-sm font-medium text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto lg:min-w-[180px]"
+                  className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
                 >
                   {isLoading ? (
                     <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />
                       {t.creatingSecureNote}
                     </>
                   ) : (
                     <>
-                      <Lock className="w-4 h-4 mr-1.5" />
-                      {t.sharePrivateNote}
+                      <Lock className="mr-1.5 h-4 w-4 shrink-0" />
+                      <span className="min-w-0 truncate">{t.sharePrivateNote}</span>
                     </>
                   )}
                 </button>
