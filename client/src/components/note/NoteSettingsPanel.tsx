@@ -528,6 +528,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
   const brandingHref = localizedPath("/account/branding", language);
   const isConfiguredBusiness = configuredAccountType === "business_premium";
   const brandingAllowed = canBrandRevealPage || isConfiguredBusiness;
+  const viewOnlyAllowed = canChooseAttachmentPermission || isConfiguredBusiness;
   const [selectedPremiumFeature, setSelectedPremiumFeature] =
     React.useState<PremiumFeature | null>(null);
   const [savingDefaults, setSavingDefaults] = React.useState(false);
@@ -776,76 +777,60 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             </div>
           </div>
 
-          <div className={SETTINGS_FIELD_ROW}>
-            <div>
-              <SettingsFieldLabel
-                icon={<EyeOff className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
-                iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
-                label={t.settingsAttachmentPermission ?? "Recipient file access"}
-                info={
-                  t.settingsAttachmentPermissionInfo ??
-                  "View only hides the download button. It is a handling policy, not DRM — a determined recipient can still capture the screen."
-                }
-              />
-            </div>
-            <div className="min-w-0 space-y-2">
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    {
-                      id: "download" as const,
-                      title: t.settingsAttachmentPermissionDownload ?? "View + download",
-                      hint:
-                        t.settingsAttachmentPermissionDownloadHint ??
-                        "The recipient may download the file during the access window.",
-                    },
-                    {
-                      id: "view-only" as const,
-                      title: t.settingsAttachmentPermissionViewOnly ?? "View only",
-                      hint:
-                        t.settingsAttachmentPermissionViewOnlyHint ??
-                        "The recipient can open the secure viewer. Download is hidden.",
-                    },
-                  ] as const
-                ).map((option) => {
-                  const selected = attachmentPermission === option.id;
-                  const locked = option.id === "view-only" && !canChooseAttachmentPermission;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => {
-                        if (locked) {
-                          setSelectedPremiumFeature({
-                            title: t.settingsAttachmentPermission ?? "Recipient file access",
-                            description:
-                              t.settingsAttachmentPermissionInfo ??
-                              "View only hides the download button. It is a handling policy, not DRM — a determined recipient can still capture the screen.",
-                            plan: "business",
-                          });
-                          return;
-                        }
-                        setAttachmentPermission(option.id);
-                      }}
-                      className={`${receiptAckOptionBase} ${selected ? receiptAckOptionActive : receiptAckOptionIdle}`}
-                      aria-pressed={selected}
-                    >
-                      <span className="block font-medium">
-                        {withPlanUnlock(option.title, option.id === "view-only" ? "business" : "free", t)}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
-                        {option.hint}
-                      </span>
-                    </button>
-                  );
-                })}
+          {hasAttachment ? (
+            <div className={SETTINGS_FIELD_ROW}>
+              <div>
+                <SettingsFieldLabel
+                  htmlFor="note-attachment-permission"
+                  icon={<EyeOff className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />}
+                  iconToneClassName="bg-indigo-50 dark:bg-indigo-900/30"
+                  label={t.settingsAttachmentPermission ?? "File access"}
+                  info={
+                    t.settingsAttachmentPermissionInfo ??
+                    "View only hides download. Screenshots are still possible."
+                  }
+                />
               </div>
-              <SettingsFieldHelper>
-                {t.settingsAttachmentPermissionHint ??
-                  "View only is available on Business. It does not prevent screenshots."}
-              </SettingsFieldHelper>
+              <div className="min-w-0">
+                <select
+                  id="note-attachment-permission"
+                  value={attachmentPermission}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    if (next === "view-only" && !viewOnlyAllowed) {
+                      setSelectedPremiumFeature({
+                        title: t.settingsAttachmentPermissionViewOnly ?? "View only",
+                        description:
+                          t.settingsAttachmentPermissionInfo ??
+                          "View only hides download. Screenshots are still possible.",
+                        plan: "business",
+                      });
+                      return;
+                    }
+                    if (next === "download" || next === "view-only") {
+                      setAttachmentPermission(next);
+                    }
+                  }}
+                  className={SETTINGS_SELECT_CLASS}
+                  style={SELECT_CHEVRON_STYLE}
+                >
+                  <option value="download">
+                    {t.settingsAttachmentPermissionDownload ?? "View + download"}
+                  </option>
+                  <option
+                    value="view-only"
+                    style={viewOnlyAllowed ? undefined : LOCKED_OPTION_STYLE}
+                  >
+                    {withPlanUnlock(
+                      t.settingsAttachmentPermissionViewOnly ?? "View only",
+                      "business",
+                      t,
+                    )}
+                  </option>
+                </select>
+              </div>
             </div>
-          </div>
+          ) : null}
 
 <div className={SETTINGS_FIELD_ROW}>
                 <div>

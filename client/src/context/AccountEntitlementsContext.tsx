@@ -160,12 +160,13 @@ export function AccountEntitlementsProvider({
         const accountType = normalizeAccountType(
           summary.accountType ?? summary.plan,
         );
-        const planHostedAiLimit = planFeaturesFor(accountType).hostedAiMonthly;
+        const catalogCapabilities = planFeaturesFor(accountType);
+        const planHostedAiLimit = catalogCapabilities.hostedAiMonthly;
         const serverCapabilities = summary.entitlements?.capabilities;
         const capabilities =
           serverCapabilities && typeof serverCapabilities.revealBranding === "boolean"
-            ? serverCapabilities
-            : planFeaturesFor(accountType);
+            ? { ...catalogCapabilities, ...serverCapabilities }
+            : catalogCapabilities;
         const next: AccountEntitlementSnapshot = {
           accountType,
           configuredAccountType: normalizeAccountType(

@@ -528,6 +528,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const planCapabilities = entitlements.capabilities;
   const maxExpirySeconds = planCapabilities.maxExpirySeconds;
   const canBrandRevealPage = planCapabilities.revealBranding === true;
+  const canChooseAttachmentPermission =
+    planCapabilities.attachmentViewOnly === true ||
+    accountType === "business_premium" ||
+    entitlements.configuredAccountType === "business_premium";
   const revealBrandingSnapshot = toRevealBranding({
     companyName: entitlements.businessDisplayName,
     senderName: entitlements.businessSenderName,
@@ -1103,9 +1107,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   }, [isPremiumUser, readerLanguage, bodyFont, recipientEmail, requireRecipientVerification]);
 
   useEffect(() => {
-    if (planCapabilities.attachmentViewOnly) return;
+    if (canChooseAttachmentPermission) return;
     if (attachmentPermission !== "download") setAttachmentPermission("download");
-  }, [attachmentPermission, planCapabilities.attachmentViewOnly]);
+  }, [attachmentPermission, canChooseAttachmentPermission]);
 
   useEffect(() => {
     if (isPremiumUser) return;
@@ -1615,7 +1619,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
         ? parsedBodyFont
         : undefined;
     const applyAttachmentPermission =
-      planCapabilities.attachmentViewOnly && hasAttachments
+      canChooseAttachmentPermission && hasAttachments
         ? parseAttachmentRecipientPermission(attachmentPermission)
         : undefined;
     const tracksDelivery =
@@ -3417,7 +3421,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 canChooseBodyFont={planCapabilities.revealBodyFont}
                 attachmentPermission={attachmentPermission}
                 setAttachmentPermission={setAttachmentPermission}
-                canChooseAttachmentPermission={planCapabilities.attachmentViewOnly}
+                canChooseAttachmentPermission={canChooseAttachmentPermission}
                 canBrandRevealPage={canBrandRevealPage}
                 configuredAccountType={entitlements.configuredAccountType}
                 hasRevealBranding={hasRevealBranding}
@@ -3773,7 +3777,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
               canChooseBodyFont: planCapabilities.revealBodyFont,
               attachmentPermission,
               setAttachmentPermission,
-              canChooseAttachmentPermission: planCapabilities.attachmentViewOnly,
+              canChooseAttachmentPermission,
               canBrandRevealPage,
               configuredAccountType: entitlements.configuredAccountType,
               hasRevealBranding,

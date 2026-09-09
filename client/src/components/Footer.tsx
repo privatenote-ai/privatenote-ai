@@ -53,7 +53,7 @@ export const Footer: React.FC = () => {
     { href: lp("/password-generator"), label: t.passwordGenerator },
     { href: lp("/how-it-works"), label: t.howItWorks },
     ...(PREMIUM_NAV_LINK_PUBLIC
-      ? [{ href: lp("/premium"), label: "Pricing" }]
+      ? [{ href: lp("/premium"), label: t.pricing }]
       : []),
   ];
 

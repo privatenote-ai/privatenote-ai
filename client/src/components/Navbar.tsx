@@ -303,7 +303,7 @@ export const Navbar: React.FC = () => {
             </NavLink>
             {PREMIUM_NAV_LINK_PUBLIC ? (
               <NavLink href={lp("/premium")} closeMenu={closeMenu} className={desktopLink}>
-                Pricing
+                {t.pricing}
               </NavLink>
             ) : null}
             <div className="relative z-10 flex h-16 items-center" ref={resourcesRef}>
@@ -473,7 +473,7 @@ export const Navbar: React.FC = () => {
             {PREMIUM_NAV_LINK_PUBLIC ? (
               <NavLink href={lp("/premium")} closeMenu={closeMenu} className={mobileItemClass}>
                 <BadgeDollarSign className="h-4 w-4 shrink-0 opacity-80" />
-                <span>Pricing</span>
+                <span>{t.pricing}</span>
               </NavLink>
             ) : null}
 
