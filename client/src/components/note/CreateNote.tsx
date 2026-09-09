@@ -3514,7 +3514,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   </p>
                 </>
               ) : isFileTransferMode && hasAttachments ? (
-                <div className="flex flex-nowrap items-center gap-2">
+                <div className="flex w-full flex-nowrap items-center gap-2 lg:justify-between">
                   <input
                     ref={fileInputRef}
                     id={canAttachFiles ? fileTransferFileInputId : undefined}
@@ -3583,7 +3583,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
+                    className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:ml-auto lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
                   >
                     {isLoading ? (
                       <>
@@ -3609,7 +3609,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 tabIndex={-1}
                 onChange={handleAttachFileSelected}
               />
-              <div className="flex flex-nowrap items-center gap-2">
+              <div className="flex w-full flex-nowrap items-center gap-2 lg:justify-between">
                 <div className="flex min-w-0 flex-nowrap items-center gap-2 max-lg:flex-1">
                     <button
                       type="button"
@@ -3670,7 +3670,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
+                  className="flex min-h-11 min-w-0 items-center justify-center rounded-lg border border-transparent bg-primary px-3 py-2.5 text-center text-sm font-medium leading-snug text-white shadow-md transition-all duration-150 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 max-lg:w-[49%] max-lg:flex-none lg:ml-auto lg:w-auto lg:max-w-[40%] lg:flex-none lg:whitespace-nowrap lg:px-6"
                 >
                   {isLoading ? (
                     <>
