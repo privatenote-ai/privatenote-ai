@@ -1863,8 +1863,8 @@ export default function AccountBranding() {
                         Show branding after the note is opened
                       </Label>
                       <p className="mt-1 text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/80">
-                        Off by default. When on, screenshots of the opened note will
-                        include your logo, sender name, and company identity.
+                        Off by default. When on, the opened note keeps this page’s
+                        colours and layout. Logo and sender details are optional below.
                       </p>
                     </div>
                     <Switch
@@ -1909,6 +1909,39 @@ export default function AccountBranding() {
 
                 {openedNoteBranding.show ? (
                   <>
+                    <div className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 px-4 py-3 dark:border-gray-700">
+                      <div className="min-w-0 flex-1">
+                        <Label
+                          htmlFor="opened-show-identity"
+                          className="text-sm font-medium text-gray-900 dark:text-gray-100"
+                        >
+                          Show logo and sender details
+                        </Label>
+                        <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                          Logo, sender name, company, and trust message. Turn off to
+                          keep the branded page without that identity.
+                        </p>
+                      </div>
+                      <Switch
+                        id="opened-show-identity"
+                        checked={
+                          openedNoteBranding.showLogo ||
+                          openedNoteBranding.showSenderName ||
+                          openedNoteBranding.showCompanyName ||
+                          openedNoteBranding.showTrustMessage
+                        }
+                        onCheckedChange={(checked) =>
+                          setOpenedNoteBranding((prev) => ({
+                            ...prev,
+                            showLogo: checked,
+                            showSenderName: checked,
+                            showCompanyName: checked,
+                            showTrustMessage: checked,
+                          }))
+                        }
+                        aria-label="Show logo and sender details on the opened note"
+                      />
+                    </div>
                     <div>
                       <Label className="mb-2 block text-sm">Opened page</Label>
                       <div className="mb-4 grid grid-cols-2 gap-2">
