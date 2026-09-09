@@ -796,7 +796,6 @@ export default function AccountBranding() {
   // A null opened scale inherits the reveal page's, so the slider starts where that left off.
   const openedBackgroundZoom =
     openedNoteBranding.backgroundZoom ?? portalLayout.backgroundZoom ?? BRANDING_BACKGROUND_ZOOM_DEFAULT;
-  // Filters share the Default opened page; Custom is the photograph.
   const openedPageIsDefault =
     openedNoteBranding.background !== "banner";
   const [savingBranding, setSavingBranding] = useState(false);
@@ -856,7 +855,10 @@ export default function AccountBranding() {
             : brandingPortalLayout(data.businessPortalLayout ?? undefined),
         );
         const parsedOpened = parseOpenedNoteBrandingSettings(data.businessOpenedBranding);
-        setOpenedNoteBranding(parsedOpened);
+        setOpenedNoteBranding({
+          ...parsedOpened,
+          background: parsedOpened.background === "banner" ? "banner" : "neutral",
+        });
         setOpenedAccentDraft(hexColorForInput(parsedOpened.accentColor, accent));
         setOpenedTextDraft(hexColorForInput(parsedOpened.textColor, text));
         setOpenedNoteBorderDraft(
@@ -1955,13 +1957,7 @@ export default function AccountBranding() {
                             onClick={() =>
                               setOpenedNoteBranding((prev) => ({
                                 ...prev,
-                                // Re-picking Default keeps an existing filter rather than clearing it.
-                                background:
-                                  choice.id === "neutral" && prev.background !== "banner"
-                                    ? prev.background === "same"
-                                      ? "neutral"
-                                      : prev.background
-                                    : choice.id,
+                                background: choice.id,
                                 ...(choice.id === "neutral" && !prev.backgroundColor
                                   ? {
                                       backgroundColor: brandingIsPrivateNoteCanvas(businessBackgroundColor)
@@ -1998,24 +1994,6 @@ export default function AccountBranding() {
                               setOpenedPageColorDraft(next);
                             }}
                             onDraft={setOpenedPageColorDraft}
-                          />
-                          <BackgroundFilterPicker
-                            id="opened-background-filter"
-                            value={brandingBackgroundFilter(
-                              openedNoteBranding.background === "same"
-                                ? "neutral"
-                                : openedNoteBranding.background,
-                            )}
-                            accentColor={openedNoteBranding.accentColor || businessAccentColor}
-                            backgroundColor={
-                              openedNoteBranding.backgroundColor || businessBackgroundColor
-                            }
-                            onChange={(filter) =>
-                              setOpenedNoteBranding((prev) => ({
-                                ...prev,
-                                background: filter,
-                              }))
-                            }
                           />
                         </div>
                       ) : null}
