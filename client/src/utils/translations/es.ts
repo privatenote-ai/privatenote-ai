@@ -149,6 +149,13 @@ export const es: Translations = {
   voiceMessagePlaybackUnsupported:
     "Este navegador no puede reproducir este mensaje de voz aquí. Descárgalo para escucharlo.",
   voiceMessageDownloadToPlay: "Descargar para reproducir",
+  audioPlayerPlay: "Reproducir",
+  audioPlayerPause: "Pausa",
+  audioPlayerSkipBack: "Retroceder 10 segundos",
+  audioPlayerSkipForward: "Avanzar 10 segundos",
+  audioPlayerMute: "Silenciar",
+  audioPlayerUnmute: "Activar sonido",
+  audioPlayerSeek: "Posición",
   removeSelectedFile: "Quitar archivo seleccionado",
   fileTooLarge: "Archivo demasiado grande",
   fileTooLargeDescription: "Este archivo pesa {size}. Tu plan permite hasta {limit} por archivo.",

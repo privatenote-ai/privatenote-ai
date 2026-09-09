@@ -149,6 +149,13 @@ export const de: Translations = {
   voiceMessagePlaybackUnsupported:
     "Dieser Browser kann die Sprachnachricht nicht direkt wiedergeben. Laden Sie sie herunter, um sie anzuhören.",
   voiceMessageDownloadToPlay: "Zum Abspielen herunterladen",
+  audioPlayerPlay: "Abspielen",
+  audioPlayerPause: "Pause",
+  audioPlayerSkipBack: "10 Sekunden zurück",
+  audioPlayerSkipForward: "10 Sekunden vor",
+  audioPlayerMute: "Stummschalten",
+  audioPlayerUnmute: "Ton ein",
+  audioPlayerSeek: "Position",
   removeSelectedFile: "Ausgewählte Datei entfernen",
   fileTooLarge: "Datei zu groß",
   fileTooLargeDescription: "Diese Datei ist {size}. Ihr Tarif erlaubt bis zu {limit} pro Datei.",

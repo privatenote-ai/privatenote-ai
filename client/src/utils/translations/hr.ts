@@ -134,6 +134,13 @@ export const hr: Translations = {
   voiceMessagePlaybackUnsupported:
     "Ovaj preglednik ne može reproducirati ovu govornu poruku ovdje. Preuzmite je za slušanje.",
   voiceMessageDownloadToPlay: "Preuzmi za reprodukciju",
+  audioPlayerPlay: "Reproduciraj",
+  audioPlayerPause: "Pauza",
+  audioPlayerSkipBack: "Natrag 10 sekundi",
+  audioPlayerSkipForward: "Naprijed 10 sekundi",
+  audioPlayerMute: "Isključi zvuk",
+  audioPlayerUnmute: "Uključi zvuk",
+  audioPlayerSeek: "Položaj",
   removeSelectedFile: "Ukloni odabranu datoteku",
   fileTooLarge: "Datoteka je prevelika",
   fileTooLargeDescription: "Ova datoteka ima {size}. Vaš plan dopušta do {limit} po datoteci.",

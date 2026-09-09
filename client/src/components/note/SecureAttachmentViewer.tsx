@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { WaveformAudioPlayer } from "@/components/note/WaveformAudioPlayer";
 import {
   ChevronLeft,
   ChevronRight,
@@ -232,14 +233,8 @@ export function SecureAttachmentViewer({
             />
           </div>
         ) : kind === "audio" && objectUrl && !audioPlaybackUnsupported ? (
-          <div className="flex flex-1 items-center justify-center px-4 py-8">
-            <audio
-              controls
-              controlsList={mediaControls}
-              src={objectUrl}
-              className="w-full max-w-xl"
-              preload="metadata"
-            />
+          <div className="flex flex-1 items-center justify-center px-4 py-10">
+            <WaveformAudioPlayer src={objectUrl} blob={blob} className="w-full max-w-xl" />
           </div>
         ) : kind === "audio" && audioPlaybackUnsupported ? (
           <p className="px-4 py-8 text-center text-sm text-gray-600 dark:text-gray-300">

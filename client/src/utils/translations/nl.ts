@@ -149,6 +149,13 @@ export const nl: Translations = {
   voiceMessagePlaybackUnsupported:
     "Deze browser kan dit spraakbericht niet hier afspelen. Download het om te beluisteren.",
   voiceMessageDownloadToPlay: "Downloaden om af te spelen",
+  audioPlayerPlay: "Afspelen",
+  audioPlayerPause: "Pauzeren",
+  audioPlayerSkipBack: "10 seconden terug",
+  audioPlayerSkipForward: "10 seconden vooruit",
+  audioPlayerMute: "Dempen",
+  audioPlayerUnmute: "Geluid aan",
+  audioPlayerSeek: "Positie",
   removeSelectedFile: "Geselecteerd bestand verwijderen",
   fileTooLarge: "Bestand te groot",
   fileTooLargeDescription: "Dit bestand is {size}. Je abonnement staat tot {limit} per bestand toe.",

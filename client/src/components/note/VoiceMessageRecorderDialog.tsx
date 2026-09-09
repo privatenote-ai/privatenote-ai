@@ -36,6 +36,7 @@ import {
   videoAndAudioConstraints,
   type VideoRecordingStrategy,
 } from "@/utils/videoMessageRecording";
+import { LiveAmplitudeMeter, WaveformAudioPlayer } from "@/components/note/WaveformAudioPlayer";
 
 type RecorderPhase = "idle" | "recording" | "preview";
 
@@ -76,6 +77,7 @@ export function VoiceMessageRecorderDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [previewIsVideo, setPreviewIsVideo] = useState(false);
+  const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
   const durationCapSeconds = Math.max(1, Math.floor(maxDurationSeconds));
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -195,6 +197,7 @@ export function VoiceMessageRecorderDialog({
     void stopWavGraph();
     stopMediaStream(streamRef.current);
     streamRef.current = null;
+    setLiveStream(null);
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -352,6 +355,7 @@ export function VoiceMessageRecorderDialog({
     void stopWavGraph().then(() => {
       stopMediaStream(streamRef.current);
       streamRef.current = null;
+      setLiveStream(null);
       if (shouldDiscard) {
         discardOnStopRef.current = false;
         return;
@@ -447,6 +451,7 @@ export function VoiceMessageRecorderDialog({
       },
     });
     streamRef.current = stream;
+    setLiveStream(stream);
     strategyRef.current = pickVoiceRecordingStrategy(formatPreference);
     recordedModeRef.current = "audio";
     chunksRef.current = [];
@@ -468,6 +473,7 @@ export function VoiceMessageRecorderDialog({
         clearTimer();
         stopMediaStream(streamRef.current);
         streamRef.current = null;
+        setLiveStream(null);
         mediaRecorderRef.current = null;
         const type = recorder.mimeType || mimeType || "audio/mp4";
         const blob = new Blob(chunksRef.current, { type });
@@ -567,7 +573,7 @@ export function VoiceMessageRecorderDialog({
   const dialogShellClass =
     recordMode === "video"
       ? "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.5rem))] sm:max-h-[min(92vh,56rem)] sm:h-[min(92vh,56rem)] sm:w-full sm:max-w-2xl sm:overflow-hidden sm:p-6 sm:pb-6"
-      : "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+5.5rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-md sm:p-6 sm:pb-6";
+      : "flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+5.5rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-lg sm:p-6 sm:pb-6";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -712,22 +718,8 @@ export function VoiceMessageRecorderDialog({
             </div>
           ) : null}
 
-          {recordMode === "audio" && (phase === "recording" || phase === "preview") ? (
-            <div
-              className="h-1.5 w-full max-w-[14rem] overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800"
-              aria-hidden
-            >
-              <div
-                className={
-                  phase === "recording"
-                    ? "h-full rounded-full bg-red-500 transition-[width] duration-200 ease-linear"
-                    : "h-full rounded-full bg-emerald-500"
-                }
-                style={{
-                  width: `${Math.min(100, (elapsedSeconds / durationCapSeconds) * 100)}%`,
-                }}
-              />
-            </div>
+          {recordMode === "audio" && phase === "recording" ? (
+            <LiveAmplitudeMeter stream={liveStream} active className="w-full" />
           ) : null}
 
           {phase === "preview" && previewUrl ? (
@@ -754,9 +746,12 @@ export function VoiceMessageRecorderDialog({
                 </div>
               </div>
             ) : (
-              <audio controls src={previewUrl} className="w-full" preload="metadata">
-                {t.recordMessagePreviewUnsupported ?? "Your browser cannot preview this recording."}
-              </audio>
+              <WaveformAudioPlayer
+                src={previewUrl}
+                blob={recordedBlobRef.current}
+                size="compact"
+                className="w-full"
+              />
             )
           ) : null}
 

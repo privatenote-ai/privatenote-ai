@@ -134,6 +134,13 @@ export const fr: Translations = {
   voiceMessagePlaybackUnsupported:
     "Ce navigateur ne peut pas lire ce message vocal ici. Téléchargez-le pour l’écouter.",
   voiceMessageDownloadToPlay: "Télécharger pour lire",
+  audioPlayerPlay: "Lecture",
+  audioPlayerPause: "Pause",
+  audioPlayerSkipBack: "Reculer de 10 secondes",
+  audioPlayerSkipForward: "Avancer de 10 secondes",
+  audioPlayerMute: "Muet",
+  audioPlayerUnmute: "Activer le son",
+  audioPlayerSeek: "Position",
   removeSelectedFile: "Retirer le fichier sélectionné",
   fileTooLarge: "Fichier trop volumineux",
   fileTooLargeDescription: "Ce fichier fait {size}. Votre forfait autorise jusqu’à {limit} par fichier.",
