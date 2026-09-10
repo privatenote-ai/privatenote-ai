@@ -16,10 +16,16 @@ import {
   signOutSchema,
   whoamiSchema,
 } from "./tools/signIn.ts";
+import {
+  handleListSentNotes,
+  handleRevokeSentNote,
+  listSentNotesSchema,
+  revokeSentNoteSchema,
+} from "./tools/sentNotes.ts";
 
 const server = new McpServer({
   name: "privatenote-mcp",
-  version: "0.2.0",
+  version: "0.2.1",
 });
 
 function toolError(err: unknown) {
@@ -36,9 +42,10 @@ function toolError(err: unknown) {
 
 server.tool(
   "create_private_note",
-  "Encrypt sensitive text and optionally attach a local file, then create a self-destructing PrivateNote link. " +
+  "Encrypt sensitive text and optionally attach local files, then create a self-destructing PrivateNote link. " +
     "Encryption happens locally — only ciphertext reaches the server. " +
-    "Attaching a file requires sign_in first. The decryption key is in the returned URL fragment.",
+    "Prefer contentFilePath and filePaths so secrets never enter the chat. " +
+    "Attaching files requires sign_in first. The decryption key is in the returned URL fragment.",
   createPrivateNoteSchema.shape,
   async (args) => {
     try {
@@ -51,7 +58,8 @@ server.tool(
 
 server.tool(
   "sign_in",
-  "Sign in to PrivateNote with a device code. Opens the browser to approve this MCP app. " +
+  "Sign in to PrivateNote with a device code. Returns an approve URL and userCode immediately so you can show them. " +
+    "Opens the browser when possible. Call again with pollDeviceCode after the user approves. " +
     "Does not replace the website session. Required before attaching files.",
   signInSchema.shape,
   async (args) => {
@@ -83,6 +91,32 @@ server.tool(
   async () => {
     try {
       return await handleSignOut();
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+server.tool(
+  "list_sent_notes",
+  "List recent notes sent from this signed-in account (status, created/opened/revoked). Requires sign_in. Paid plans only.",
+  listSentNotesSchema.shape,
+  async (args) => {
+    try {
+      return await handleListSentNotes(args);
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+server.tool(
+  "revoke_sent_note",
+  "Revoke an unopened sent note so the link can no longer be read. Requires sign_in. Paid plans only.",
+  revokeSentNoteSchema.shape,
+  async (args) => {
+    try {
+      return await handleRevokeSentNote(args);
     } catch (err) {
       return toolError(err);
     }

@@ -78,6 +78,10 @@ const { createPrivateNote, mcpExpiresInToExpirySeconds, isMcpExpiresIn } = await
 // ── Expiry mapping ─────────────────────────────────────────────────────────
 
 describe("mcpExpiresInToExpirySeconds", () => {
+  it("maps 5m to 300 seconds", () => {
+    assert.equal(mcpExpiresInToExpirySeconds("5m"), 300);
+  });
+
   it("maps 15m to 900 seconds", () => {
     assert.equal(mcpExpiresInToExpirySeconds("15m"), 900);
   });
@@ -90,22 +94,25 @@ describe("mcpExpiresInToExpirySeconds", () => {
     assert.equal(mcpExpiresInToExpirySeconds("24h"), 86400);
   });
 
-  it("maps 7d to 604800 seconds", () => {
-    assert.equal(mcpExpiresInToExpirySeconds("7d"), 604800);
+  it("maps 30d to 2592000 seconds", () => {
+    assert.equal(mcpExpiresInToExpirySeconds("30d"), 2_592_000);
   });
 });
 
 describe("isMcpExpiresIn", () => {
   it("accepts valid values", () => {
+    assert.ok(isMcpExpiresIn("5m"));
     assert.ok(isMcpExpiresIn("15m"));
     assert.ok(isMcpExpiresIn("1h"));
+    assert.ok(isMcpExpiresIn("2h"));
     assert.ok(isMcpExpiresIn("24h"));
+    assert.ok(isMcpExpiresIn("1d"));
     assert.ok(isMcpExpiresIn("7d"));
+    assert.ok(isMcpExpiresIn("30d"));
   });
 
   it("rejects invalid values", () => {
-    assert.ok(!isMcpExpiresIn("2h"));
-    assert.ok(!isMcpExpiresIn("30d"));
+    assert.ok(!isMcpExpiresIn("2min"));
     assert.ok(!isMcpExpiresIn(""));
   });
 });
@@ -246,14 +253,25 @@ describe("createPrivateNote title prepend", () => {
 
 describe("createPrivateNote file attach", () => {
   it("requires a stored session before reading the file", async () => {
-    await assert.rejects(
-      () => createPrivateNote({ filePath: "/tmp/does-not-matter.bin" }),
-      (err: unknown) => {
-        assert.ok(err instanceof Error);
-        assert.match(err.message, /sign_in/i);
-        return true;
-      },
-    );
+    const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+    const previousToken = process.env["PRIVATENOTE_SESSION"];
+    process.env["PRIVATENOTE_MCP_SESSION_PATH"] = join(tmpdir(), "pn-mcp-no-session.json");
+    delete process.env["PRIVATENOTE_SESSION"];
+    try {
+      await assert.rejects(
+        () => createPrivateNote({ filePath: "/tmp/does-not-matter.bin" }),
+        (err: unknown) => {
+          assert.ok(err instanceof Error);
+          assert.match(err.message, /sign_in/i);
+          return true;
+        },
+      );
+    } finally {
+      if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+      else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
+      if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
+      else process.env["PRIVATENOTE_SESSION"] = previousToken;
+    }
   });
 
   it("encrypts a local file and uploads ciphertext with the note upload token", async () => {
@@ -288,8 +306,73 @@ describe("createPrivateNote file attach", () => {
       assert.ok(!serialized.includes(SECRET));
       assert.equal(createCall.body["keyDerivation"], "hkdf-root-v2");
       assert.ok(Array.isArray(createCall.body["attachments"]));
+      assert.equal(typeof createCall.body["attachmentContentHash"], "string");
+      assert.ok(Array.isArray(createCall.body["attachmentContentHashes"]));
       const filePut = fetchCalls.find((call) => call.url.includes("/file"));
       assert.match(filePut?.authorization ?? "", /^Bearer /);
+    } finally {
+      restoreFetch();
+      if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+      else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
+      if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
+      else process.env["PRIVATENOTE_SESSION"] = previousToken;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads note body from contentFilePath without sending plaintext", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-content-"));
+    const contentPath = join(dir, "secret.txt");
+    await writeFile(contentPath, SECRET, "utf8");
+    mockFetch();
+    try {
+      const result = await createPrivateNote({ contentFilePath: contentPath });
+      assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#/);
+      const createCall = fetchCalls.find(
+        (call) => call.body && typeof call.body["content"] === "string",
+      );
+      assert.ok(createCall?.body);
+      assert.ok(!JSON.stringify(createCall.body).includes(SECRET));
+    } finally {
+      restoreFetch();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("uploads multiple filePaths to namespaced attachment URLs", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-files-"));
+    const a = join(dir, "a.txt");
+    const b = join(dir, "b.txt");
+    const sessionPath = join(dir, "mcp-session.json");
+    await writeFile(a, "file-a-secret", "utf8");
+    await writeFile(b, "file-b-secret", "utf8");
+    await writeFile(
+      sessionPath,
+      JSON.stringify({
+        accessToken: "plugin-session-token-value",
+        apiBaseUrl: "https://privatenote.ai",
+        storedAt: new Date().toISOString(),
+      }),
+      "utf8",
+    );
+    const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+    const previousToken = process.env["PRIVATENOTE_SESSION"];
+    process.env["PRIVATENOTE_MCP_SESSION_PATH"] = sessionPath;
+    delete process.env["PRIVATENOTE_SESSION"];
+    mockFetch();
+    try {
+      const result = await createPrivateNote({ filePaths: [a, b] });
+      assert.deepEqual(result.attachedFileNames, ["a.txt", "b.txt"]);
+      const reserve = fetchCalls.find((call) => call.url.includes("/api/notes/reserve"));
+      assert.equal((reserve?.body?.["attachments"] as unknown[] | undefined)?.length, 2);
+      assert.ok(fetchCalls.some((call) => call.url.endsWith("/file")));
+      assert.ok(fetchCalls.some((call) => call.url.includes("/attachments/1/file")));
+      const createCall = fetchCalls.find(
+        (call) => call.body && typeof call.body["content"] === "string" && Array.isArray(call.body["attachments"]),
+      );
+      assert.equal((createCall?.body?.["attachments"] as unknown[]).length, 2);
+      assert.equal((createCall?.body?.["attachmentContentHashes"] as unknown[]).length, 2);
+      assert.ok(!JSON.stringify(createCall?.body).includes("file-a-secret"));
     } finally {
       restoreFetch();
       if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];

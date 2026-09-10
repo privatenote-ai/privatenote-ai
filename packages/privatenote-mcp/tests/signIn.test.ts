@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, it, before, after } from "node:test";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { describe, it, before, after, beforeEach } from "node:test";
+import { mkdtemp, rm, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -61,6 +61,15 @@ describe("handleSignIn", () => {
     mockFetch();
   });
 
+  beforeEach(async () => {
+    fetchCalls = [];
+    try {
+      await unlink(process.env["PRIVATENOTE_MCP_SESSION_PATH"]!);
+    } catch {
+      /* no session yet */
+    }
+  });
+
   after(async () => {
     restoreFetch();
     if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
@@ -68,15 +77,35 @@ describe("handleSignIn", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("stores a Bearer plugin token after device approval", async () => {
+  it("returns the approve URL immediately so agents can show it", async () => {
     const { handleSignIn } = await import("../src/tools/signIn.ts");
     const result = await handleSignIn({});
+    assert.equal(result.isError, undefined);
+    const payload = JSON.parse(result.content[0]!.text as string) as {
+      status: string;
+      userCode: string;
+      verificationUriComplete: string;
+      pollDeviceCode: string;
+    };
+    assert.equal(payload.status, "authorization_pending");
+    assert.equal(payload.userCode, "ABCD-2345");
+    assert.equal(
+      payload.verificationUriComplete,
+      "https://privatenote.ai/auth/device?user_code=ABCD-2345&client=mcp",
+    );
+    assert.equal(payload.pollDeviceCode, "device-code-test-value-32charsxx");
+    assert.ok(fetchCalls.some((call) => call.url.includes("/api/auth/device/start")));
+    assert.equal(fetchCalls.some((call) => call.url.includes("/api/auth/device/poll")), false);
+  });
+
+  it("stores a Bearer plugin token after pollDeviceCode succeeds", async () => {
+    const { handleSignIn } = await import("../src/tools/signIn.ts");
+    const result = await handleSignIn({ pollDeviceCode: "device-code-test-value-32charsxx" });
     assert.equal(result.isError, undefined);
     const payload = JSON.parse(result.content[0]!.text as string) as { status: string; email: string };
     assert.equal(payload.status, "signed_in");
     assert.equal(payload.email, "user@example.com");
-    assert.ok(fetchCalls.some((call) => call.url.includes("/api/auth/device/start")));
-    assert.equal(fetchCalls[0]!.body?.["client"], "mcp");
+    assert.ok(fetchCalls.some((call) => call.url.includes("/api/auth/device/poll")));
     const { readStoredSession } = await import("../src/sessionStore.ts");
     const stored = await readStoredSession();
     assert.equal(stored?.accessToken, "plugin-session-token-value");

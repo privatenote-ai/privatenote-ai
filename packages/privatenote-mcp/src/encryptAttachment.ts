@@ -69,6 +69,7 @@ async function wrapFileKey(
   contentKey: CryptoKey,
   noteId: string,
   streamAad: Uint8Array,
+  attachmentIndex: number,
 ) {
   const wrapAad = jsonAadBytes({
     v: 1,
@@ -76,7 +77,7 @@ async function wrapFileKey(
     alg: SODIUM_ATTACHMENT_ALG,
     noteId,
     streamAad: arrayBufferToBase64(streamAad),
-    attachmentIndex: 0,
+    attachmentIndex,
   });
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
   const encryptedKey = await globalThis.crypto.subtle.encrypt(
@@ -97,6 +98,7 @@ async function encryptSodiumAttachmentMetadata(
   metadataKey: CryptoKey,
   noteId: string,
   totalChunks: number,
+  attachmentIndex: number,
 ) {
   const aad = jsonAadBytes({
     v: 1,
@@ -104,7 +106,7 @@ async function encryptSodiumAttachmentMetadata(
     alg: SODIUM_ATTACHMENT_ALG,
     noteId,
     totalChunks,
-    attachmentIndex: 0,
+    attachmentIndex,
   });
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await globalThis.crypto.subtle.encrypt(
@@ -127,8 +129,10 @@ export async function encryptFileToSodiumBlob(input: {
   contentKey: CryptoKey;
   metadataKey: CryptoKey;
   noteId: string;
+  attachmentIndex?: number;
 }): Promise<{ metadata: SodiumAttachmentMetadata; ciphertext: Uint8Array }> {
   await sodium.ready;
+  const attachmentIndex = input.attachmentIndex ?? 0;
   const fileSize = input.bytes.byteLength;
   const chunkSize = singleBlobProgressFrameBytes(fileSize);
   const totalChunks = 1;
@@ -140,7 +144,7 @@ export async function encryptFileToSodiumBlob(input: {
     noteId: input.noteId,
     chunkSize,
     totalChunks,
-    attachmentIndex: 0,
+    attachmentIndex,
   });
   const encryptedMetadata = await encryptSodiumAttachmentMetadata(
     {
@@ -151,10 +155,11 @@ export async function encryptFileToSodiumBlob(input: {
     input.metadataKey,
     input.noteId,
     totalChunks,
+    attachmentIndex,
   );
   const fileKey = sodium.crypto_secretstream_xchacha20poly1305_keygen();
   const { state, header } = sodium.crypto_secretstream_xchacha20poly1305_init_push(fileKey);
-  const wrappedKey = await wrapFileKey(fileKey, input.contentKey, input.noteId, streamAad);
+  const wrappedKey = await wrapFileKey(fileKey, input.contentKey, input.noteId, streamAad, attachmentIndex);
   try {
     const encryptedParts: Uint8Array[] = [];
     let encryptedByteLength = 0;

@@ -1,16 +1,28 @@
 import { z } from "zod";
-import { createPrivateNote, isMcpExpiresIn } from "../createNote.ts";
+import { MCP_EXPIRES_IN, createPrivateNote, isMcpExpiresIn } from "../createNote.ts";
+
+const expiresInEnum = MCP_EXPIRES_IN as unknown as [string, ...string[]];
 
 export const createPrivateNoteSchema = z.object({
   content: z
     .string()
     .optional()
-    .describe("The sensitive text to encrypt and store. Optional when filePath is set."),
+    .describe(
+      "Sensitive text to encrypt. Optional when contentFilePath, filePath, or filePaths is set. Prefer contentFilePath so the model never sees the secret.",
+    ),
+  contentFilePath: z
+    .string()
+    .optional()
+    .describe(
+      "Absolute path to a UTF-8 text file whose contents become the note body. The model should not read this file.",
+    ),
   expiresIn: z
-    .enum(["15m", "1h", "24h", "7d"])
+    .enum(expiresInEnum)
     .optional()
     .default("24h")
-    .describe("How long the note stays accessible (default: 24h)"),
+    .describe(
+      "How long the note stays accessible. Server presets 5m–30d; 24h is an alias of 1d. Plan limits still apply.",
+    ),
   burnAfterReading: z
     .boolean()
     .optional()
@@ -28,7 +40,13 @@ export const createPrivateNoteSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Absolute path to a local file to encrypt and attach. Requires sign_in. Do not pass file bytes through the model.",
+      "Absolute path to one local file to encrypt and attach. Requires sign_in. Prefer this over pasting file bytes.",
+    ),
+  filePaths: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Absolute paths to additional local files to attach (combined with filePath). Requires sign_in. Max 20; plan caps apply.",
     ),
 });
 
@@ -41,7 +59,7 @@ export async function handleCreatePrivateNote(args: CreatePrivateNoteArgs) {
       content: [
         {
           type: "text" as const,
-          text: `Invalid expiresIn value. Must be one of: 15m, 1h, 24h, 7d`,
+          text: `Invalid expiresIn value. Must be one of: ${MCP_EXPIRES_IN.join(", ")}`,
         },
       ],
       isError: true,
@@ -50,10 +68,12 @@ export async function handleCreatePrivateNote(args: CreatePrivateNoteArgs) {
 
   const result = await createPrivateNote({
     content: args.content,
+    contentFilePath: args.contentFilePath,
     expiresIn,
     burnAfterReading: args.burnAfterReading,
     title: args.title,
     filePath: args.filePath,
+    filePaths: args.filePaths,
   });
 
   return {

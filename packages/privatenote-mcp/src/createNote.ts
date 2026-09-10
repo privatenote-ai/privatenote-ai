@@ -15,8 +15,9 @@ import {
 } from "@shared/noteCrypto";
 import { deriveNoteRootKeys, generateRootKeyBytes } from "@shared/noteRootKeys";
 import { NOTE_KEY_DERIVATION_HKDF_ROOT_V2 } from "@shared/storedNotePayload";
-import { noteExpiryPresetIdToSeconds } from "@shared/noteExpiry";
+import { NOTE_EXPIRY_PRESETS, noteExpiryPresetIdToSeconds } from "@shared/noteExpiry";
 import { MAX_NOTE_PLAINTEXT_UTF8_BYTES } from "@shared/noteSizeLimits";
+import { NOTE_FILE_ATTACHMENTS_HARD_MAX } from "@shared/noteFileLimits";
 import {
   createNote,
   reserveNoteId,
@@ -26,28 +27,30 @@ import { getConfig } from "./config.ts";
 import { encryptFileToSodiumBlob, singleBlobEncryptedSizeUpperBound } from "./encryptAttachment.ts";
 import { readStoredSession } from "./sessionStore.ts";
 
-/** Expiry options exposed by the MCP tool (subset of all server presets). */
-export type McpExpiresIn = "15m" | "1h" | "24h" | "7d";
+/** MCP expiry: all server presets, plus `24h` as an alias of `1d`. */
+export const MCP_EXPIRES_IN = [
+  ...NOTE_EXPIRY_PRESETS.map((preset) => preset.id),
+  "24h",
+] as const;
 
-const MCP_EXPIRY_MAP: Record<McpExpiresIn, string> = {
-  "15m": "15m",
-  "1h": "1h",
-  "24h": "1d",
-  "7d": "7d",
-};
+export type McpExpiresIn = (typeof MCP_EXPIRES_IN)[number];
 
-/** Map MCP `expiresIn` string to the canonical preset id used by shared/noteExpiry. */
+const MCP_EXPIRES_IN_VALUES: ReadonlySet<string> = new Set(MCP_EXPIRES_IN);
+
+/** Map MCP `expiresIn` string to seconds used by shared/noteExpiry. */
 export function mcpExpiresInToExpirySeconds(expiresIn: McpExpiresIn): number {
-  const presetId = MCP_EXPIRY_MAP[expiresIn];
+  const presetId = expiresIn === "24h" ? "1d" : expiresIn;
   return noteExpiryPresetIdToSeconds(presetId);
 }
 
 export interface CreatePrivateNoteInput {
   content?: string;
+  contentFilePath?: string;
   expiresIn?: McpExpiresIn;
   burnAfterReading?: boolean;
   title?: string;
   filePath?: string;
+  filePaths?: string[];
 }
 
 export interface CreatePrivateNoteOutput {
@@ -55,14 +58,8 @@ export interface CreatePrivateNoteOutput {
   expiresAt: string;
   burnAfterReading: boolean;
   attachedFileName?: string;
+  attachedFileNames?: string[];
 }
-
-const MCP_EXPIRES_IN_VALUES: ReadonlySet<string> = new Set<McpExpiresIn>([
-  "15m",
-  "1h",
-  "24h",
-  "7d",
-]);
 
 export function isMcpExpiresIn(value: string): value is McpExpiresIn {
   return MCP_EXPIRES_IN_VALUES.has(value);
@@ -92,23 +89,103 @@ function guessMimeType(fileName: string): string {
   return (ext && types[ext]) || "application/octet-stream";
 }
 
+type LocalAttachment = {
+  path: string;
+  bytes: Uint8Array;
+  name: string;
+  type: string;
+};
+
+function uniquePaths(paths: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of paths) {
+    const path = raw.trim();
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
+}
+
+async function readUtf8SecretFile(path: string): Promise<string> {
+  try {
+    const info = await stat(path);
+    if (!info.isFile()) {
+      throw new Error("contentFilePath must point to a file");
+    }
+    if (info.size <= 0) {
+      throw new Error("The content file is empty");
+    }
+    if (info.size > MAX_NOTE_PLAINTEXT_UTF8_BYTES) {
+      throw new Error("Content too large (max 50 KB)");
+    }
+  } catch (err) {
+    if (err instanceof Error && /contentFilePath|empty|too large/.test(err.message)) {
+      throw err;
+    }
+    throw new Error("Could not read the file at contentFilePath");
+  }
+  const text = await readFile(path, "utf8");
+  if (utf8ByteLength(text) > MAX_NOTE_PLAINTEXT_UTF8_BYTES) {
+    throw new Error("Content too large (max 50 KB)");
+  }
+  return text;
+}
+
+async function readAttachmentFile(path: string): Promise<LocalAttachment> {
+  try {
+    const info = await stat(path);
+    if (!info.isFile()) {
+      throw new Error("filePath must point to a file");
+    }
+    if (info.size <= 0) {
+      throw new Error("The attached file is empty");
+    }
+    if (info.size > 1024 * 1024 * 1024) {
+      throw new Error("File is too large to attach from MCP (max 1 GB)");
+    }
+  } catch (err) {
+    if (err instanceof Error && /filePath|empty|too large/.test(err.message)) {
+      throw err;
+    }
+    throw new Error("Could not read the file at filePath");
+  }
+  const bytes = new Uint8Array(await readFile(path));
+  const name = basename(path).slice(0, 255) || "privatenote-file";
+  return { path, bytes, name, type: guessMimeType(name) };
+}
+
 export async function createPrivateNote(
   input: CreatePrivateNoteInput,
 ): Promise<CreatePrivateNoteOutput> {
-  const filePath = input.filePath?.trim();
-  const content = input.content ?? "";
+  const attachmentPaths = uniquePaths([
+    ...(input.filePath ? [input.filePath] : []),
+    ...(input.filePaths ?? []),
+  ]);
+  const contentFilePath = input.contentFilePath?.trim();
+  let content = input.content ?? "";
+  if (contentFilePath) {
+    content = await readUtf8SecretFile(contentFilePath);
+  }
   const trimmed = content.trim();
-  if (!trimmed && !filePath) {
-    throw new Error("Content is required (or pass filePath to attach a file)");
+  if (!trimmed && attachmentPaths.length === 0) {
+    throw new Error(
+      "Content is required (or pass contentFilePath, filePath, or filePaths)",
+    );
   }
 
   if (utf8ByteLength(content) > MAX_NOTE_PLAINTEXT_UTF8_BYTES) {
     throw new Error("Content too large (max 50 KB)");
   }
 
+  if (attachmentPaths.length > NOTE_FILE_ATTACHMENTS_HARD_MAX) {
+    throw new Error(`Too many files (max ${NOTE_FILE_ATTACHMENTS_HARD_MAX})`);
+  }
+
   const expiresIn: McpExpiresIn = input.expiresIn ?? "24h";
   if (!isMcpExpiresIn(expiresIn)) {
-    throw new Error(`Invalid expiresIn: must be one of 15m, 1h, 24h, 7d`);
+    throw new Error(`Invalid expiresIn: must be one of ${MCP_EXPIRES_IN.join(", ")}`);
   }
 
   const maxReads = input.burnAfterReading === false ? 2 : 1;
@@ -119,47 +196,27 @@ export async function createPrivateNote(
 
   const { apiBaseUrl, webOrigin } = getConfig();
 
-  let fileBytes: Uint8Array | null = null;
-  let fileName: string | undefined;
-  let fileType = "application/octet-stream";
-  if (filePath) {
+  let attachments: LocalAttachment[] = [];
+  if (attachmentPaths.length > 0) {
     const session = await readStoredSession();
     if (!session?.accessToken) {
       throw new Error("Sign in with the sign_in tool before attaching a file.");
     }
-    try {
-      const info = await stat(filePath);
-      if (!info.isFile()) {
-        throw new Error("filePath must point to a file");
-      }
-      if (info.size <= 0) {
-        throw new Error("The attached file is empty");
-      }
-      if (info.size > 1024 * 1024 * 1024) {
-        throw new Error("File is too large to attach from MCP (max 1 GB)");
-      }
-    } catch (err) {
-      if (err instanceof Error && /Sign in|filePath|empty|too large/.test(err.message)) {
-        throw err;
-      }
-      throw new Error("Could not read the file at filePath");
+    attachments = [];
+    for (const path of attachmentPaths) {
+      attachments.push(await readAttachmentFile(path));
     }
-    fileBytes = new Uint8Array(await readFile(filePath));
-    fileName = basename(filePath).slice(0, 255) || "privatenote-file";
-    fileType = guessMimeType(fileName);
   }
 
   const attachmentBinding =
-    fileBytes && fileName
+    attachments.length > 0
       ? {
-          attachmentPlaintextSize: fileBytes.byteLength,
-          attachmentEncryptedSize: singleBlobEncryptedSizeUpperBound(fileBytes.byteLength),
-          attachments: [
-            {
-              attachmentPlaintextSize: fileBytes.byteLength,
-              attachmentEncryptedSize: singleBlobEncryptedSizeUpperBound(fileBytes.byteLength),
-            },
-          ],
+          attachmentPlaintextSize: attachments[0]!.bytes.byteLength,
+          attachmentEncryptedSize: singleBlobEncryptedSizeUpperBound(attachments[0]!.bytes.byteLength),
+          attachments: attachments.map((item) => ({
+            attachmentPlaintextSize: item.bytes.byteLength,
+            attachmentEncryptedSize: singleBlobEncryptedSizeUpperBound(item.bytes.byteLength),
+          })),
         }
       : undefined;
 
@@ -179,9 +236,10 @@ export async function createPrivateNote(
   let ivBase64: string;
   let aad: string;
   let keyDerivation: string | undefined;
-  let attachmentMetadata: unknown | undefined;
+  const attachmentMetadataList: unknown[] = [];
+  const attachmentContentHashes: string[] = [];
 
-  if (fileBytes && fileName) {
+  if (attachments.length > 0) {
     if (!uploadToken) {
       throw new Error("Sign in with the sign_in tool before attaching a file.");
     }
@@ -195,24 +253,30 @@ export async function createPrivateNote(
       aad = wire.aad;
       exportedKey = exportedRootKey;
       keyDerivation = NOTE_KEY_DERIVATION_HKDF_ROOT_V2;
-      const encrypted = await encryptFileToSodiumBlob({
-        bytes: fileBytes,
-        name: fileName,
-        type: fileType,
-        contentKey: fileWrapKey,
-        metadataKey,
-        noteId: id,
-      });
-      attachmentMetadata = encrypted.metadata;
-      await uploadEncryptedAttachment({
-        apiBaseUrl,
-        noteId: id,
-        ciphertext: encrypted.ciphertext,
-        plaintextSize: fileBytes.byteLength,
-        encryptedSize: encrypted.metadata.encryptedSize,
-        chunkSha256: encrypted.metadata.encryptedContentSha256,
-        uploadToken,
-      });
+      for (let index = 0; index < attachments.length; index += 1) {
+        const item = attachments[index]!;
+        const encrypted = await encryptFileToSodiumBlob({
+          bytes: item.bytes,
+          name: item.name,
+          type: item.type,
+          contentKey: fileWrapKey,
+          metadataKey,
+          noteId: id,
+          attachmentIndex: index,
+        });
+        attachmentMetadataList.push(encrypted.metadata);
+        attachmentContentHashes.push(encrypted.metadata.encryptedContentSha256);
+        await uploadEncryptedAttachment({
+          apiBaseUrl,
+          noteId: id,
+          ciphertext: encrypted.ciphertext,
+          plaintextSize: item.bytes.byteLength,
+          encryptedSize: encrypted.metadata.encryptedSize,
+          chunkSha256: encrypted.metadata.encryptedContentSha256,
+          uploadToken,
+          attachmentIndex: index,
+        });
+      }
     } finally {
       rootKeyBytes.fill(0);
     }
@@ -244,7 +308,13 @@ export async function createPrivateNote(
       creationSource: "mcp",
       creationEntryPoint: "mcp",
       ...(keyDerivation ? { keyDerivation } : {}),
-      ...(attachmentMetadata ? { attachments: [attachmentMetadata] } : {}),
+      ...(attachmentMetadataList.length > 0 ? { attachments: attachmentMetadataList } : {}),
+      ...(attachmentContentHashes.length > 0
+        ? {
+            attachmentContentHash: attachmentContentHashes[0],
+            attachmentContentHashes,
+          }
+        : {}),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Note creation failed";
@@ -253,11 +323,13 @@ export async function createPrivateNote(
 
   const secureUrl = `${webOrigin}/note/${id}#${exportedKey}`;
   const expiresAt = new Date(Date.now() + expirySeconds * 1000).toISOString();
+  const attachedFileNames = attachments.map((item) => item.name);
 
   return {
     secureUrl,
     expiresAt,
     burnAfterReading: maxReads === 1,
-    ...(fileName ? { attachedFileName: fileName } : {}),
+    ...(attachedFileNames[0] ? { attachedFileName: attachedFileNames[0] } : {}),
+    ...(attachedFileNames.length > 0 ? { attachedFileNames } : {}),
   };
 }

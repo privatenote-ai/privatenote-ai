@@ -30,7 +30,7 @@ export const signInSchema = z.object({
     .string()
     .optional()
     .describe(
-      "Continue polling an in-progress device sign-in. Omit to start a new sign-in.",
+      "After the first sign_in returns verificationUriComplete, call again with this device code to finish sign-in. Omit to start a new sign-in and receive the approve URL immediately.",
     ),
 });
 
@@ -68,6 +68,26 @@ export async function handleSignIn(args: z.infer<typeof signInSchema>) {
 
   if (!args.pollDeviceCode && started.verificationUriComplete) {
     openInBrowser(started.verificationUriComplete);
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              status: "authorization_pending",
+              userCode: started.userCode,
+              verificationUriComplete: started.verificationUriComplete,
+              pollDeviceCode: started.deviceCode,
+              expiresIn: started.expiresIn,
+              message:
+                "Open verificationUriComplete in the browser (a window may already have opened), sign in if needed, and approve this device. Show the user the URL and userCode. Then call sign_in again with pollDeviceCode until status is signed_in.",
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+    };
   }
 
   const deadline = Date.now() + 180_000;

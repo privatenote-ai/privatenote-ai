@@ -51,27 +51,31 @@ The agent calls `create_private_note` and returns:
 
 Share the `secureUrl` with whoever needs to read it. It self-destructs after the first view.
 
-To attach a file, sign in first, then pass a local `filePath` (the file is encrypted in this process; do not paste file bytes into the chat):
+To attach files, sign in first, then pass local `filePath` / `filePaths` (encrypted in this process; do not paste file bytes into the chat). To keep the note body out of the model prompt, use `contentFilePath`.
 
-> *"Sign in to PrivateNote, then attach ~/Desktop/contract.pdf to a new note."*
+> *"Sign in to PrivateNote, then attach ~/Desktop/contract.pdf and ~/Desktop/nda.pdf to a new note that expires in 30 minutes."*
 
 ## Tools
 
 ### `sign_in` / `whoami` / `sign_out`
 
-Device-code sign-in. The MCP server opens `https://privatenote.ai/auth/device`, you approve in the browser, and a plugin session token is stored at `~/.config/privatenote/mcp-session.json`. That token is sent as `Authorization: Bearer` and does **not** replace your website cookie session.
-
-If approval takes longer than three minutes, call `sign_in` again with the returned `pollDeviceCode`.
+Device-code sign-in. The first `sign_in` returns `verificationUriComplete` and `userCode` immediately so the agent can show them. Approve in the browser, then call `sign_in` again with `pollDeviceCode`. A plugin session is stored at `~/.config/privatenote/mcp-session.json` and sent as `Authorization: Bearer`. It does **not** replace your website cookie session.
 
 ### `create_private_note`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `content` | string | — | Text to encrypt (optional when `filePath` is set) |
-| `expiresIn` | `15m` \| `1h` \| `24h` \| `7d` | `24h` | How long the note stays accessible |
+| `content` | string | — | Text to encrypt (optional when a path is set). Prefer `contentFilePath`. |
+| `contentFilePath` | string | — | UTF-8 file whose contents become the note body |
+| `expiresIn` | `5m` \| `10m` \| `15m` \| `30m` \| `1h` \| `2h` \| `8h` \| `24h` \| `1d` \| `3d` \| `7d` \| `14d` \| `15d` \| `30d` | `24h` | Lifetime (`24h` = `1d`). Server plan caps still apply. |
 | `burnAfterReading` | boolean | `true` | Destroy after first view |
 | `title` | string | — | Optional title prepended before encryption |
-| `filePath` | string | — | Local file to encrypt and attach (`sign_in` required) |
+| `filePath` | string | — | One local file to attach (`sign_in` required) |
+| `filePaths` | string[] | — | Additional files to attach (`sign_in` required, max 20) |
+
+### `list_sent_notes` / `revoke_sent_note`
+
+Requires `sign_in` and a paid plan. List recent sent notes (id, status, timestamps). Revoke an **unopened** note so the link no longer works.
 
 ## Privacy & security
 

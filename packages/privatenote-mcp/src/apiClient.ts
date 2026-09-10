@@ -28,6 +28,8 @@ export interface CreateNoteBody {
   creationEntryPoint: string;
   keyDerivation?: string;
   attachments?: unknown[];
+  attachmentContentHash?: string;
+  attachmentContentHashes?: string[];
 }
 
 export interface CreateNoteResult {
@@ -217,10 +219,23 @@ export async function uploadEncryptedAttachment(options: {
   encryptedSize: number;
   chunkSha256: string;
   uploadToken: string;
+  attachmentIndex?: number;
 }): Promise<void> {
-  const { apiBaseUrl, noteId, ciphertext, plaintextSize, encryptedSize, chunkSha256, uploadToken } =
-    options;
+  const {
+    apiBaseUrl,
+    noteId,
+    ciphertext,
+    plaintextSize,
+    encryptedSize,
+    chunkSha256,
+    uploadToken,
+    attachmentIndex = 0,
+  } = options;
   const blob = new Blob([ciphertext], { type: "application/octet-stream" });
+  const filePath =
+    attachmentIndex > 0
+      ? `${apiBaseUrl}/api/notes/${noteId}/attachments/${attachmentIndex}/file`
+      : `${apiBaseUrl}/api/notes/${noteId}/file`;
 
   if (blob.size >= NOTE_FILE_DIRECT_R2_MIN_BYTES) {
     const presignRes = await fetch(`${apiBaseUrl}/api/notes/${noteId}/file/presign`, {
@@ -229,7 +244,7 @@ export async function uploadEncryptedAttachment(options: {
         "Content-Type": "application/json",
         Authorization: noteUploadAuthorizationHeader(uploadToken),
       },
-      body: "{}",
+      body: JSON.stringify({ attachmentIndex }),
     });
     if (!presignRes.ok) {
       throw new Error(`File upload failed (${presignRes.status}): ${await readErrorMessage(presignRes)}`);
@@ -248,7 +263,7 @@ export async function uploadEncryptedAttachment(options: {
         "Content-Type": "application/json",
         Authorization: noteUploadAuthorizationHeader(uploadToken),
       },
-      body: JSON.stringify({ chunkSha256, encryptedSize: blob.size }),
+      body: JSON.stringify({ chunkSha256, encryptedSize: blob.size, attachmentIndex }),
     });
     if (!completeRes.ok) {
       throw new Error(`File upload failed (${completeRes.status}): ${await readErrorMessage(completeRes)}`);
@@ -256,7 +271,7 @@ export async function uploadEncryptedAttachment(options: {
     return;
   }
 
-  const res = await fetch(`${apiBaseUrl}/api/notes/${noteId}/file`, {
+  const res = await fetch(filePath, {
     method: "PUT",
     headers: {
       Authorization: noteUploadAuthorizationHeader(uploadToken),
@@ -269,5 +284,64 @@ export async function uploadEncryptedAttachment(options: {
   });
   if (!res.ok) {
     throw new Error(`File upload failed (${res.status}): ${await readErrorMessage(res)}`);
+  }
+}
+
+export type SentNoteListItem = {
+  noteId: string;
+  status: string;
+  createdAt: string;
+  openedAt: string | null;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  label: string | null;
+};
+
+export async function listSentNotes(apiBaseUrl: string, limit = 25): Promise<SentNoteListItem[]> {
+  const headers = await sessionHeaders();
+  if (!headers.Authorization) {
+    throw new Error("Sign in with the sign_in tool first.");
+  }
+  const res = await fetch(
+    `${apiBaseUrl}/api/auth/account/notifications?limit=${encodeURIComponent(String(limit))}`,
+    { method: "GET", headers },
+  );
+  if (res.status === 401) {
+    throw new Error("Sign in with the sign_in tool first.");
+  }
+  if (!res.ok) {
+    throw new Error(`Could not list sent notes (${res.status}): ${await readErrorMessage(res)}`);
+  }
+  const body = (await res.json()) as { notifications?: unknown };
+  const rows = Array.isArray(body.notifications) ? body.notifications : [];
+  return rows.map((row) => {
+    const rec = row && typeof row === "object" ? (row as Record<string, unknown>) : {};
+    return {
+      noteId: typeof rec.noteId === "string" ? rec.noteId : "",
+      status: typeof rec.status === "string" ? rec.status : "",
+      createdAt: typeof rec.createdAt === "string" ? rec.createdAt : "",
+      openedAt: typeof rec.openedAt === "string" ? rec.openedAt : null,
+      revokedAt: typeof rec.revokedAt === "string" ? rec.revokedAt : null,
+      expiresAt: typeof rec.expiresAt === "string" ? rec.expiresAt : null,
+      label: typeof rec.label === "string" ? rec.label : null,
+    };
+  }).filter((item) => item.noteId.length > 0);
+}
+
+export async function revokeSentNote(apiBaseUrl: string, noteId: string): Promise<void> {
+  const headers = await sessionHeaders();
+  if (!headers.Authorization) {
+    throw new Error("Sign in with the sign_in tool first.");
+  }
+  const res = await fetch(`${apiBaseUrl}/api/notes/${noteId}/revoke`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (res.status === 401) {
+    throw new Error("Sign in with the sign_in tool first.");
+  }
+  if (!res.ok) {
+    throw new Error(`Could not revoke note (${res.status}): ${await readErrorMessage(res)}`);
   }
 }
