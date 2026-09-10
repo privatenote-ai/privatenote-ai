@@ -143,6 +143,8 @@
      * vertical overflow as scrollable on THAT element (`auto`), i.e. a nested scroll
      * container—the “hero feels like its own scroll pane” symptom on home.
      * `clip` hides horizontal bleed without collapsing overflow-y behavior the same way.
+     * Do not add `touch-action: pan-y` here or on fullscreen overlays: that blocks
+     * left/right pan of the visual viewport after pinch-zoom.
      */
     overflow-x: clip;
   }
@@ -153,6 +155,8 @@
   }
 
   body {
+    /* Stops accidental horizontal rubber-band / swipe-nav. Visual-viewport pan
+     * after pinch-zoom still needs pan-x allowed via `touch-action`. */
     overscroll-behavior-x: none;
   }
 

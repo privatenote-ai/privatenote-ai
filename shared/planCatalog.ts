@@ -27,6 +27,8 @@ export type PlanFeatureFlags = {
   maxAttachmentTransfersPerDay: number | null;
   /** Max attachment download window after reveal. */
   maxFileAccessWindowSeconds: number;
+  /** Max note body size (UTF-8 bytes). */
+  maxNotePlaintextUtf8Bytes: number;
   /** Longest exact note-expiry preset the plan may submit. */
   maxExpirySeconds: number;
   /** Exact note-open counts the plan may submit. */
@@ -96,6 +98,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       activePayloadBufferBytes: 250 * MB,
       maxAttachmentTransfersPerDay: 10,
       maxFileAccessWindowSeconds: 60 * 60,
+      maxNotePlaintextUtf8Bytes: 50 * 1024,
       maxExpirySeconds: 3 * DAY,
       allowedReadCounts: [1],
       maxVoiceMessageSeconds: 5 * 60,
@@ -133,6 +136,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       activePayloadBufferBytes: 5 * GB,
       maxAttachmentTransfersPerDay: null,
       maxFileAccessWindowSeconds: 4 * 60 * 60,
+      maxNotePlaintextUtf8Bytes: 200 * 1024,
       maxExpirySeconds: 15 * DAY,
       allowedReadCounts: [1, 2, 3],
       maxVoiceMessageSeconds: 15 * 60,
@@ -170,8 +174,9 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       activePayloadBufferBytes: 50 * GB,
       maxAttachmentTransfersPerDay: null,
       maxFileAccessWindowSeconds: 24 * 60 * 60,
+      maxNotePlaintextUtf8Bytes: 500 * 1024,
       maxExpirySeconds: 30 * DAY,
-      allowedReadCounts: [1, 2, 3, 5],
+      allowedReadCounts: [1, 2, 3, 5, 10],
       maxVoiceMessageSeconds: 30 * 60,
       recipientLinkDelivery: true,
       readerLanguage: true,

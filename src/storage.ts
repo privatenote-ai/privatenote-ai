@@ -718,12 +718,8 @@ class KVAnalyticsStorage {
     const current = stored
       ? mergeDailyPageEngagement(createEmptyDailyPageEngagement(), stored)
       : createEmptyDailyPageEngagement();
-    let next = applyEngagementFlush(current, flush);
-    let payload = JSON.stringify(next);
-    if (payload.length > MAX_ENGAGEMENT_SHARD_JSON_BYTES) {
-      next = applyEngagementFlush(current, { ...flush, clicks: [], dwell: [] });
-      payload = JSON.stringify(next);
-    }
+    const next = applyEngagementFlush(current, flush);
+    const payload = JSON.stringify(next);
     if (payload.length > MAX_ENGAGEMENT_SHARD_JSON_BYTES) return;
     await this.kv.put(key, payload);
   }

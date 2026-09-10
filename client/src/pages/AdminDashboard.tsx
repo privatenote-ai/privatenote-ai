@@ -11,7 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, 
 import {
   Lock, Loader2, AlertCircle, RefreshCw, ChevronLeft, ChevronRight,
   FileText, Eye, Shield, Sparkles, Activity, CheckCircle, XCircle, AlertTriangle,
-  UserPlus, LogIn, QrCode, Cpu, Cloud, Globe, Languages, Trash2, KeyRound, Monitor, FolderArchive, Flame,
+  UserPlus, LogIn, QrCode, Cpu, Cloud, Globe, Languages, Trash2, KeyRound, Monitor, FolderArchive, LayoutList,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -834,7 +834,7 @@ export default function AdminDashboard() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Admin Dashboard</h1>
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Product analytics, page engagement, and security audit logs</p>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Product analytics, page visits, and security audit logs</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => {
           fetch(apiUrl('/api/admin/logout'), { method: 'POST', credentials: 'include' });
@@ -850,7 +850,7 @@ export default function AdminDashboard() {
             <Activity className="mr-1.5 h-4 w-4" /> Analytics
           </TabsTrigger>
           <TabsTrigger value="engagement">
-            <Flame className="mr-1.5 h-4 w-4" /> Pages & heatmaps
+            <LayoutList className="mr-1.5 h-4 w-4" /> Pages
           </TabsTrigger>
           <TabsTrigger value="audit">
             <Shield className="mr-1.5 h-4 w-4" /> Audit Logs

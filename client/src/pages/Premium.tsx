@@ -42,7 +42,8 @@ type BillingStatus = {
   billingCurrency?: BillingCurrency;
 };
 
-const MB = 1024 * 1024;
+const KB = 1024;
+const MB = 1024 * KB;
 const GB = 1024 * MB;
 const DAY = 24 * 60 * 60;
 
@@ -66,7 +67,8 @@ function planAmountFor(
 
 function formatBytesLabel(bytes: number, t: Translations): string {
   if (bytes >= GB) return `${Math.round(bytes / GB)} ${t.pricingGb}`;
-  return `${Math.round(bytes / MB)} ${t.pricingMb}`;
+  if (bytes >= MB) return `${Math.round(bytes / MB)} ${t.pricingMb}`;
+  return `${Math.round(bytes / KB)} ${t.pricingKb ?? "KB"}`;
 }
 
 function formatFileWindowLabel(seconds: number, t: Translations): string {
@@ -213,6 +215,8 @@ function comparisonValue(planId: AccountType, key: string, t: Translations): Com
       return flag(features.revealBodyFont, t.pricingIncluded);
     case "attachmentViewOnly":
       return flag(features.attachmentViewOnly, t.pricingIncluded);
+    case "noteTextSize":
+      return cell(formatBytesLabel(features.maxNotePlaintextUtf8Bytes, t));
     case "attachments":
       return cell(formatBytesLabel(features.attachmentMaxBytes, t));
     case "attachmentCount":
@@ -289,6 +293,7 @@ function comparisonSections(t: Translations): {
       title: t.pricingSectionCapacity,
       description: t.pricingSectionCapacityDesc,
       rows: [
+        { key: "noteTextSize", label: t.pricingRowNoteText ?? "Max note text" },
         { key: "attachments", label: t.pricingRowAttachments },
         { key: "attachmentCount", label: t.pricingRowAttachmentCount ?? "Files per transfer" },
         { key: "attachmentTransfer", label: t.pricingRowAttachmentTransfer ?? "Max transfer size" },
@@ -361,6 +366,94 @@ function buildFaqs(currency: BillingCurrency, t: Translations) {
     { q: t.pricingFaqPayOnlineQ, a: t.pricingFaqPayOnlineA },
     { q: t.pricingFaqDowngradeQ, a: t.pricingFaqDowngradeA },
   ];
+}
+
+function ComparisonSectionTable({
+  section,
+  t,
+}: {
+  section: ReturnType<typeof comparisonSections>[number];
+  t: Translations;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+      <div className="border-b border-gray-200 px-3 py-3 sm:px-5 dark:border-gray-800">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+          {section.title}
+        </p>
+        <p className="mt-0.5 text-xs font-normal leading-5 text-gray-500 dark:text-gray-500">
+          {section.description}
+        </p>
+      </div>
+      <div className="overflow-x-auto overscroll-x-contain">
+        <table className="w-full min-w-[640px] border-collapse text-left sm:min-w-[720px]">
+          <caption className="sr-only">
+            {section.title}: {t.pricingCompareCaption}
+          </caption>
+          <colgroup>
+            <col className="w-[24%] sm:w-[28%] lg:w-[32%]" />
+            <col className="w-[25%] sm:w-[24%] lg:w-[23%]" />
+            <col className="w-[25%] sm:w-[24%] lg:w-[23%]" />
+            <col className="w-[26%] sm:w-[24%] lg:w-[22%]" />
+          </colgroup>
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-400">
+              <th
+                scope="col"
+                className="sticky left-0 z-[1] bg-gray-50 px-3 py-3 sm:px-5 sm:py-3.5 dark:bg-gray-900/70"
+              >
+                {t.pricingFeatureColumn}
+              </th>
+              {PLAN_ORDER.map((planId) => (
+                <th
+                  key={planId}
+                  scope="col"
+                  className={[
+                    "px-4 py-3.5 text-center",
+                    planId === HIGHLIGHTED_PLAN ? "bg-primary/10 text-primary dark:bg-primary/15" : "",
+                  ].join(" ")}
+                >
+                  {PLAN_CATALOG[planId].label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {section.rows.map((row, rowIndex) => (
+              <tr
+                key={row.key}
+                className={[
+                  "border-b border-gray-100 last:border-b-0 dark:border-gray-900",
+                  rowIndex % 2 === 1 ? "bg-gray-50/40 dark:bg-gray-900/20" : "bg-white dark:bg-gray-950",
+                ].join(" ")}
+              >
+                <th
+                  scope="row"
+                  className={[
+                    "sticky left-0 z-[1] px-3 py-3 text-[13px] font-medium leading-snug text-gray-900 sm:px-5 sm:py-3.5 sm:text-sm sm:leading-5 dark:text-gray-100",
+                    rowIndex % 2 === 1 ? "bg-gray-50/95 dark:bg-gray-900/80" : "bg-white dark:bg-gray-950",
+                  ].join(" ")}
+                >
+                  {row.label}
+                </th>
+                {PLAN_ORDER.map((planId) => (
+                  <td
+                    key={planId}
+                    className={[
+                      "px-2 py-3 align-middle sm:px-4 sm:py-3.5",
+                      planId === HIGHLIGHTED_PLAN ? "bg-primary/5 dark:bg-primary/10" : "",
+                    ].join(" ")}
+                  >
+                    <FeatureValue cell={comparisonValue(planId, row.key, t)} t={t} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 function FeatureValue({ cell, t }: { cell: ComparisonCell; t: Translations }) {
@@ -807,93 +900,10 @@ export default function Premium() {
           </Link>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-left sm:min-w-[720px]">
-              <caption className="sr-only">
-                {t.pricingCompareCaption}
-              </caption>
-              <colgroup>
-                <col className="w-[24%] sm:w-[28%] lg:w-[32%]" />
-                <col className="w-[25%] sm:w-[24%] lg:w-[23%]" />
-                <col className="w-[25%] sm:w-[24%] lg:w-[23%]" />
-                <col className="w-[26%] sm:w-[24%] lg:w-[22%]" />
-              </colgroup>
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-900/70 dark:text-gray-400">
-                  <th scope="col" className="sticky left-0 z-[1] bg-gray-50 px-3 py-3 sm:px-5 sm:py-3.5 dark:bg-gray-900/70">
-                    {t.pricingFeatureColumn}
-                  </th>
-                  {PLAN_ORDER.map((planId) => (
-                    <th
-                      key={planId}
-                      scope="col"
-                      className={[
-                        "px-4 py-3.5 text-center",
-                        planId === HIGHLIGHTED_PLAN
-                          ? "bg-primary/10 text-primary dark:bg-primary/15"
-                          : "",
-                      ].join(" ")}
-                    >
-                      {PLAN_CATALOG[planId].label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              {comparisonSections(t).map((section) => (
-                <tbody key={section.title} className="[&>tr:last-child]:border-b-0">
-                  <tr className="border-y border-gray-200 bg-gray-50/90 dark:border-gray-800 dark:bg-gray-900/50">
-                    <th
-                      scope="colgroup"
-                      colSpan={4}
-                      className="px-3 py-3 text-left font-normal sm:px-5"
-                    >
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                        {section.title}
-                      </p>
-                      <p className="mt-0.5 text-xs font-normal leading-5 text-gray-500 dark:text-gray-500">
-                        {section.description}
-                      </p>
-                    </th>
-                  </tr>
-                  {section.rows.map((row, rowIndex) => (
-                    <tr
-                      key={row.key}
-                      className={[
-                        "border-b border-gray-100 dark:border-gray-900",
-                        rowIndex % 2 === 1 ? "bg-gray-50/40 dark:bg-gray-900/20" : "bg-white dark:bg-gray-950",
-                      ].join(" ")}
-                    >
-                      <th
-                        scope="row"
-                        className={[
-                          "sticky left-0 z-[1] px-3 py-3 text-[13px] font-medium leading-snug text-gray-900 sm:px-5 sm:py-3.5 sm:text-sm sm:leading-5 dark:text-gray-100",
-                          rowIndex % 2 === 1
-                            ? "bg-gray-50/95 dark:bg-gray-900/80"
-                            : "bg-white dark:bg-gray-950",
-                        ].join(" ")}
-                      >
-                        {row.label}
-                      </th>
-                      {PLAN_ORDER.map((planId) => (
-                        <td
-                          key={planId}
-                          className={[
-                            "px-2 py-3 align-middle sm:px-4 sm:py-3.5",
-                            planId === HIGHLIGHTED_PLAN
-                              ? "bg-primary/5 dark:bg-primary/10"
-                              : "",
-                          ].join(" ")}
-                        >
-                          <FeatureValue cell={comparisonValue(planId, row.key, t)} t={t} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              ))}
-            </table>
-          </div>
+        <div className="grid gap-6">
+          {comparisonSections(t).map((section) => (
+            <ComparisonSectionTable key={section.title} section={section} t={t} />
+          ))}
         </div>
       </section>
 

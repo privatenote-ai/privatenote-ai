@@ -1,5 +1,5 @@
 /** Allowed view limits (max reads). `0` is reserved for unlimited in storage — not exposed in UI. */
-export const NOTE_READ_LIMIT_OPTIONS = [1, 2, 3, 5] as const;
+export const NOTE_READ_LIMIT_OPTIONS = [1, 2, 3, 5, 10] as const;
 
 export type NoteReadLimit = (typeof NOTE_READ_LIMIT_OPTIONS)[number];
 

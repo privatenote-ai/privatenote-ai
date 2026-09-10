@@ -24,6 +24,7 @@ const PRICES = {
 
 type BillingUser = {
   id: string;
+  email: string | null;
   account_type: string;
   plan: string;
   subscription_status: string | null;
@@ -237,6 +238,7 @@ class BillingMemoryDb {
 function freeUser(overrides: Partial<BillingUser> = {}): BillingUser {
   return {
     id: "user-1",
+    email: "buyer@example.com",
     account_type: "free",
     plan: "free",
     subscription_status: null,
@@ -721,5 +723,66 @@ describe("Stripe reconciliation integration", () => {
     assert.equal(memory.reconciliationFailures.length, 1);
     assert.equal(memory.reconciliationFailures[0]?.userId, failedUser.id);
     assert.equal(entitlements(repairedUser).accountType, "personal_premium");
+  });
+
+  it("emails the operator once for a new Starter signup, then again on upgrade to Business", async () => {
+    const user = freeUser();
+    const memory = new BillingMemoryDb([user]);
+    const env = {
+      ...envFor(memory),
+      AUTH_EMAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "test",
+      AUTH_EMAIL_FROM: "PrivateNote <test@example.com>",
+      BILLING_OWNER_EMAIL: "ops@example.com",
+      STRIPE_SECRET_KEY: "sk_live_lifecycle",
+    } as Env;
+    const subscriptions = new Map([["sub_1", subscription()]]);
+    const sent: Array<{ to?: string; subject?: string }> = [];
+    const stripe = stripeFetch(subscriptions);
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (String(input).includes("api.resend.com")) {
+        sent.push(JSON.parse(String(init?.body ?? "{}")));
+        return Response.json({ id: `email-${sent.length}` });
+      }
+      return stripe(input, init);
+    };
+
+    await processStripeWebhookEvent(
+      env,
+      event("evt_owner_checkout", "checkout.session.completed", {
+        subscription: "sub_1",
+        client_reference_id: user.id,
+      }),
+      fetchImpl,
+    );
+    assert.equal(sent.length, 1);
+    await processStripeWebhookEvent(
+      env,
+      event(
+        "evt_owner_created",
+        "customer.subscription.created",
+        subscription(),
+        NOW_SECONDS + 1,
+      ),
+      fetchImpl,
+    );
+    assert.equal(sent.length, 1);
+    assert.match(String(sent[0]?.subject), /buyer@example.com subscribed to Starter/);
+
+    await processStripeWebhookEvent(
+      env,
+      event(
+        "evt_owner_upgrade",
+        "customer.subscription.updated",
+        subscription({ price: PRICES.businessMonth }),
+        NOW_SECONDS + 2,
+      ),
+      fetchImpl,
+    );
+    assert.equal(sent.length, 2);
+    assert.match(
+      String(sent[1]?.subject),
+      /buyer@example.com changed plan from Starter to Business/,
+    );
   });
 });

@@ -104,7 +104,8 @@ export const Navbar: React.FC = () => {
     }
   }, [location, refreshAuth]);
 
-  // Mobile sheet: lock background scroll only on body (not html) so pinch-zoom + pan still work inside the sheet.
+  // Mobile sheet: lock background scroll on body (not html). Do not set touch-action: pan-y
+  // on the sheet — that blocks left/right pan after pinch-zoom (visual viewport).
   useEffect(() => {
     if (mobileSheet === "closed") return;
     const body = document.body;
@@ -412,7 +413,7 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "nav" && (
       <div
         id="mobile-nav-sheet"
-        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] [touch-action:pan-y_pinch-zoom] xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-clip overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] touch-manipulation xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.toggleNavigation}
@@ -529,7 +530,7 @@ export const Navbar: React.FC = () => {
     {mobileSheet === "account" && user?.email ? (
       <div
         id="mobile-account-sheet"
-        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] [touch-action:pan-y_pinch-zoom] xl:hidden"
+        className="fixed inset-0 z-[9999] flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col overflow-y-auto overflow-x-clip overscroll-y-contain bg-background [-webkit-overflow-scrolling:touch] touch-manipulation xl:hidden"
         role="dialog"
         aria-modal="true"
         aria-label={t.account}

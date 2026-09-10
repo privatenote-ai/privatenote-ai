@@ -30,7 +30,7 @@ describe("page content security policy", () => {
     assert.match(csp, /frame-src[^;]*data:/);
   });
 
-  it("allows same-origin page iframes for admin heatmap previews", () => {
+  it("allows same-origin framing for decrypted attachment previews", () => {
     const csp = buildPageContentSecurityPolicy("abc123");
     assert.match(csp, /frame-src 'self'/);
     assert.match(csp, /frame-ancestors 'self'/);

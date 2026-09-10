@@ -69,6 +69,8 @@ new_classes = ["AuthTokenStore"]
 [vars]
 AUTH_EMAIL_PROVIDER = "resend"
 AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
+# Operator notice when someone newly subscribes or changes plan (not renewals).
+BILLING_OWNER_EMAIL = "marjanskrobot@gmail.com"
 # Optional: primary HTTPS origin for magic / email-change links when Origin is missing (must match trustedOrigins allowlist). Example: "https://privatenote.ai"
 # PUBLIC_WEB_APP_ORIGIN = "https://privatenote.ai"
 # Production: set AUTH_SECRET_KEY via `wrangler secret put AUTH_SECRET_KEY`.

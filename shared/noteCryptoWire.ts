@@ -40,13 +40,15 @@ export function validateNoteAesGcmIvWire(iv: unknown, fieldLabel: string): Valid
 
 /**
  * Note body ciphertext on the wire: base64 or base64url (no line breaks), non-empty after decode,
- * within {@link MAX_NOTE_CIPHERTEXT_BASE64_CHARS} characters.
+ * within `maxBase64Chars` (defaults to {@link MAX_NOTE_CIPHERTEXT_BASE64_CHARS}, the Business cap).
+ * Create paths should pass the sender's plan cap so Free/Starter cannot store Business-sized blobs.
  * Leading/trailing ASCII whitespace is stripped on purpose: the encoding has no meaningful outer
  * whitespace; clients should send normalized single-line blobs.
  */
 export function validateNoteCiphertextWire(
   content: unknown,
   fieldLabel = "content",
+  maxBase64Chars = MAX_NOTE_CIPHERTEXT_BASE64_CHARS,
 ): ValidateCryptoWireResult {
   if (typeof content !== "string") {
     return { ok: false, message: `${fieldLabel} must be a string` };
@@ -55,11 +57,11 @@ export function validateNoteCiphertextWire(
   if (!trimmed) {
     return { ok: false, message: `${fieldLabel} is required` };
   }
-  if (trimmed.length > MAX_NOTE_CIPHERTEXT_BASE64_CHARS) {
+  if (trimmed.length > maxBase64Chars) {
     return {
       ok: false,
       kind: "too_large",
-      message: `${fieldLabel} exceeds maximum length (${MAX_NOTE_CIPHERTEXT_BASE64_CHARS} base64 characters)`,
+      message: `${fieldLabel} exceeds maximum length (${maxBase64Chars} base64 characters)`,
     };
   }
   const bytes = decodeBase64UrlToBytes(trimmed);

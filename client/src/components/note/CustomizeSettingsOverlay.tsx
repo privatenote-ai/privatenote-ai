@@ -62,7 +62,7 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="flex max-h-[90vh] flex-col gap-0 rounded-t-2xl p-0"
+          className="flex max-h-[90vh] flex-col gap-0 rounded-t-2xl p-0 touch-manipulation"
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             const done = document.getElementById("customize-settings-done-mobile");
@@ -72,7 +72,9 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
           <SheetHeader className="shrink-0 border-b border-gray-200/80 px-4 pb-3 pt-4 text-left dark:border-gray-800/80">
             <SheetTitle>{t.customize}</SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">{panel}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-clip touch-manipulation px-4 py-3">
+            {panel}
+          </div>
           <SheetFooter className="shrink-0 border-t border-gray-200/80 px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-gray-800/80 sm:flex-row sm:justify-end sm:space-x-0">
             <CustomizeDoneButton
               id="customize-settings-done-mobile"
@@ -98,7 +100,9 @@ export const CustomizeSettingsOverlay: React.FC<CustomizeSettingsOverlayProps> =
         <DialogHeader className="shrink-0 border-b border-gray-200/80 px-6 pb-3 pt-6 dark:border-gray-800/80">
           <DialogTitle>{t.customize}</DialogTitle>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{panel}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-clip touch-manipulation px-6 py-4">
+          {panel}
+        </div>
         <DialogFooter className="shrink-0 border-t border-gray-200/80 px-6 py-3 dark:border-gray-800/80 sm:justify-end">
           <CustomizeDoneButton id="customize-settings-done" label={doneLabel} onClick={close} />
         </DialogFooter>

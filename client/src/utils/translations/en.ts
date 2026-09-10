@@ -446,6 +446,38 @@ export const en: Translations = {
   authPrefsComingDigest: "Notification digest frequency",
   authPrefsComingNoteDefaults: "Note defaults (expiry, AI, etc.)",
   authPrefsCouldNotSaveLanguage: "Could not save language",
+  authPrefsNoteDefaultsTitle: "Saved note defaults",
+  authPrefsNoteDefaultsHint:
+    "Synced to your account and applied when you create a new note while signed in.",
+  authPrefsNoteDefaultsAlertOpened: "Alert me when opened",
+  authPrefsNoteDefaultsAlertOpenedHint:
+    "Requires verified email and email notifications to remain enabled.",
+  authPrefsNoteDefaultsRecipientVerification: "Require recipient verification",
+  authPrefsNoteDefaultsRecipientVerificationHint:
+    "Generate a separate one-time code for each new note.",
+  authPrefsNoteDefaultsCustomActive: "Custom defaults are currently active.",
+  authPrefsNoteDefaultsStandardActive: "Standard defaults are currently active.",
+  authPrefsNoteDefaultsReset: "Reset defaults",
+  authPrefsNoteDefaultsResetting: "Resetting…",
+  authPrefsNoteDefaultsSave: "Save defaults",
+  authPrefsNoteDefaultsSaving: "Saving…",
+  authPrefsNoteDefaultsPremiumTitle: "Starter and Business feature",
+  authPrefsNoteDefaultsPremiumDesc:
+    "Saved defaults are inactive on Free. Existing synchronized defaults are retained and become active again after upgrading.",
+  authPrefsNoteDefaultsTypefaceHint: "Used on the page where the recipient opens the note.",
+  authPrefsReaderLanguageAuto: "Auto — recipient browser language",
+  authPrefsHostedAiTitle: "Non-private hosted AI",
+  authPrefsHostedAiHint:
+    "Optional Cloudflare Workers AI when Private AI is unavailable. Premium does not make this private — prompts still leave your device. Each note session still requires a separate confirmation.",
+  authPrefsHostedAiAllow: "Allow non-private hosted AI",
+  authPrefsHostedAiAllowHint: "Off by default. Not the same as Private AI on your device.",
+  authPrefsHostedAiSaveFailed: "Could not save hosted AI preference",
+  authPrefsNoteDefaultsSavedTitle: "Note defaults saved",
+  authPrefsNoteDefaultsSavedDesc: "These settings will be used on your signed-in devices.",
+  authPrefsNoteDefaultsSaveFailed: "Could not save note defaults",
+  authPrefsNoteDefaultsResetTitle: "Note defaults reset",
+  authPrefsNoteDefaultsResetDesc: "New notes will use the standard defaults.",
+  authPrefsNoteDefaultsResetFailed: "Could not reset note defaults",
   authSecPageTitle: "Security",
   authSecPageSubtitle: "Passkeys, 2-step verification, devices, and account recovery.",
   authSecLoadingSettings: "Loading security settings…",
@@ -640,6 +672,7 @@ export const en: Translations = {
   viewLimitTwice: "2 views",
   viewLimitThree: "3 views",
   viewLimitFive: "5 views",
+  viewLimitTen: "10 views",
   viewLimitPremiumHint: "Starter and Business let you allow multiple opens before the note is destroyed.",
   viewLimitFreeDescription: "Free accounts use read-once.",
   premium: "Starter",
@@ -795,6 +828,23 @@ export const en: Translations = {
   recipientLinkDeliverySignInHint: "Sign in with Starter or Business to email the link —",
   settingsDeliveryBrandedReveal: "Branded reveal page",
   settingsDeliveryBrandedRevealInfo: "Show your brand on the page where the recipient opens the note.",
+  settingsDeliveryBrandedRevealSetUp: "Add your company branding",
+  settingsDeliveryBrandedRevealSetUpHint: "to show it on the reveal page.",
+  settingsRevealBrandingBusinessHint:
+    "Business adds your company identity to the recipient reveal page.",
+  settingsUnlockRevealBranding: "Unlock reveal branding with Business",
+  settingsUnlockDeliveryControls: "Unlock delivery controls with Starter or Business",
+  settingsSaveAsMyDefaults: "Save these as my defaults",
+  settingsSavingDefaults: "Saving…",
+  settingsUnlockMoreBusiness: "Unlock more with Business",
+  settingsAddMoreControlStarter: "Add more control with Starter",
+  settingsIncludedWithBusiness:
+    "Included with Business. Your encryption and privacy protections stay the same.",
+  settingsIncludedWithStarterBusiness:
+    "Included with Starter and Business. Your encryption and privacy protections stay the same.",
+  settingsUpgradeToBusiness: "Upgrade to Business",
+  settingsUpgradeToStarter: "Upgrade to Starter",
+  settingsRevealBodyFontSample: "The access code is 7G-K4m.",
   settingsReaderLanguage: "Reader Language",
   settingsReaderLanguageInfo: "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
   settingsReaderLanguageDescription: "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
@@ -1117,7 +1167,7 @@ export const en: Translations = {
   attachmentDecryptProgressTitle: "Decrypting in your browser…",
   attachmentDecryptProgressFootnote:
     "The file is downloaded and decrypted in this browser. Keep this tab in the foreground — background tabs are throttled and large files slow down a lot.",
-  notesLimitTrimmed: "Notes are limited to 50 KB of UTF-8 text. Extra pasted text was removed.",
+  notesLimitTrimmed: "Notes are limited to {maxKb} KB of UTF-8 text. Extra pasted text was removed.",
   password: "Password",
   passwordPlaceholder: "Enter a secure password (optional)",
   simple: "Simple",
@@ -2144,7 +2194,7 @@ export const en: Translations = {
     "No. For standard notes, our server stores the encrypted note and metadata, not the usable decryption key. The key is in the part of the link after `#`. Browsers keep everything after `#` on the device when loading a page—they do not send it to our servers—so we never receive your decryption key.",
   homeFaq_metadata_question: "What metadata do you store?",
   homeFaq_metadata_answer:
-    "We store encrypted note payloads and the settings needed for expiration and read limits—not your plaintext. We also keep aggregated, first-party service statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, page visits, time a page stays visible in the foreground, coarse click/scroll heatmaps, and similar operational totals. Those statistics never include note content, note IDs, or session recordings, and are not shared with advertising or third-party analytics providers. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
+    "We store encrypted note payloads and the settings needed for expiration and read limits—not your plaintext. We also keep aggregated, first-party service statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, page visits, time a page stays visible in the foreground, and similar operational totals. Those statistics never include note content, note IDs, or session recordings, and are not shared with advertising or third-party analytics providers. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
   homeFaq_euStorage_question: "Is PrivateNote.ai data stored in the EU?",
   homeFaq_euStorage_answer:
     "Yes. Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure. Some network traffic may still pass through security and delivery systems before reaching storage.",
@@ -2154,15 +2204,18 @@ export const en: Translations = {
   homeFaq_shareLink_question: "Is it safe to share the link over email or chat?",
   homeFaq_shareLink_answer:
     "The encrypted note is safe, but the link is the key. Anyone with the link can open the note, so use trusted channels and short expirations. Recipients can also forward the link, screenshot, or copy what they see—PrivateNote cannot prevent that after access.",
+  homeFaq_protectAgainstAttack_question: "How do I best protect a note against an attack?",
+  homeFaq_protectAgainstAttack_answer:
+    "Treat the link as the key. Add a password and send it on a different channel than the link (for example, the link by email and the password by text or a call). On Starter and Business, also turn on recipient verification: we email a one-time code to the recipient’s address before the note can be revealed, so an intercepted link is not enough on its own. Keep your device operating system and browser on the latest security updates, use a short expiry, and leave burn after reading on. After someone opens the note, they can still copy or screenshot it.",
   homeFaq_forwarding_question: "Can recipients forward the note?",
   homeFaq_forwarding_answer:
     "They can forward the link. PrivateNote reduces risk with read-once notes and expirations, but it cannot prevent screenshots, copy/paste, or forwarding after access.",
   homeFaq_size_question: "How large can a note, photo, or video be?",
   homeFaq_size_answer:
-    "Text is limited to 50 KB—enough for short to medium secrets. Photos, videos, and other files follow your plan: up to 25 MB per file on Free (10 file/photo/audio/recording transfers per day), 250 MB on Starter, and 1 GB on Business. Starter and Business also remove the Free daily transfer cap.",
+    "Text is limited to 50 KB—enough for short to medium secrets. Photos, videos, and other files follow your plan: up to 25 MB per file on Free (10 file/photo/audio/recording transfers a month), 250 MB on Starter, and 1 GB on Business. Starter and Business also remove the Free monthly transfer cap.",
   homeFaq_pricing_question: "Is PrivateNote.ai free?",
   homeFaq_pricing_answer:
-    "PrivateNote.ai offers Free encrypted notes, plus Starter and Business plans for delivery controls and higher limits. Free includes up to 10 file, photo, audio, or recording transfers per day when you are signed in; text-only notes stay unlimited under fair use.",
+    "PrivateNote.ai offers Free encrypted notes, plus Starter and Business plans for delivery controls and higher limits. Free includes up to 10 file, photo, audio, or recording transfers per month when you are signed in; text-only notes stay unlimited under fair use.",
   homeFaq_ai_question: "Why .ai — do you use AI on my notes?",
   homeFaq_ai_answer:
     "AI features are strictly opt-in. Regular notes work without AI, and note pages are not used for ad tracking.",
@@ -3011,6 +3064,7 @@ export const en: Translations = {
   pricingMinutes: "minutes",
   pricingEncryptedAttachments: "encrypted attachments",
   pricingMb: "MB",
+  pricingKb: "KB",
   pricingGb: "GB",
   pricingSectionCore: "Core",
   pricingSectionCoreDesc: "Encryption, expiry, and how many times a note can be opened.",
@@ -3035,6 +3089,7 @@ export const en: Translations = {
   pricingRowAttachmentViewOnly: "View-only",
   pricingRowRevealBranding: "Recipient branding",
   pricingRowAttachments: "Max file size",
+  pricingRowNoteText: "Max note text",
   pricingRowAttachmentCount: "Files per transfer",
   pricingRowAttachmentTransfer: "Max transfer size",
   pricingRowFileTransfers: "File transfers",
