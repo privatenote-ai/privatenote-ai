@@ -27,7 +27,7 @@ await build({
   // Keep heavy deps as external so Node resolves them from node_modules at
   // runtime. This keeps the bundle ~5 KB instead of ~720 KB, which prevents
   // MCP startup timeouts in Cursor.
-  external: ["@modelcontextprotocol/sdk", "zod"],
+  external: ["@modelcontextprotocol/sdk", "zod", "libsodium-wrappers", "libsodium"],
   absWorkingDir: __dirname,
   logLevel: "info",
 });

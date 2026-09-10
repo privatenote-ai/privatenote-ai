@@ -83,6 +83,19 @@ import {
 } from "@shared/magicLinkEmail";
 import { appendMagicLinkReturnTo, sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { isStagingAppHost } from "@shared/pagesAppHosts";
+import { readSessionIdFromRequest } from "../sessionBearer";
+import {
+  MCP_DEVICE_POLL_INTERVAL_SECONDS,
+  MCP_DEVICE_TTL_SECONDS,
+  formatMcpUserCode,
+  generateMcpUserCode,
+  isMcpDeviceAuthRecord,
+  mcpDeviceCodeKvKey,
+  mcpDeviceVerificationPath,
+  mcpUserCodeKvKey,
+  normalizeMcpUserCode,
+  type McpDeviceAuthRecord,
+} from "@shared/mcpDeviceAuth";
 
 const STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES = new Set([
   "active",
@@ -2657,6 +2670,67 @@ async function createSession(
   return { sessionId };
 }
 
+/**
+ * Plugin / MCP session: a separate D1 row so authorizing an app does not
+ * revoke the website cookie session (different client_bucket).
+ */
+async function createMcpDeviceSession(
+  env: Env,
+  userId: string,
+  request: Request,
+  opts: { deviceLabel: string; lastAuthAt: string | null; lastStepUpAt: string | null },
+): Promise<{ sessionId: string } | null> {
+  if (!env.AUTH_DB) return null;
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const sessionId = randomId(32);
+  const sessionHash = await sha256Base64Url(sessionId);
+  const id = crypto.randomUUID();
+  const expiresAt = new Date(now + 1000 * SESSION_POLICY.TTL_SECONDS).toISOString();
+  const absoluteExpiresAt = new Date(now + 1000 * SESSION_POLICY.ABSOLUTE_TTL_SECONDS).toISOString();
+  const ip = getRequestIp(request);
+  const { city, country } = getRequestGeo(request);
+  const deviceLabel = opts.deviceLabel.replace(/[\r\n]/g, " ").trim().slice(0, 80) || "MCP";
+  const clientBucket = `plugin:mcp:${randomId(8)}`;
+  const lastAuthAt = opts.lastAuthAt || nowIso;
+  const lastStepUpAt = opts.lastStepUpAt;
+  await env.AUTH_DB.prepare(
+    "INSERT INTO sessions (id, session_id_hash, user_id, expires_at, absolute_expires_at, created_at, last_seen_at, last_auth_at, last_stepup_at, user_agent, ip, city, country, device_label, client_bucket, auth_complete) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+    .bind(
+      id,
+      sessionHash,
+      userId,
+      expiresAt,
+      absoluteExpiresAt,
+      nowIso,
+      nowIso,
+      lastAuthAt,
+      lastStepUpAt,
+      request.headers.get("User-Agent") || "privatenote-mcp",
+      ip,
+      city,
+      country,
+      deviceLabel,
+      clientBucket,
+      1,
+    )
+    .run();
+  await logAuditEvent(env, {
+    userId,
+    eventType: "session_created",
+    status: "success",
+    details: { authMethod: "device", sessionId: id, client: "plugin", city, country },
+    ip,
+    userAgent: request.headers.get("User-Agent"),
+  });
+  return { sessionId };
+}
+
+function parseDeviceAuthClient(raw: unknown): "mcp" | "chrome" | "vscode" {
+  return raw === "chrome" || raw === "vscode" ? raw : "mcp";
+}
+
 function sessionCookie(
   sessionId: string,
   kind: SessionCookieKind,
@@ -3104,7 +3178,9 @@ export async function getSessionFromRequest(
   if (!env.AUTH_DB) return null;
   const cookies = parseCookies(request.headers.get("Cookie"));
   const cookieName = sessionCookieNameForKind(getSessionCookieKindForRequest(request));
-  const sessionId = cookies[cookieName];
+  const sessionFromRequest = readSessionIdFromRequest(request, cookieName, cookies);
+  const sessionId = sessionFromRequest?.sessionId;
+  const fromBearer = sessionFromRequest?.fromBearer === true;
   if (!sessionId) return null;
   const sessionHash = await sha256Base64Url(sessionId);
   const currentIp = getRequestIp(request);
@@ -3213,7 +3289,12 @@ export async function getSessionFromRequest(
   // Only rotate fully-authenticated sessions. Pending-TOTP sessions (authComplete=false) must
   // never be rotated: createSession defaults auth_complete to 1, which would bypass the second
   // factor and promote a half-authenticated session to fully authenticated.
-  if (options.rotate && authComplete && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
+  if (
+    options.rotate &&
+    !fromBearer &&
+    authComplete &&
+    now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000
+  ) {
     const rotated = await createSession(env, row.user_id, request, "magic", {
       authComplete: true,
       lastAuthAtOverride: row.last_auth_at ?? null,
@@ -4407,6 +4488,193 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
         request,
       );
     }
+  }
+
+  if (pathname === "/api/auth/device/start" && method === "POST") {
+    const kv = getAuthKv(env);
+    if (!kv) {
+      return jsonResponse({ message: "Auth store not configured" }, 503, request);
+    }
+    let body: Record<string, unknown> = {};
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      body = {};
+    }
+    const client = parseDeviceAuthClient(body.client);
+    const clientNameRaw = typeof body.clientName === "string" ? body.clientName : "";
+    const clientName =
+      clientNameRaw.replace(/[\r\n]/g, " ").trim().slice(0, 80) ||
+      (client === "chrome" ? "PrivateNote Chrome" : client === "vscode" ? "PrivateNote editor" : "PrivateNote MCP");
+    const clientIp = getRequestIp(request);
+    if (clientIp) {
+      const windowStart = Math.floor(Date.now() / 1000 / 600);
+      const rlKey = `mcp_device_start_ip:${clientIp}:${windowStart}`;
+      try {
+        const rlData = (await kv.get(rlKey, "json")) as { count: number } | null;
+        if (rlData && rlData.count >= 20) {
+          return jsonResponse({ message: "Too many sign-in attempts. Try again later." }, 429, request);
+        }
+        await kv.put(rlKey, JSON.stringify({ count: (rlData?.count ?? 0) + 1 }), { expirationTtl: 700 });
+      } catch {
+        /* continue */
+      }
+    }
+    const userCodeBytes = new Uint8Array(8);
+    crypto.getRandomValues(userCodeBytes);
+    let userCode = generateMcpUserCode(userCodeBytes);
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const existing = await kv.get(mcpUserCodeKvKey(userCode));
+      if (!existing) break;
+      crypto.getRandomValues(userCodeBytes);
+      userCode = generateMcpUserCode(userCodeBytes);
+    }
+    const deviceCode = randomId(32);
+    const deviceCodeHash = await sha256Base64Url(deviceCode);
+    const nowIso = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + MCP_DEVICE_TTL_SECONDS * 1000).toISOString();
+    const record: McpDeviceAuthRecord = {
+      v: 1,
+      userCode,
+      status: "pending",
+      createdAt: nowIso,
+      expiresAt,
+      clientName,
+    };
+    await kv.put(mcpDeviceCodeKvKey(deviceCodeHash), JSON.stringify(record), {
+      expirationTtl: MCP_DEVICE_TTL_SECONDS,
+    });
+    await kv.put(mcpUserCodeKvKey(userCode), deviceCodeHash, { expirationTtl: MCP_DEVICE_TTL_SECONDS });
+    const origin = getMagicLinkOrigin(env, request);
+    const verificationPath = mcpDeviceVerificationPath(userCode, client);
+    const verificationUri = `${origin}${verificationPath}`;
+    return jsonResponse(
+      {
+        deviceCode,
+        userCode: formatMcpUserCode(userCode),
+        verificationUri,
+        verificationUriComplete: verificationUri,
+        expiresIn: MCP_DEVICE_TTL_SECONDS,
+        interval: MCP_DEVICE_POLL_INTERVAL_SECONDS,
+      },
+      200,
+      request,
+    );
+  }
+
+  if (pathname === "/api/auth/device/poll" && method === "POST") {
+    const kv = getAuthKv(env);
+    if (!kv) {
+      return jsonResponse({ message: "Auth store not configured" }, 503, request);
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const deviceCode = typeof body.deviceCode === "string" ? body.deviceCode.trim() : "";
+    if (deviceCode.length < 16) {
+      return jsonResponse({ message: "Invalid device code" }, 400, request);
+    }
+    const deviceCodeHash = await sha256Base64Url(deviceCode);
+    const raw = await kv.get(mcpDeviceCodeKvKey(deviceCodeHash));
+    if (!raw) {
+      return jsonResponse({ message: "expired", error: "expired" }, 400, request);
+    }
+    let record: unknown;
+    try {
+      record = JSON.parse(raw);
+    } catch {
+      return jsonResponse({ message: "expired", error: "expired" }, 400, request);
+    }
+    if (!isMcpDeviceAuthRecord(record)) {
+      return jsonResponse({ message: "expired", error: "expired" }, 400, request);
+    }
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      return jsonResponse({ message: "expired", error: "expired" }, 400, request);
+    }
+    if (record.status === "denied") {
+      return jsonResponse({ message: "denied", error: "denied" }, 403, request);
+    }
+    if (record.status === "authorized" && record.sessionId) {
+      return jsonResponse({ status: "authorized", accessToken: record.sessionId }, 200, request);
+    }
+    return jsonResponse({ status: "pending" }, 200, request);
+  }
+
+  if (pathname === "/api/auth/device/approve" && method === "POST") {
+    const csrf = assertTrustedJsonPost(request);
+    if (csrf) return csrf;
+    if (!env.AUTH_DB) {
+      return jsonResponse({ message: "Auth database not configured" }, 501, request);
+    }
+    const kv = getAuthKv(env);
+    if (!kv) {
+      return jsonResponse({ message: "Auth store not configured" }, 503, request);
+    }
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    if (!session?.id || !session.authComplete) {
+      return jsonResponse({ message: "Unauthorized" }, 401, request);
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return jsonResponse({ message: "Invalid JSON" }, 400, request);
+    }
+    const userCode = normalizeMcpUserCode(body.userCode);
+    if (!userCode) {
+      return jsonResponse({ message: "Enter the 8-character code shown in the app." }, 400, request);
+    }
+    const deviceCodeHash = await kv.get(mcpUserCodeKvKey(userCode));
+    if (!deviceCodeHash) {
+      return jsonResponse({ message: "That code is invalid or expired. Start sign-in again from the app." }, 400, request);
+    }
+    const raw = await kv.get(mcpDeviceCodeKvKey(deviceCodeHash));
+    if (!raw) {
+      return jsonResponse({ message: "That code is invalid or expired. Start sign-in again from the app." }, 400, request);
+    }
+    let record: unknown;
+    try {
+      record = JSON.parse(raw);
+    } catch {
+      return jsonResponse({ message: "That code is invalid or expired. Start sign-in again from the app." }, 400, request);
+    }
+    if (!isMcpDeviceAuthRecord(record)) {
+      return jsonResponse({ message: "That code is invalid or expired. Start sign-in again from the app." }, 400, request);
+    }
+    if (new Date(record.expiresAt).getTime() < Date.now()) {
+      return jsonResponse({ message: "That code expired. Start sign-in again from the app." }, 400, request);
+    }
+    if (record.status === "authorized" && record.userId === session.id && record.sessionId) {
+      return jsonResponse({ ok: true }, 200, request);
+    }
+    if (record.status !== "pending") {
+      return jsonResponse({ message: "This code is no longer waiting for approval." }, 400, request);
+    }
+    const pluginSession = await createMcpDeviceSession(env, session.id, request, {
+      deviceLabel: record.clientName,
+      lastAuthAt: session.lastAuthAt,
+      lastStepUpAt: session.lastStepUpAt,
+    });
+    if (!pluginSession?.sessionId) {
+      return jsonResponse({ message: "Could not create an app session." }, 500, request);
+    }
+    const authorized: McpDeviceAuthRecord = {
+      ...record,
+      status: "authorized",
+      userId: session.id,
+      sessionId: pluginSession.sessionId,
+    };
+    const ttlRemaining = Math.max(
+      30,
+      Math.ceil((new Date(record.expiresAt).getTime() - Date.now()) / 1000),
+    );
+    await kv.put(mcpDeviceCodeKvKey(deviceCodeHash), JSON.stringify(authorized), {
+      expirationTtl: ttlRemaining,
+    });
+    return jsonResponse({ ok: true }, 200, request);
   }
 
   if (pathname === "/api/auth/me" && method === "GET") {
@@ -6675,14 +6943,18 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     headers.set("Content-Type", "application/json");
     const cookies = parseCookies(request.headers.get("Cookie"));
     const kind = getSessionCookieKindForRequest(request);
-    const sessionId = cookies[sessionCookieNameForKind(kind)];
+    const cookieName = sessionCookieNameForKind(kind);
+    const sessionFromRequest = readSessionIdFromRequest(request, cookieName, cookies);
+    const sessionId = sessionFromRequest?.sessionId;
     if (sessionId && env.AUTH_DB) {
       const sessionHash = await sha256Base64Url(sessionId);
       await env.AUTH_DB.prepare("UPDATE sessions SET revoked_at = ? WHERE session_id_hash = ?")
         .bind(new Date().toISOString(), sessionHash)
         .run();
     }
-    headers.set("Set-Cookie", clearSessionCookieHeader(kind));
+    if (!sessionFromRequest?.fromBearer) {
+      headers.set("Set-Cookie", clearSessionCookieHeader(kind));
+    }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 

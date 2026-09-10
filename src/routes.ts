@@ -79,6 +79,14 @@ import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
 import { isSupportedLanguage } from "@shared/supportedLanguages";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
+import {
+  ADMIN_SESSION_COOKIE_NAME,
+  adminSessionCookie,
+  adminSessionIsValid,
+  clearAdminSessionCookie,
+  createAdminSession,
+  revokeAdminSession,
+} from "./adminSession";
 import { withEuStoredDataEnv } from "./euD1Kv";
 import {
   getRecipientGateStatus,
@@ -8185,18 +8193,8 @@ function verifyCsrfOrigin(request: Request): Response | null {
   return null;
 }
 
-const ADMIN_SESSION_TTL = 4 * 60 * 60; // 4 hours
-
-function adminSessionCookie(token: string): string {
-  return `pn_admin=${token}; HttpOnly; Secure; SameSite=Strict; Path=/api/admin; Max-Age=${ADMIN_SESSION_TTL}`;
-}
-
-function clearAdminSessionCookie(): string {
-  return "pn_admin=; HttpOnly; Secure; SameSite=Strict; Path=/api/admin; Max-Age=0";
-}
-
-// Accept either the X-Admin-Token header (legacy) or the pn_admin HttpOnly cookie.
-function requireAdmin(request: Request, env: Env): Response | null {
+// Accept either the X-Admin-Token header (legacy raw ADMIN_TOKEN) or a hashed opaque pn_admin session.
+async function requireAdmin(request: Request, env: Env): Promise<Response | null> {
   const expected = env.ADMIN_TOKEN;
   if (!expected || typeof expected !== "string") {
     return jsonResponse({ message: "Unauthorized - Admin not configured" }, 401, request);
@@ -8208,8 +8206,9 @@ function requireAdmin(request: Request, env: Env): Response | null {
   }
 
   const cookies = parseCookies(request.headers.get("Cookie"));
-  const cookieToken = cookies["pn_admin"];
-  if (cookieToken && constantTimeEquals(cookieToken, expected)) {
+  const sessionId = cookies[ADMIN_SESSION_COOKIE_NAME];
+  const kv = getAuthKv(env);
+  if (sessionId && kv && (await adminSessionIsValid(kv, sessionId, expected))) {
     return null;
   }
 
@@ -10540,13 +10539,24 @@ export async function registerRoutes(
       }
     }
 
+    const kv = getAuthKv(env);
+    if (!kv) {
+      return jsonResponse({ message: "Admin session storage is unavailable" }, 503, request);
+    }
+    const sessionId = await createAdminSession(kv, expected);
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
-    headers.set("Set-Cookie", adminSessionCookie(expected));
+    headers.set("Set-Cookie", adminSessionCookie(sessionId));
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   }
 
   if (pathname === "/api/admin/logout" && method === "POST") {
+    const cookies = parseCookies(request.headers.get("Cookie"));
+    const sessionId = cookies[ADMIN_SESSION_COOKIE_NAME];
+    const kv = getAuthKv(env);
+    if (sessionId && kv) {
+      await revokeAdminSession(kv, sessionId);
+    }
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");
     headers.set("Set-Cookie", clearAdminSessionCookie());
@@ -10554,7 +10564,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/health/auth" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     const magic = getMagicLinkIssuanceDiagnostics(env, request);
@@ -10592,7 +10602,7 @@ export async function registerRoutes(
 
   // GET /api/admin/audit-logs - Query audit logs with filtering
   if (pathname === "/api/admin/audit-logs" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     if (!env.AUTH_DB) {
@@ -10710,7 +10720,7 @@ export async function registerRoutes(
 
   // GET /api/admin/audit-logs/stats - Get audit log statistics
   if (pathname === "/api/admin/audit-logs/stats" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     if (!env.AUTH_DB) {
@@ -10786,7 +10796,7 @@ export async function registerRoutes(
 
   // Blog API routes - Admin
   if (pathname === "/api/admin/blog" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -10800,7 +10810,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/blog" && method === "POST") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -10847,7 +10857,7 @@ export async function registerRoutes(
   // GET /api/admin/blog/:id
   const adminBlogIdParams = parsePathParams(pathname, "/api/admin/blog/:id");
   if (adminBlogIdParams && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -10872,7 +10882,7 @@ export async function registerRoutes(
 
   // PUT /api/admin/blog/:id
   if (adminBlogIdParams && method === "PUT") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -10926,7 +10936,7 @@ export async function registerRoutes(
   // POST /api/admin/blog/:id/publish
   const publishParams = parsePathParams(pathname, "/api/admin/blog/:id/publish");
   if (publishParams && method === "POST") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -10953,7 +10963,7 @@ export async function registerRoutes(
   // POST /api/admin/blog/:id/unpublish
   const unpublishParams = parsePathParams(pathname, "/api/admin/blog/:id/unpublish");
   if (unpublishParams && method === "POST") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -10979,7 +10989,7 @@ export async function registerRoutes(
 
   // DELETE /api/admin/blog/:id
   if (adminBlogIdParams && method === "DELETE") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -11004,7 +11014,7 @@ export async function registerRoutes(
 
   // Analytics API routes - Admin
   if (pathname === "/api/admin/analytics/daily" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -11024,7 +11034,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/analytics/weekly" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -11044,7 +11054,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/analytics/monthly" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -11064,7 +11074,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/analytics/aggregate" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -11091,7 +11101,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/analytics/engagement" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {
@@ -11123,7 +11133,7 @@ export async function registerRoutes(
   }
 
   if (pathname === "/api/admin/analytics/range" && method === "GET") {
-    const authError = requireAdmin(request, env);
+    const authError = await requireAdmin(request, env);
     if (authError) return authError;
 
     try {

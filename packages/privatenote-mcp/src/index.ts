@@ -1,45 +1,90 @@
 /**
  * PrivateNote MCP server — stdio transport.
  *
- * Exposes a single tool `create_private_note` that encrypts text on the local
- * machine and posts only ciphertext to the PrivateNote API. The decryption key
- * never leaves the client: it travels only in the URL fragment returned to the
- * caller.
- *
- * Usage:
- *   node dist/index.js          (after `npm run build`)
- *   npx tsx src/index.ts        (during development)
+ * Tools encrypt on this machine. Ciphertext is posted to the PrivateNote API.
+ * The decryption key is returned only in the URL fragment.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createPrivateNoteSchema, handleCreatePrivateNote } from "./tools/createPrivateNote.ts";
+import {
+  handleSignIn,
+  handleSignOut,
+  handleWhoami,
+  signInSchema,
+  signOutSchema,
+  whoamiSchema,
+} from "./tools/signIn.ts";
 
 const server = new McpServer({
   name: "privatenote-mcp",
-  version: "0.1.0",
+  version: "0.2.0",
 });
+
+function toolError(err: unknown) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: err instanceof Error ? err.message : "Request failed",
+      },
+    ],
+    isError: true,
+  };
+}
 
 server.tool(
   "create_private_note",
-  "Encrypt sensitive text and create a self-destructing PrivateNote link. " +
+  "Encrypt sensitive text and optionally attach a local file, then create a self-destructing PrivateNote link. " +
     "Encryption happens locally — only ciphertext reaches the server. " +
-    "The decryption key is embedded in the returned URL fragment and never logged.",
+    "Attaching a file requires sign_in first. The decryption key is in the returned URL fragment.",
   createPrivateNoteSchema.shape,
   async (args) => {
     try {
       return await handleCreatePrivateNote(args);
     } catch (err) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            // Intentionally generic: do not echo back any part of the input
-            text: err instanceof Error ? err.message : "Note creation failed",
-          },
-        ],
-        isError: true,
-      };
+      return toolError(err);
+    }
+  },
+);
+
+server.tool(
+  "sign_in",
+  "Sign in to PrivateNote with a device code. Opens the browser to approve this MCP app. " +
+    "Does not replace the website session. Required before attaching files.",
+  signInSchema.shape,
+  async (args) => {
+    try {
+      return await handleSignIn(args);
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+server.tool(
+  "whoami",
+  "Show whether this MCP server is signed in to a PrivateNote account.",
+  whoamiSchema.shape,
+  async () => {
+    try {
+      return await handleWhoami();
+    } catch (err) {
+      return toolError(err);
+    }
+  },
+);
+
+server.tool(
+  "sign_out",
+  "Revoke this MCP app session and delete the local token. Does not sign you out of the website.",
+  signOutSchema.shape,
+  async () => {
+    try {
+      return await handleSignOut();
+    } catch (err) {
+      return toolError(err);
     }
   },
 );

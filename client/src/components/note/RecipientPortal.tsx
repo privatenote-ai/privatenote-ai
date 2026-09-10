@@ -153,18 +153,18 @@ export function RecipientPortal({
   const previewRevealCard = preview && resolvedSurface === "card";
   const revealCardSize = previewRevealCard
     ? wideCard
-      ? "w-[min(100%,20rem)] p-4"
-      : "w-[min(100%,18rem)] p-4"
+      ? "w-[min(100%,18rem)] px-6 py-4"
+      : "w-[min(100%,16rem)] px-6 py-4"
     : wideCard
-      ? "w-[min(100%,36rem)] p-5 sm:p-7"
-      : "w-[min(100%,24rem)] p-5 sm:p-6";
+      ? "w-[min(100%,32rem)] px-6 py-5 sm:px-8 sm:py-6"
+      : "w-[min(100%,21.5rem)] px-6 py-5 sm:px-8 sm:py-6";
   const centeredRevealCardSize = previewRevealCard
     ? wideCard
-      ? "max-w-[20rem] p-4"
-      : "max-w-[18rem] p-4"
+      ? "max-w-[18rem] px-6 py-4"
+      : "max-w-[16rem] px-6 py-4"
     : wideCard
-      ? "max-w-md p-5 sm:max-w-xl sm:p-7"
-      : "max-w-[20rem] p-5 sm:max-w-sm sm:p-6";
+      ? "max-w-[25rem] px-6 py-5 sm:max-w-[32rem] sm:px-8 sm:py-6"
+      : "max-w-[18rem] px-6 py-5 sm:max-w-[21.5rem] sm:px-8 sm:py-6";
   const stageRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ grabX: number; grabY: number } | null>(null);
@@ -469,9 +469,7 @@ export function RevealHandoffStack({
   return (
     <div className="flex flex-col items-center text-center">
       {logo ? (
-        <div className={`flex w-full justify-center ${compact ? "mb-2.5" : "mb-5"}`}>
-          {logo}
-        </div>
+        <div className={`w-full ${compact ? "mb-2.5" : "mb-5"}`}>{logo}</div>
       ) : null}
       {title ? (
         <h1
@@ -505,7 +503,11 @@ export function RevealHandoffStack({
           ) : brandingLine ? (
             <p className="m-0 text-sm font-medium text-gray-700 dark:text-gray-200">{brandingLine}</p>
           ) : null}
-          {meta ? <p className="m-0 text-xs text-gray-500 sm:text-sm">{meta}</p> : null}
+          {meta ? (
+            <p className="m-0 text-xs font-medium text-gray-700 sm:text-sm dark:text-gray-300">
+              {meta}
+            </p>
+          ) : null}
           {branding?.trustMessage ? (
             <p className={`m-0 mx-auto max-w-xs text-sm leading-relaxed text-gray-600 ${compact ? "mt-1.5" : "mt-3"}`}>
               {branding.trustMessage}
@@ -516,7 +518,7 @@ export function RevealHandoffStack({
 
       <div className={`${compact ? "mt-4" : "mt-8 sm:mt-9"} w-full`}>{action}</div>
       {footnote ? (
-        <p className={`m-0 ${compact ? "mt-3 text-xs text-gray-500" : "mt-4 text-sm text-gray-600/70 dark:text-gray-300/60 sm:mt-5"}`}>
+        <p className={`m-0 ${compact ? "mt-3 text-xs text-gray-600" : "mt-4 text-sm text-gray-600 dark:text-gray-300 sm:mt-5"}`}>
           {footnote}
         </p>
       ) : null}

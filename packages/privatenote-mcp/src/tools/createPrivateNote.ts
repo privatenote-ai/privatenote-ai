@@ -2,7 +2,10 @@ import { z } from "zod";
 import { createPrivateNote, isMcpExpiresIn } from "../createNote.ts";
 
 export const createPrivateNoteSchema = z.object({
-  content: z.string().describe("The sensitive text to encrypt and store"),
+  content: z
+    .string()
+    .optional()
+    .describe("The sensitive text to encrypt and store. Optional when filePath is set."),
   expiresIn: z
     .enum(["15m", "1h", "24h", "7d"])
     .optional()
@@ -20,6 +23,12 @@ export const createPrivateNoteSchema = z.object({
     .optional()
     .describe(
       "Optional title prepended to the content before encryption (not stored separately)",
+    ),
+  filePath: z
+    .string()
+    .optional()
+    .describe(
+      "Absolute path to a local file to encrypt and attach. Requires sign_in. Do not pass file bytes through the model.",
     ),
 });
 
@@ -44,6 +53,7 @@ export async function handleCreatePrivateNote(args: CreatePrivateNoteArgs) {
     expiresIn,
     burnAfterReading: args.burnAfterReading,
     title: args.title,
+    filePath: args.filePath,
   });
 
   return {

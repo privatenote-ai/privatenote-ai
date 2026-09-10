@@ -20,6 +20,11 @@
  *    `new Request(workerUrl, incomingRequest)` drops PUT/POST binary bodies on
  *    Pages Functions and Safari reports "network connection was lost". File chunk
  *    PUTs from the SPA use this same-origin proxy (not cross-origin workers.dev).
+ *
+ * 4. Strips client `X-PrivateNote-IP-Country` and replaces it with the Pages
+ *    edge `request.cf.country`. The API Worker uses that header for checkout
+ *    currency because a Pages→Worker subrequest does not keep the visitor cf
+ *    object. Forwarding the raw header would let a browser pick EUR vs USD.
  */
 import { PN_CLIENT_IP_HEADER } from "../../shared/clientRequestIdentity";
 import { isStagingAppHost } from "../../shared/pagesAppHosts";
@@ -53,7 +58,7 @@ function proxyBodyAllowed(method: string): boolean {
 }
 
 export async function onRequest(context: {
-  request: Request;
+  request: Request & { cf?: { country?: string } };
   env?: { API_PROXY_TARGET?: string };
 }) {
   const url = new URL(context.request.url);
@@ -65,6 +70,11 @@ export async function onRequest(context: {
   const method = context.request.method;
   const headers = new Headers(context.request.headers);
   headers.set("X-Forwarded-Host", url.host);
+  headers.delete("X-PrivateNote-IP-Country");
+  const country = context.request.cf?.country?.trim().toUpperCase();
+  if (country && /^[A-Z]{2}$/.test(country)) {
+    headers.set("X-PrivateNote-IP-Country", country);
+  }
   const visitorIp = context.request.headers.get("CF-Connecting-IP")?.trim();
   if (visitorIp) {
     headers.set(PN_CLIENT_IP_HEADER, visitorIp);

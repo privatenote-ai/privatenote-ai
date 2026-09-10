@@ -1492,12 +1492,13 @@ export function brandingRevealLogoClassName(
   const banner = brandingCardMarkIsBanner(branding);
   const large = brandingLogoIsSolo(branding) || banner;
   if (options?.preview) {
+    if (banner) return "mx-auto w-full object-contain";
     return large
       ? "mx-auto max-h-8 w-auto max-w-[7rem] object-contain"
       : "mx-auto max-h-6 w-auto max-w-16 object-contain";
   }
-  // A 3:1 lockup reads poorly at logo height, so it gets extra room on desktop only.
-  if (banner) return "mx-auto max-h-16 w-auto max-w-full object-contain sm:max-h-32";
+  // Card-width lockup, inset only by the card's 24–32px padding.
+  if (banner) return "mx-auto w-full object-contain";
   return large
     ? "mx-auto max-h-16 w-auto max-w-full object-contain sm:max-h-20"
     : "mx-auto max-h-12 w-auto max-w-full object-contain sm:max-h-14";
