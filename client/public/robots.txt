@@ -3,3 +3,5 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://privatenote.ai/sitemap.xml
+
+# https://privatenote.ai/llms.txt

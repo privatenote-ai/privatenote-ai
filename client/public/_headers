@@ -14,6 +14,7 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+  Link: </llms.txt>; rel="describedby"
 
 # SPA entry must revalidate after every deploy. Stale HTML + replaced hashed chunks → module 404s
 # and a missing composer (see deploy-pages-staging.yml concurrency note).
@@ -54,6 +55,18 @@
   Cross-Origin-Embedder-Policy: credentialless
 
 /admin/*
+  X-Robots-Tag: noindex, nofollow
+
+/llms.txt
+  Cache-Control: public, max-age=3600
+
+/llms-full.txt
+  Cache-Control: public, max-age=3600
+
+/extension
+  X-Robots-Tag: noindex, nofollow
+
+/extension/*
   X-Robots-Tag: noindex, nofollow
 
 /auth
