@@ -224,11 +224,11 @@ function comparisonValue(planId: AccountType, key: string, t: Translations): Com
     case "attachmentTransfer":
       return cell(formatBytesLabel(features.attachmentTransferMaxBytes, t));
     case "fileTransfers":
-      if (features.maxAttachmentTransfersPerDay == null) {
+      if (features.maxAttachmentTransfersPerMonth == null) {
         return cell(t.pricingFileTransfersUnlimited);
       }
       return cell(
-        t.pricingFileTransfersNPerDay.replace("{n}", String(features.maxAttachmentTransfersPerDay)),
+        t.pricingFileTransfersNPerMonth.replace("{n}", String(features.maxAttachmentTransfersPerMonth)),
         planId === "personal_premium" ? t.pricingStarterTransfersNote : freeAccountNote,
       );
     case "payloadBuffer":

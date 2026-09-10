@@ -21,10 +21,10 @@ export type PlanFeatureFlags = {
   /** Active encrypted payload still live (unread / not burned). */
   activePayloadBufferBytes: number;
   /**
-   * Max file/photo/audio/recording transfers that may start per UTC day.
-   * `null` means unlimited (paid plans).
+   * Max file/photo/audio/recording transfers that may start per UTC month.
+   * `null` means unlimited (Business).
    */
-  maxAttachmentTransfersPerDay: number | null;
+  maxAttachmentTransfersPerMonth: number | null;
   /** Max attachment download window after reveal. */
   maxFileAccessWindowSeconds: number;
   /** Max note body size (UTF-8 bytes). */
@@ -96,7 +96,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       attachmentsMaxCount: 5,
       attachmentTransferMaxBytes: 25 * MB,
       activePayloadBufferBytes: 250 * MB,
-      maxAttachmentTransfersPerDay: 10,
+      maxAttachmentTransfersPerMonth: 10,
       maxFileAccessWindowSeconds: 60 * 60,
       maxNotePlaintextUtf8Bytes: 50 * 1024,
       maxExpirySeconds: 3 * DAY,
@@ -134,7 +134,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       attachmentsMaxCount: 10,
       attachmentTransferMaxBytes: 250 * MB,
       activePayloadBufferBytes: 5 * GB,
-      maxAttachmentTransfersPerDay: null,
+      maxAttachmentTransfersPerMonth: 50,
       maxFileAccessWindowSeconds: 4 * 60 * 60,
       maxNotePlaintextUtf8Bytes: 200 * 1024,
       maxExpirySeconds: 15 * DAY,
@@ -172,7 +172,7 @@ export const PLAN_CATALOG: Record<AccountType, PlanDefinition> = {
       attachmentsMaxCount: 20,
       attachmentTransferMaxBytes: 1 * GB,
       activePayloadBufferBytes: 50 * GB,
-      maxAttachmentTransfersPerDay: null,
+      maxAttachmentTransfersPerMonth: null,
       maxFileAccessWindowSeconds: 24 * 60 * 60,
       maxNotePlaintextUtf8Bytes: 500 * 1024,
       maxExpirySeconds: 30 * DAY,

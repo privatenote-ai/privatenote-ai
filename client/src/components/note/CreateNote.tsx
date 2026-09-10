@@ -2040,14 +2040,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   message?: string;
                   limit?: number;
                 };
-                if (parsed.error === "attachment_transfer_daily_limit") {
+                if (
+                  parsed.error === "attachment_transfer_monthly_limit" ||
+                  parsed.error === "attachment_transfer_daily_limit"
+                ) {
                   const limit =
                     typeof parsed.limit === "number" && Number.isFinite(parsed.limit)
                       ? parsed.limit
                       : 10;
                   throw new Error(
                     parsed.message?.trim() ||
-                      `Free accounts can start ${limit} file, photo, audio, or recording transfers per day. Upgrade for higher limits.`,
+                      `This plan can start ${limit} file, photo, audio, or recording transfers per month. Upgrade for higher limits.`,
                   );
                 }
                 if (parsed.error === "account_file_storage_quota_exceeded") {

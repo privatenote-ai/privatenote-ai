@@ -25,7 +25,7 @@ import {
   noteFileLimitBytesForAccount,
   noteFileTotalStorageBytesForAccount,
   noteFileTransferLimitBytesForAccount,
-  noteFileTransfersPerDayForAccount,
+  noteFileTransfersPerMonthForAccount,
 } from "@shared/noteFileLimits";
 import { noteFileChunkObjectKey, noteFileObjectPrefix } from "@shared/noteAttachments";
 import { createNoteFilePresignedPutUrl, readR2PresignConfig } from "./r2Presign";
@@ -7586,7 +7586,7 @@ export async function reserveAccountFileStorageBytes(
   noteId: string,
   encryptedSize: number,
   storageLimitBytes: number,
-  options?: { maxTransfersPerDay?: number | null },
+  options?: { maxTransfersPerMonth?: number | null },
 ): Promise<{ ok: true } | { ok: false; status: number; body: Record<string, unknown> }> {
   if (!(await ensureAccountFileStorageSchema(env)) || !env.AUTH_DB) {
     return {
@@ -7629,29 +7629,29 @@ export async function reserveAccountFileStorageBytes(
     return { ok: true };
   }
 
-  const maxTransfersPerDay = options?.maxTransfersPerDay;
+  const maxTransfersPerMonth = options?.maxTransfersPerMonth;
   if (
-    typeof maxTransfersPerDay === "number" &&
-    Number.isFinite(maxTransfersPerDay) &&
-    maxTransfersPerDay > 0
+    typeof maxTransfersPerMonth === "number" &&
+    Number.isFinite(maxTransfersPerMonth) &&
+    maxTransfersPerMonth > 0
   ) {
-    const daily = await env.AUTH_DB.prepare(
+    const monthly = await env.AUTH_DB.prepare(
       `SELECT COUNT(*) AS transfer_count
          FROM account_file_storage_reservations
         WHERE user_id = ?
-          AND date(created_at) = date('now')`,
+          AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')`,
     )
       .bind(userId)
       .first<{ transfer_count: number | string | null }>();
-    const transferCount = Math.max(0, Number(daily?.transfer_count ?? 0));
-    if (transferCount >= maxTransfersPerDay) {
+    const transferCount = Math.max(0, Number(monthly?.transfer_count ?? 0));
+    if (transferCount >= maxTransfersPerMonth) {
       return {
         ok: false,
         status: 429,
         body: {
-          error: "attachment_transfer_daily_limit",
-          message: `Free accounts can start ${maxTransfersPerDay} file, photo, audio, or recording transfers per day. Upgrade for higher limits.`,
-          limit: maxTransfersPerDay,
+          error: "attachment_transfer_monthly_limit",
+          message: `This plan can start ${maxTransfersPerMonth} file, photo, audio, or recording transfers per month. Upgrade for higher limits.`,
+          limit: maxTransfersPerMonth,
           used: transferCount,
         },
       };
@@ -8738,7 +8738,7 @@ export async function registerRoutes(
         id,
         encryptedTotalSize,
         noteFileTotalStorageBytesForAccount(fileAccountType),
-        { maxTransfersPerDay: noteFileTransfersPerDayForAccount(fileAccountType) },
+        { maxTransfersPerMonth: noteFileTransfersPerMonthForAccount(fileAccountType) },
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
@@ -8930,7 +8930,7 @@ export async function registerRoutes(
           id,
           encryptedTotalSize,
           noteFileTotalStorageBytesForAccount(fileAccountType),
-          { maxTransfersPerDay: noteFileTransfersPerDayForAccount(fileAccountType) },
+          { maxTransfersPerMonth: noteFileTransfersPerMonthForAccount(fileAccountType) },
         );
         if (!quotaReservation.ok) {
           await discardRequestBody(request);
@@ -9130,7 +9130,7 @@ export async function registerRoutes(
         id,
         reservation.attachmentEncryptedSize,
         noteFileTotalStorageBytesForAccount(fileAccountType),
-        { maxTransfersPerDay: noteFileTransfersPerDayForAccount(fileAccountType) },
+        { maxTransfersPerMonth: noteFileTransfersPerMonthForAccount(fileAccountType) },
       );
       if (!quotaReservation.ok) {
         return jsonResponse(quotaReservation.body, quotaReservation.status, request);
