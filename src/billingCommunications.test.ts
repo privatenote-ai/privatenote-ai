@@ -6,8 +6,11 @@ import type {
 } from "@cloudflare/workers-types";
 import {
   buildBillingNotificationContent,
+  buildOwnerSubscriptionNotice,
+  notifyOwnerOfPaidPlanChange,
   processBillingCommunications,
   queueBillingNotification,
+  shouldNotifyOwnerOfPaidPlanChange,
 } from "./billingCommunications";
 import type { Env } from "./types";
 
@@ -198,5 +201,128 @@ describe("billing customer communications", () => {
     assert.doesNotMatch(String(body?.html), /\/account\/subscription/);
     assert.doesNotMatch(String(body?.text), /\/account\/subscription/);
     assert.match(String(body?.html), /href="https:\/\/privatenote\.ai\/account"/);
+  });
+});
+
+describe("owner subscription notices", () => {
+  it("notifies on a first paid plan and on Starter ↔ Business, not on renewals", () => {
+    assert.equal(
+      shouldNotifyOwnerOfPaidPlanChange({
+        previousPlan: "free",
+        previousStatus: null,
+        nextPlan: "personal_premium",
+        nextStatus: "active",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldNotifyOwnerOfPaidPlanChange({
+        previousPlan: "personal_premium",
+        previousStatus: "active",
+        nextPlan: "business_premium",
+        nextStatus: "active",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldNotifyOwnerOfPaidPlanChange({
+        previousPlan: "personal_premium",
+        previousStatus: "active",
+        nextPlan: "personal_premium",
+        nextStatus: "active",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldNotifyOwnerOfPaidPlanChange({
+        previousPlan: "personal_premium",
+        previousStatus: "past_due",
+        nextPlan: "personal_premium",
+        nextStatus: "active",
+      }),
+      false,
+    );
+    assert.equal(
+      shouldNotifyOwnerOfPaidPlanChange({
+        previousPlan: "personal_premium",
+        previousStatus: "canceled",
+        nextPlan: "personal_premium",
+        nextStatus: "active",
+      }),
+      true,
+    );
+    assert.equal(
+      shouldNotifyOwnerOfPaidPlanChange({
+        previousPlan: "personal_premium",
+        previousStatus: "active",
+        nextPlan: "personal_premium",
+        nextStatus: "canceled",
+      }),
+      false,
+    );
+  });
+
+  it("names Starter vs Business in the operator email", () => {
+    const starter = buildOwnerSubscriptionNotice({
+      nextPlan: "personal_premium",
+      nextStatus: "active",
+      customerEmail: "buyer@example.com",
+      userId: "user-1",
+      subscriptionId: "sub_1",
+      interval: "month",
+      currency: "eur",
+    });
+    assert.match(starter.subject, /buyer@example.com subscribed to Starter/);
+    assert.match(starter.text, /Plan: Starter \(monthly, EUR 4\)/);
+    assert.doesNotMatch(starter.subject, /\[TEST\]/);
+
+    const upgrade = buildOwnerSubscriptionNotice({
+      previousPlan: "personal_premium",
+      nextPlan: "business_premium",
+      nextStatus: "active",
+      customerEmail: "buyer@example.com",
+      userId: "user-1",
+      subscriptionId: "sub_1",
+      interval: "year",
+      currency: "eur",
+      testMode: true,
+    });
+    assert.match(upgrade.subject, /^\[TEST\] PrivateNote: buyer@example.com changed plan from Starter to Business/);
+    assert.match(upgrade.text, /Plan: Business \(yearly, EUR 120\)/);
+  });
+
+  it("sends the operator email to every configured inbox", async () => {
+    const sent: Array<{ to?: string; subject?: string }> = [];
+    const notified = await notifyOwnerOfPaidPlanChange(
+      {
+        AUTH_EMAIL_PROVIDER: "resend",
+        RESEND_API_KEY: "test",
+        AUTH_EMAIL_FROM: "PrivateNote <test@example.com>",
+        BILLING_OWNER_EMAIL: "ops@example.com, founder@example.com",
+        STRIPE_SECRET_KEY: "sk_live_example",
+      } as unknown as Env,
+      {
+        previousPlan: "free",
+        previousStatus: null,
+        nextPlan: "business_premium",
+        nextStatus: "active",
+        customerEmail: "buyer@example.com",
+        userId: "user-9",
+        subscriptionId: "sub_9",
+        interval: "month",
+        currency: "usd",
+      },
+      async (_input, init) => {
+        sent.push(JSON.parse(String(init?.body ?? "{}")));
+        return Response.json({ id: "email-owner" });
+      },
+    );
+
+    assert.equal(notified, true);
+    assert.deepEqual(
+      sent.map((row) => row.to),
+      ["ops@example.com", "founder@example.com"],
+    );
+    assert.match(String(sent[0]?.subject), /buyer@example.com subscribed to Business/);
   });
 });

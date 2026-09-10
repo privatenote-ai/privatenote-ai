@@ -446,6 +446,38 @@ export const en: Translations = {
   authPrefsComingDigest: "Notification digest frequency",
   authPrefsComingNoteDefaults: "Note defaults (expiry, AI, etc.)",
   authPrefsCouldNotSaveLanguage: "Could not save language",
+  authPrefsNoteDefaultsTitle: "Saved note defaults",
+  authPrefsNoteDefaultsHint:
+    "Synced to your account and applied when you create a new note while signed in.",
+  authPrefsNoteDefaultsAlertOpened: "Alert me when opened",
+  authPrefsNoteDefaultsAlertOpenedHint:
+    "Requires verified email and email notifications to remain enabled.",
+  authPrefsNoteDefaultsRecipientVerification: "Require recipient verification",
+  authPrefsNoteDefaultsRecipientVerificationHint:
+    "Generate a separate one-time code for each new note.",
+  authPrefsNoteDefaultsCustomActive: "Custom defaults are currently active.",
+  authPrefsNoteDefaultsStandardActive: "Standard defaults are currently active.",
+  authPrefsNoteDefaultsReset: "Reset defaults",
+  authPrefsNoteDefaultsResetting: "Resetting…",
+  authPrefsNoteDefaultsSave: "Save defaults",
+  authPrefsNoteDefaultsSaving: "Saving…",
+  authPrefsNoteDefaultsPremiumTitle: "Starter and Business feature",
+  authPrefsNoteDefaultsPremiumDesc:
+    "Saved defaults are inactive on Free. Existing synchronized defaults are retained and become active again after upgrading.",
+  authPrefsNoteDefaultsTypefaceHint: "Used on the page where the recipient opens the note.",
+  authPrefsReaderLanguageAuto: "Auto — recipient browser language",
+  authPrefsHostedAiTitle: "Non-private hosted AI",
+  authPrefsHostedAiHint:
+    "Optional Cloudflare Workers AI when Private AI is unavailable. Premium does not make this private — prompts still leave your device. Each note session still requires a separate confirmation.",
+  authPrefsHostedAiAllow: "Allow non-private hosted AI",
+  authPrefsHostedAiAllowHint: "Off by default. Not the same as Private AI on your device.",
+  authPrefsHostedAiSaveFailed: "Could not save hosted AI preference",
+  authPrefsNoteDefaultsSavedTitle: "Note defaults saved",
+  authPrefsNoteDefaultsSavedDesc: "These settings will be used on your signed-in devices.",
+  authPrefsNoteDefaultsSaveFailed: "Could not save note defaults",
+  authPrefsNoteDefaultsResetTitle: "Note defaults reset",
+  authPrefsNoteDefaultsResetDesc: "New notes will use the standard defaults.",
+  authPrefsNoteDefaultsResetFailed: "Could not reset note defaults",
   authSecPageTitle: "Security",
   authSecPageSubtitle: "Passkeys, 2-step verification, devices, and account recovery.",
   authSecLoadingSettings: "Loading security settings…",
@@ -796,6 +828,23 @@ export const en: Translations = {
   recipientLinkDeliverySignInHint: "Sign in with Starter or Business to email the link —",
   settingsDeliveryBrandedReveal: "Branded reveal page",
   settingsDeliveryBrandedRevealInfo: "Show your brand on the page where the recipient opens the note.",
+  settingsDeliveryBrandedRevealSetUp: "Add your company branding",
+  settingsDeliveryBrandedRevealSetUpHint: "to show it on the reveal page.",
+  settingsRevealBrandingBusinessHint:
+    "Business adds your company identity to the recipient reveal page.",
+  settingsUnlockRevealBranding: "Unlock reveal branding with Business",
+  settingsUnlockDeliveryControls: "Unlock delivery controls with Starter or Business",
+  settingsSaveAsMyDefaults: "Save these as my defaults",
+  settingsSavingDefaults: "Saving…",
+  settingsUnlockMoreBusiness: "Unlock more with Business",
+  settingsAddMoreControlStarter: "Add more control with Starter",
+  settingsIncludedWithBusiness:
+    "Included with Business. Your encryption and privacy protections stay the same.",
+  settingsIncludedWithStarterBusiness:
+    "Included with Starter and Business. Your encryption and privacy protections stay the same.",
+  settingsUpgradeToBusiness: "Upgrade to Business",
+  settingsUpgradeToStarter: "Upgrade to Starter",
+  settingsRevealBodyFontSample: "The access code is 7G-K4m.",
   settingsReaderLanguage: "Reader Language",
   settingsReaderLanguageInfo: "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
   settingsReaderLanguageDescription: "Choose the language used for the note reveal page. Auto uses the recipient's browser language.",
@@ -2155,6 +2204,9 @@ export const en: Translations = {
   homeFaq_shareLink_question: "Is it safe to share the link over email or chat?",
   homeFaq_shareLink_answer:
     "The encrypted note is safe, but the link is the key. Anyone with the link can open the note, so use trusted channels and short expirations. Recipients can also forward the link, screenshot, or copy what they see—PrivateNote cannot prevent that after access.",
+  homeFaq_protectAgainstAttack_question: "How do I best protect a note against an attack?",
+  homeFaq_protectAgainstAttack_answer:
+    "Treat the link as the key. Add a password and send it on a different channel than the link (for example, the link by email and the password by text or a call). On Starter and Business, also turn on recipient verification: we email a one-time code to the recipient’s address before the note can be revealed, so an intercepted link is not enough on its own. Keep your device operating system and browser on the latest security updates, use a short expiry, and leave burn after reading on. After someone opens the note, they can still copy or screenshot it.",
   homeFaq_forwarding_question: "Can recipients forward the note?",
   homeFaq_forwarding_answer:
     "They can forward the link. PrivateNote reduces risk with read-once notes and expirations, but it cannot prevent screenshots, copy/paste, or forwarding after access.",

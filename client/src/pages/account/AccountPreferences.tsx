@@ -298,7 +298,7 @@ export default function AccountPreferences() {
       setAllowHostedAi(!checked);
       writeLocalHostedAiAllowed(!checked);
       toast({
-        title: "Could not save hosted AI preference",
+        title: t.authPrefsHostedAiSaveFailed ?? "Could not save hosted AI preference",
         description: describeApiPreferenceError(e),
         variant: "destructive",
       });
@@ -342,12 +342,14 @@ export default function AccountPreferences() {
       setSavedNoteDefaultsIndicator(true);
       setTimeout(() => setSavedNoteDefaultsIndicator(false), 2000);
       toast({
-        title: "Note defaults saved",
-        description: "These settings will be used on your signed-in devices.",
+        title: t.authPrefsNoteDefaultsSavedTitle ?? "Note defaults saved",
+        description:
+          t.authPrefsNoteDefaultsSavedDesc ??
+          "These settings will be used on your signed-in devices.",
       });
     } catch (error) {
       toast({
-        title: "Could not save note defaults",
+        title: t.authPrefsNoteDefaultsSaveFailed ?? "Could not save note defaults",
         description: describeApiPreferenceError(error),
         variant: "destructive",
       });
@@ -363,12 +365,13 @@ export default function AccountPreferences() {
       setNoteDefaults(INITIAL_NOTE_DEFAULTS);
       setNoteDefaultsConfigured(false);
       toast({
-        title: "Note defaults reset",
-        description: "New notes will use the standard defaults.",
+        title: t.authPrefsNoteDefaultsResetTitle ?? "Note defaults reset",
+        description:
+          t.authPrefsNoteDefaultsResetDesc ?? "New notes will use the standard defaults.",
       });
     } catch (error) {
       toast({
-        title: "Could not reset note defaults",
+        title: t.authPrefsNoteDefaultsResetFailed ?? "Could not reset note defaults",
         description: describeApiPreferenceError(error),
         variant: "destructive",
       });
@@ -474,9 +477,9 @@ export default function AccountPreferences() {
               disabled={savingLanguagePref}
               onChange={(event) => void onPreferredLanguageChange(event.target.value as SupportedLanguage)}
             >
-              {SUPPORTED_LANGUAGES.map((option) => (
-                <option key={option} value={option}>
-                  {option === "en" ? "English" : option === "de" ? "Deutsch" : option === "fr" ? "Français" : "Español"}
+              {LANGUAGE_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.nativeName}
                 </option>
               ))}
             </select>
@@ -490,14 +493,16 @@ export default function AccountPreferences() {
               <ShieldOff className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400 mt-0.5" aria-hidden />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Non-private hosted AI</p>
+                  <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                    {t.authPrefsHostedAiTitle ?? "Non-private hosted AI"}
+                  </p>
                   {savedHostedAiIndicator && (
                     <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400">{t.authPrefsSaved || "Saved"}</span>
                   )}
                 </div>
                 <p className="mt-1 text-xs text-amber-900/85 dark:text-amber-200/85 max-w-xl">
-                  Optional Cloudflare Workers AI when Private AI is unavailable. Premium does not make this private —
-                  prompts still leave your device. Each note session still requires a separate confirmation.
+                  {t.authPrefsHostedAiHint ??
+                    "Optional Cloudflare Workers AI when Private AI is unavailable. Premium does not make this private — prompts still leave your device. Each note session still requires a separate confirmation."}
                 </p>
               </div>
             </div>
@@ -508,10 +513,12 @@ export default function AccountPreferences() {
                 <div className="flex items-center gap-2">
                   <Cloud className="h-4 w-4 text-gray-400" aria-hidden />
                   <Label htmlFor="allow-hosted-ai-pref" className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-                    Allow non-private hosted AI
+                    {t.authPrefsHostedAiAllow ?? "Allow non-private hosted AI"}
                   </Label>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">Off by default. Not the same as Private AI on your device.</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                  {t.authPrefsHostedAiAllowHint ?? "Off by default. Not the same as Private AI on your device."}
+                </p>
               </div>
               <Switch
                 id="allow-hosted-ai-pref"
@@ -567,10 +574,11 @@ export default function AccountPreferences() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                      Saved note defaults
+                      {t.authPrefsNoteDefaultsTitle ?? "Saved note defaults"}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      Synced to your account and applied when you create a new note while signed in.
+                      {t.authPrefsNoteDefaultsHint ??
+                        "Synced to your account and applied when you create a new note while signed in."}
                     </p>
                   </div>
                   {savedNoteDefaultsIndicator ? (
@@ -707,7 +715,7 @@ export default function AccountPreferences() {
 
                     <div>
                       <Label htmlFor="default-reader-language" className="mb-2 block text-sm">
-                        Reader language
+                        {t.settingsReaderLanguage ?? "Reader language"}
                       </Label>
                       <select
                         id="default-reader-language"
@@ -720,7 +728,9 @@ export default function AccountPreferences() {
                         }
                         className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
                       >
-                        <option value="auto">Auto — recipient browser language</option>
+                        <option value="auto">
+                          {t.authPrefsReaderLanguageAuto ?? "Auto — recipient browser language"}
+                        </option>
                         {LANGUAGE_OPTIONS.map((option) => (
                           <option key={option.code} value={option.code}>
                             {option.nativeName}
@@ -732,7 +742,9 @@ export default function AccountPreferences() {
 
                   {planCapabilities.revealBodyFont ? (
                     <div>
-                      <Label className="mb-2 block text-sm">Message typeface</Label>
+                      <Label className="mb-2 block text-sm">
+                        {t.settingsRevealBodyFont ?? "Message typeface"}
+                      </Label>
                       <RevealBodyFontPicker
                         value={noteDefaults.bodyFont}
                         onChange={(next) =>
@@ -740,7 +752,8 @@ export default function AccountPreferences() {
                         }
                       />
                       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Used on the page where the recipient opens the note.
+                        {t.authPrefsNoteDefaultsTypefaceHint ??
+                          "Used on the page where the recipient opens the note."}
                       </p>
                     </div>
                   ) : null}
@@ -749,10 +762,11 @@ export default function AccountPreferences() {
                     <div className="flex items-center justify-between gap-4 px-4 py-3">
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Alert me when opened
+                          {t.authPrefsNoteDefaultsAlertOpened ?? "Alert me when opened"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Requires verified email and email notifications to remain enabled.
+                          {t.authPrefsNoteDefaultsAlertOpenedHint ??
+                            "Requires verified email and email notifications to remain enabled."}
                         </p>
                       </div>
                       <Switch
@@ -769,10 +783,11 @@ export default function AccountPreferences() {
                     <div className="flex items-center justify-between gap-4 px-4 py-3">
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Require recipient verification
+                          {t.authPrefsNoteDefaultsRecipientVerification ?? "Require recipient verification"}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Generate a separate one-time code for each new note.
+                          {t.authPrefsNoteDefaultsRecipientVerificationHint ??
+                            "Generate a separate one-time code for each new note."}
                         </p>
                       </div>
                       <Switch
@@ -790,8 +805,8 @@ export default function AccountPreferences() {
                   <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-gray-500 dark:text-gray-400">
                       {noteDefaultsConfigured
-                        ? "Custom defaults are currently active."
-                        : "Standard defaults are currently active."}
+                        ? (t.authPrefsNoteDefaultsCustomActive ?? "Custom defaults are currently active.")
+                        : (t.authPrefsNoteDefaultsStandardActive ?? "Standard defaults are currently active.")}
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -800,14 +815,18 @@ export default function AccountPreferences() {
                         disabled={resettingNoteDefaults || !noteDefaultsConfigured}
                         onClick={() => void resetNoteDefaults()}
                       >
-                        {resettingNoteDefaults ? "Resetting…" : "Reset defaults"}
+                        {resettingNoteDefaults
+                          ? (t.authPrefsNoteDefaultsResetting ?? "Resetting…")
+                          : (t.authPrefsNoteDefaultsReset ?? "Reset defaults")}
                       </Button>
                       <Button
                         type="button"
                         disabled={savingNoteDefaults}
                         onClick={() => void saveNoteDefaults()}
                       >
-                        {savingNoteDefaults ? "Saving…" : "Save defaults"}
+                        {savingNoteDefaults
+                          ? (t.authPrefsNoteDefaultsSaving ?? "Saving…")
+                          : (t.authPrefsNoteDefaultsSave ?? "Save defaults")}
                       </Button>
                     </div>
                   </div>
@@ -819,10 +838,12 @@ export default function AccountPreferences() {
               <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
                 <Crown className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
                 <div>
-                  <p className="text-sm font-semibold">Starter and Business feature</p>
+                  <p className="text-sm font-semibold">
+                    {t.authPrefsNoteDefaultsPremiumTitle ?? "Starter and Business feature"}
+                  </p>
                   <p className="mt-1 text-xs leading-relaxed">
-                    Saved defaults are inactive on Free. Existing synchronized defaults are retained
-                    and become active again after upgrading.
+                    {t.authPrefsNoteDefaultsPremiumDesc ??
+                      "Saved defaults are inactive on Free. Existing synchronized defaults are retained and become active again after upgrading."}
                   </p>
                   <div className="mt-3">
                     <Button asChild size="sm">

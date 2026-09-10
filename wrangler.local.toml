@@ -51,6 +51,7 @@ new_sqlite_classes = ["SecureNoteStorageSql"]
 LOCAL_DEV = "1"
 AUTH_EMAIL_PROVIDER = "resend"
 AUTH_EMAIL_FROM = "PrivateNote <no-reply@privatenote.ai>"
+BILLING_OWNER_EMAIL = "marjanskrobot@gmail.com"
 # Optional local R2 presign (same account as scripts/upload-*.sh). Secrets via .dev.vars.
 R2_ACCOUNT_ID = "4cf4e785755949c2f0a61d2f3b532b69"
 R2_BUCKET_NAME = "privatenote-files-eu"

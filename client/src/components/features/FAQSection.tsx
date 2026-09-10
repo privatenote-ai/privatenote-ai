@@ -18,6 +18,7 @@ const FAQ_ITEM_IDS = [
   'video',
   'password',
   'shareLink',
+  'protectAgainstAttack',
   'size',
   'pricing',
   'ai',

@@ -47,6 +47,7 @@ experimental_remote = true
 [vars]
 AUTH_EMAIL_PROVIDER = "resend"
 AUTH_EMAIL_FROM = "PrivateNote Staging <no-reply@privatenote.ai>"
+BILLING_OWNER_EMAIL = "marjanskrobot@gmail.com"
 PUBLIC_WEB_APP_ORIGIN = "https://premium.privatenote.ai"
 # Staging QA: magic/send must not silently drop mail when Pages lacks Turnstile site key
 # or premium.privatenote.ai is missing from the Turnstile hostname allowlist.

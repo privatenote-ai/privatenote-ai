@@ -23,6 +23,11 @@ export interface Env {
   AUTH_EMAIL_FROM?: string;
   AUTH_EMAIL_PROVIDER?: string;
   RESEND_API_KEY?: string;
+  /**
+   * Operator inbox for new paid subscriptions and plan changes.
+   * Comma-separated addresses are all notified. Not sent on renewals.
+   */
+  BILLING_OWNER_EMAIL?: string;
   /** Stripe secret key for server-side billing portal sessions. Set via `wrangler secret put STRIPE_SECRET_KEY`. */
   STRIPE_SECRET_KEY?: string;
   /** Stripe webhook signing secret. Required for `/api/auth/billing/stripe/webhook`. */

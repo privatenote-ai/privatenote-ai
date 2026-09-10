@@ -6,7 +6,10 @@ import {
 } from "@shared/planCatalog";
 import { BILLING_INVOICE_VAT_FOOTER, BILLING_TERMS_VERSION } from "@shared/billingTerms";
 import type { Env } from "./types";
-import { queueBillingNotification } from "./billingCommunications";
+import {
+  notifyOwnerOfPaidPlanChange,
+  queueBillingNotification,
+} from "./billingCommunications";
 
 export type PaidBillingPlan = Exclude<AccountType, "free">;
 export type BillingInterval = "month" | "year";
@@ -754,6 +757,17 @@ export async function verifyStripeWebhookSignature(
   return signatures.some((signature) => timingSafeHexEqual(signature, expected));
 }
 
+type BillingUserRow = {
+  id: string;
+  email: string | null;
+  account_type: string | null;
+  plan: string | null;
+  subscription_status: string | null;
+  stripe_subscription_id: string | null;
+  subscription_grace_period_end: string | null;
+  subscription_last_event_created: number | null;
+};
+
 async function findBillingUser(
   db: D1Database,
   input: {
@@ -761,57 +775,25 @@ async function findBillingUser(
     customerId?: string | null;
     subscriptionId?: string | null;
   },
-): Promise<{
-  id: string;
-  account_type: string | null;
-  plan: string | null;
-  subscription_status: string | null;
-  stripe_subscription_id: string | null;
-  subscription_grace_period_end: string | null;
-  subscription_last_event_created: number | null;
-} | null> {
+): Promise<BillingUserRow | null> {
   const columns =
-    "id, account_type, plan, subscription_status, stripe_subscription_id, subscription_grace_period_end, subscription_last_event_created";
+    "id, email, account_type, plan, subscription_status, stripe_subscription_id, subscription_grace_period_end, subscription_last_event_created";
   if (input.subscriptionId) {
     const row = await db.prepare(
       `SELECT ${columns} FROM users WHERE stripe_subscription_id = ? LIMIT 1`,
-    ).bind(input.subscriptionId).first<{
-      id: string;
-      account_type: string | null;
-      plan: string | null;
-      subscription_status: string | null;
-      stripe_subscription_id: string | null;
-      subscription_grace_period_end: string | null;
-      subscription_last_event_created: number | null;
-    }>();
+    ).bind(input.subscriptionId).first<BillingUserRow>();
     if (row) return row;
   }
   if (input.customerId) {
     const row = await db.prepare(
       `SELECT ${columns} FROM users WHERE stripe_customer_id = ? LIMIT 1`,
-    ).bind(input.customerId).first<{
-      id: string;
-      account_type: string | null;
-      plan: string | null;
-      subscription_status: string | null;
-      stripe_subscription_id: string | null;
-      subscription_grace_period_end: string | null;
-      subscription_last_event_created: number | null;
-    }>();
+    ).bind(input.customerId).first<BillingUserRow>();
     if (row) return row;
   }
   if (input.userId) {
     return db.prepare(
       `SELECT ${columns} FROM users WHERE id = ? LIMIT 1`,
-    ).bind(input.userId).first<{
-      id: string;
-      account_type: string | null;
-      plan: string | null;
-      subscription_status: string | null;
-      stripe_subscription_id: string | null;
-      subscription_grace_period_end: string | null;
-      subscription_last_event_created: number | null;
-    }>();
+    ).bind(input.userId).first<BillingUserRow>();
   }
   return null;
 }
@@ -823,6 +805,7 @@ async function synchronizeSubscription(
   gracePeriodEndOverride?: string | null,
   allowSubscriptionReplacement = false,
   authoritative = false,
+  fetchImpl?: typeof fetch,
 ): Promise<string | null> {
   if (!env.AUTH_DB) throw new StripeBillingError("Auth database not configured.", 503);
   const customerId = asId(subscription.customer);
@@ -842,6 +825,9 @@ async function synchronizeSubscription(
     return null;
   }
 
+  const previousPlan = user.account_type;
+  const previousStatus = user.subscription_status;
+  const previousEmail = user.email;
   const priceId = subscriptionPriceId(subscription);
   const plan = planForStripePrice(env, priceId);
   const status = subscription.status?.trim().toLowerCase() || "invalid";
@@ -915,7 +901,23 @@ async function synchronizeSubscription(
     ).bind(...values, eventCreated, user.id, eventCreated).run();
     updateChanges = update.meta?.changes ?? 0;
   }
-  return updateChanges > 0 ? user.id : null;
+  if (updateChanges < 1) return null;
+  try {
+    await notifyOwnerOfPaidPlanChange(env, {
+      previousPlan,
+      previousStatus,
+      nextPlan: configuredPlan,
+      nextStatus: status,
+      customerEmail: previousEmail,
+      userId: user.id,
+      subscriptionId,
+      interval: billingIntervalForStripePrice(env, priceId),
+      currency: billingCurrencyForStripePrice(env, priceId),
+    }, fetchImpl);
+  } catch (error) {
+    console.error("[BILLING] Owner subscription notice failed:", error);
+  }
+  return user.id;
 }
 
 function unknownPriceError(subscription: StripeSubscription): StripeBillingError {
@@ -1117,6 +1119,8 @@ export async function processStripeWebhookEvent(
         event.created,
         undefined,
         event.type === "customer.subscription.created",
+        false,
+        fetchImpl,
       );
       if (!planForStripePrice(env, subscriptionPriceId(subscription))) {
         warning = unknownPriceError(subscription);
@@ -1177,6 +1181,8 @@ export async function processStripeWebhookEvent(
           event.created,
           undefined,
           true,
+          false,
+          fetchImpl,
         );
         if (!planForStripePrice(env, subscriptionPriceId(subscription))) {
           warning = unknownPriceError(subscription);
@@ -1225,6 +1231,9 @@ export async function processStripeWebhookEvent(
           subscription,
           event.created,
           gracePeriodEnd,
+          false,
+          false,
+          fetchImpl,
         );
         if (!planForStripePrice(env, subscriptionPriceId(subscription))) {
           warning = unknownPriceError(subscription);
@@ -1440,6 +1449,7 @@ async function reconcileUnlinkedStripeSubscriptions(
         undefined,
         false,
         true,
+        input.fetchImpl,
       );
       if (userId !== owner.id) {
         throw new StripeBillingError(
@@ -1576,6 +1586,7 @@ export async function reconcileStripeSubscriptions(
           undefined,
           false,
           true,
+          options.fetchImpl,
         );
         if (userId !== candidate.id) {
           throw new StripeBillingError(

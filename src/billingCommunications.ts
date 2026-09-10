@@ -1,4 +1,12 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import {
+  normalizeAccountType,
+  PLAN_CATALOG,
+  planPriceFor,
+  type AccountType,
+  type BillingCurrency,
+  type BillingInterval,
+} from "@shared/planCatalog";
 import type { Env } from "./types";
 
 export type BillingNotificationType =
@@ -65,6 +73,91 @@ export function buildBillingNotificationContent(
   return { subject: copy.subject, text, html };
 }
 
+const STILL_SUBSCRIBED_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+  "unpaid",
+  "paused",
+]);
+const LIVE_PAID_STATUSES = new Set(["active", "trialing"]);
+
+function paidPlanOf(accountType: string | null | undefined): Exclude<AccountType, "free"> | null {
+  const plan = normalizeAccountType(accountType);
+  return plan === "free" ? null : plan;
+}
+
+function planLabel(accountType: AccountType): string {
+  return PLAN_CATALOG[accountType].label;
+}
+
+export function ownerNotificationRecipients(env: Env): string[] {
+  return (env.BILLING_OWNER_EMAIL ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.includes("@"));
+}
+
+/**
+ * True for a first paid subscription or a plan change (Starter ↔ Business).
+ * Renewals, payment retries, and cancellations do not notify.
+ */
+export function shouldNotifyOwnerOfPaidPlanChange(input: {
+  previousPlan?: string | null;
+  previousStatus?: string | null;
+  nextPlan?: string | null;
+  nextStatus?: string | null;
+}): boolean {
+  const previous = STILL_SUBSCRIBED_STATUSES.has(
+    (input.previousStatus ?? "").trim().toLowerCase(),
+  )
+    ? paidPlanOf(input.previousPlan)
+    : null;
+  const next = LIVE_PAID_STATUSES.has((input.nextStatus ?? "").trim().toLowerCase())
+    ? paidPlanOf(input.nextPlan)
+    : null;
+  return Boolean(next) && previous !== next;
+}
+
+export function buildOwnerSubscriptionNotice(input: {
+  previousPlan?: string | null;
+  nextPlan: Exclude<AccountType, "free">;
+  nextStatus: string;
+  customerEmail: string | null;
+  userId: string;
+  subscriptionId: string;
+  interval: BillingInterval | null;
+  currency: BillingCurrency | null;
+  testMode?: boolean;
+}): { subject: string; text: string; html: string } {
+  const nextLabel = planLabel(input.nextPlan);
+  const previous = paidPlanOf(input.previousPlan);
+  const action = previous
+    ? `changed plan from ${planLabel(previous)} to ${nextLabel}`
+    : `subscribed to ${nextLabel}`;
+  const prefix = input.testMode ? "[TEST] " : "";
+  const who = input.customerEmail?.trim() || `user ${input.userId}`;
+  const intervalLabel =
+    input.interval === "year" ? "yearly" : input.interval === "month" ? "monthly" : "unknown interval";
+  const amount =
+    input.currency && input.interval
+      ? `${input.currency.toUpperCase()} ${planPriceFor(input.nextPlan, input.currency, input.interval)}`
+      : "price not resolved";
+  const subject = `${prefix}PrivateNote: ${who} ${action}`;
+  const lines = [
+    `${who} ${action}.`,
+    "",
+    `Plan: ${nextLabel} (${intervalLabel}, ${amount})`,
+    `Status: ${input.nextStatus}`,
+    `Account: ${input.userId}`,
+    `Stripe subscription: ${input.subscriptionId}`,
+    input.customerEmail ? `Email: ${input.customerEmail}` : "Email: (not on the user row)",
+  ];
+  const text = lines.join("\n");
+  const html = lines.map((line) => (line ? `<p>${line}</p>` : "")).join("");
+  return { subject, text, html };
+}
+
 async function sendBillingEmail(
   env: Env,
   input: { to: string; subject: string; text: string; html: string },
@@ -84,6 +177,60 @@ async function sendBillingEmail(
   if (!response.ok) {
     throw new Error(`Resend error ${response.status}: ${(await response.text()).slice(0, 300)}`);
   }
+}
+
+function looksLikeTestStripeKey(secret: string | undefined): boolean {
+  const value = secret?.trim() ?? "";
+  return value.startsWith("sk_test") || value.startsWith("rk_test");
+}
+
+/**
+ * Tell the operator when someone newly pays, or switches Starter ↔ Business.
+ * Failures are logged by the caller — this must not fail a Stripe webhook.
+ */
+export async function notifyOwnerOfPaidPlanChange(
+  env: Env,
+  input: {
+    previousPlan?: string | null;
+    previousStatus?: string | null;
+    nextPlan: string;
+    nextStatus: string;
+    customerEmail?: string | null;
+    userId: string;
+    subscriptionId: string;
+    interval?: BillingInterval | null;
+    currency?: BillingCurrency | null;
+  },
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
+  if (
+    !shouldNotifyOwnerOfPaidPlanChange({
+      previousPlan: input.previousPlan,
+      previousStatus: input.previousStatus,
+      nextPlan: input.nextPlan,
+      nextStatus: input.nextStatus,
+    })
+  ) {
+    return false;
+  }
+  const nextPlan = paidPlanOf(input.nextPlan);
+  const recipients = ownerNotificationRecipients(env);
+  if (!nextPlan || recipients.length === 0) return false;
+  const content = buildOwnerSubscriptionNotice({
+    previousPlan: input.previousPlan,
+    nextPlan,
+    nextStatus: input.nextStatus,
+    customerEmail: input.customerEmail ?? null,
+    userId: input.userId,
+    subscriptionId: input.subscriptionId,
+    interval: input.interval ?? null,
+    currency: input.currency ?? null,
+    testMode: looksLikeTestStripeKey(env.STRIPE_SECRET_KEY),
+  });
+  for (const to of recipients) {
+    await sendBillingEmail(env, { to, ...content }, fetchImpl);
+  }
+  return true;
 }
 
 async function deliverNotification(

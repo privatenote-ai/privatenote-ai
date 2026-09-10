@@ -1,5 +1,7 @@
 import React from "react";
 import {
+  Check,
+  Copy,
   Crown,
   Eye,
   EyeOff,
@@ -76,6 +78,21 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+function copyPasswordWithTextarea(value: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  if (!copied) throw new Error("Clipboard copy failed");
+}
 
 const SELECT_CHEVRON_STYLE = {
   backgroundImage:
@@ -534,6 +551,42 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     React.useState<PremiumFeature | null>(null);
   const [savingDefaults, setSavingDefaults] = React.useState(false);
   const [defaultsSaved, setDefaultsSaved] = React.useState(false);
+  const [passwordCopied, setPasswordCopied] = React.useState(false);
+  const passwordCopyResetRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (passwordCopyResetRef.current != null) {
+        window.clearTimeout(passwordCopyResetRef.current);
+      }
+    };
+  }, []);
+
+  const copyCustomizePassword = async () => {
+    const value = password.trim();
+    if (!value) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          copyPasswordWithTextarea(value);
+        }
+      } else {
+        copyPasswordWithTextarea(value);
+      }
+      setPasswordCopied(true);
+      if (passwordCopyResetRef.current != null) {
+        window.clearTimeout(passwordCopyResetRef.current);
+      }
+      passwordCopyResetRef.current = window.setTimeout(() => {
+        setPasswordCopied(false);
+        passwordCopyResetRef.current = null;
+      }, 2000);
+    } catch {
+      setShowPassword(true);
+    }
+  };
 
   const brandedRevealFeature = React.useMemo<PremiumFeature>(
     () => ({
@@ -847,6 +900,20 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             <div className="relative min-w-0">
               <div className="flex min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:gap-0">
                 <div className="flex min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => void copyCustomizePassword()}
+                  disabled={!password.trim()}
+                  className="inline-flex shrink-0 items-center justify-center rounded-l-md border border-r-0 border-gray-300 bg-gray-100 px-2 py-1.5 text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 min-[520px]:hidden dark:border-gray-600 dark:bg-gray-600 dark:text-gray-300"
+                  title={passwordCopied ? t.copied : t.copyPassword}
+                  aria-label={passwordCopied ? t.copied : t.copyPassword}
+                >
+                  {passwordCopied ? (
+                    <Check className="h-4 w-4" aria-hidden />
+                  ) : (
+                    <Copy className="h-4 w-4" aria-hidden />
+                  )}
+                </button>
                 <input
                   id="note-password"
                   type={showPassword ? "text" : "password"}
@@ -856,7 +923,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     setPasswordSource("manual");
                   }}
                   placeholder={t.passwordPlaceholder}
-                  className="w-full min-w-0 rounded-l-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm placeholder:text-xs focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+                  className="w-full min-w-0 border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 shadow-sm placeholder:text-xs focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/50 min-[520px]:rounded-l-md dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                 />
                 <button
                   type="button"
@@ -1693,6 +1760,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     fraunces: t.settingsRevealBodyFontFrauncesHint ?? "Warm editorial",
                     "jetbrains-mono": t.settingsRevealBodyFontMonoHint ?? "Passwords, keys, and code",
                   }}
+                  sample={t.settingsRevealBodyFontSample ?? "The access code is 7G-K4m."}
                 />
                 <SettingsFieldHelper>
                   {t.settingsRevealBodyFontHint ??
@@ -1705,7 +1773,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-primary/30 bg-transparent px-3 py-2 text-xs font-medium text-primary transition-colors hover:border-primary/45 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 dark:text-blue-300 dark:hover:text-white"
                 >
                   <Lock className="h-3.5 w-3.5 opacity-75" aria-hidden />
-                  Unlock delivery controls with Starter or Business
+                  {t.settingsUnlockDeliveryControls ??
+                    "Unlock delivery controls with Starter or Business"}
                 </a>
               ) : null}
             </section>
@@ -1768,14 +1837,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
               {!brandingAllowed ? (
                 <div className="space-y-2">
                   <p className="px-1 text-xs leading-snug text-violet-700 dark:text-violet-300">
-                    Business adds your company identity to the recipient reveal page.
+                    {t.settingsRevealBrandingBusinessHint ??
+                      "Business adds your company identity to the recipient reveal page."}
                   </p>
                   <a
                     href={premiumUpgradeHref}
                     className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-violet-300/70 bg-transparent px-3 py-2 text-xs font-medium text-violet-700 transition-colors hover:border-violet-400 hover:bg-violet-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/30 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40"
                   >
                     <Lock className="h-3.5 w-3.5 opacity-75" aria-hidden />
-                    Unlock reveal branding with Business
+                    {t.settingsUnlockRevealBranding ?? "Unlock reveal branding with Business"}
                   </a>
                 </div>
               ) : null}
@@ -1800,7 +1870,9 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                   }}
                   className="rounded-md border border-primary/40 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-60 dark:text-blue-300"
                 >
-                  {savingDefaults ? "Saving…" : "Save these as my defaults"}
+                  {savingDefaults
+                    ? (t.settingsSavingDefaults ?? "Saving…")
+                    : (t.settingsSaveAsMyDefaults ?? "Save these as my defaults")}
                 </button>
               </div>
             ) : null}
@@ -1834,8 +1906,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
           <DialogHeader>
             <DialogTitle>
               {selectedPremiumFeature?.plan === "business"
-                ? "Unlock more with Business"
-                : "Add more control with Starter"}
+                ? (t.settingsUnlockMoreBusiness ?? "Unlock more with Business")
+                : (t.settingsAddMoreControlStarter ?? "Add more control with Starter")}
             </DialogTitle>
             <DialogDescription>
               <span className="block font-medium text-foreground">
@@ -1850,8 +1922,10 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100">
             {selectedPremiumFeature?.plan === "business"
-              ? "Included with Business. Your encryption and privacy protections stay the same."
-              : "Included with Starter and Business. Your encryption and privacy protections stay the same."}
+              ? (t.settingsIncludedWithBusiness ??
+                "Included with Business. Your encryption and privacy protections stay the same.")
+              : (t.settingsIncludedWithStarterBusiness ??
+                "Included with Starter and Business. Your encryption and privacy protections stay the same.")}
           </div>
           <a
             href={
@@ -1864,8 +1938,8 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
             {selectedPremiumFeature?.plan === "business" && isConfiguredBusiness
               ? (t.settingsDeliveryBrandedRevealSetUp ?? "Add your company branding")
               : selectedPremiumFeature?.plan === "business"
-                ? "Upgrade to Business"
-                : "Upgrade to Starter"}
+                ? (t.settingsUpgradeToBusiness ?? "Upgrade to Business")
+                : (t.settingsUpgradeToStarter ?? "Upgrade to Starter")}
           </a>
         </DialogContent>
       </Dialog>
