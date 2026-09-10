@@ -30,7 +30,7 @@ export const sharePasswordSecurelyHr: SharePasswordSecurelyArticleCopy = {
     {
       title: "Kako funkcioniraju poveznice šifrirane u pregledniku",
       paragraphs: [
-        "Za brzo, jednokratno dijeljenje lozinki, jednokratne poveznice šifrirane u pregledniku spadaju među najsigurnije i najučinkovitije opcije. Umjesto da šaljete samu vjerodajnicu, šaljete jedinstvenu, privremenu poveznicu na šifriranu bilješku.",
+        "Za brzo, jednokratno dijeljenje lozinki, jednokratne poveznice šifrirane u pregledniku spadaju među najsigurnije i najučinkovitije opcije. Umjesto da šaljete samu vjerodajnicu, šaljete jedinstvenu, privremenu poveznicu na šifriranu bilješku. [Što je jednokratna poveznica](blog:one-time-secret-links) objašnjava model iza te predaje.",
         "Vaš preglednik obavlja težak posao: lozinka se šifrira lokalno prije uploada, tako da posrednički poslužitelj čuva ciphertext—ne vašu sirovu lozinku. Ključ za dešifriranje obično ostaje u fragmentu poveznice, koji preglednici ne šalju poslužitelju.",
       ],
       flowIntro:

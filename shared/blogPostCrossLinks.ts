@@ -140,7 +140,7 @@ export const BLOG_POST_CROSS_LINKS: Record<BlogCanonicalSlug, BlogPostCrossLinks
     related: [
       "how-to-share-a-password-securely",
       "crypto-seed-phrase-one-time-link",
-      "why-email-is-worst-for-secrets",
+      "encrypted-vs-secure-file-sharing",
       "send-secret-message-without-account",
       "how-to-share-api-key-securely",
     ],

@@ -1504,11 +1504,13 @@ export const fr: Translations = {
   blogDevelopersExcerpt: "Un guide en langage clair pour partager des secrets depuis VS Code, Cursor, un agent IA ou n'importe quel navigateur.",
   blogCodexTitle: "Utiliser PrivateNote avec OpenAI Codex",
   blogCodexExcerpt: "Une commande connecte PrivateNote MCP à chaque session Codex. Configuration, usages possibles et comment garder les secrets hors du prompt.",
-  blogOneTimeLinksTitle: "Liens secrets à usage unique",
-  blogOneTimeLinksSubtitle: "Partager des informations sensibles sans laisser de trace permanente",
-  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger et Slack sont faits pour conserver les messages indéfiniment. Certains secrets ne devraient pas persister. Voici comment fonctionnent les liens chiffrés à usage unique, quand les utiliser et pourquoi brûler après lecture est une fonctionnalité de sécurité.",
-  blogOneTimeLinksMetaTitle: "Liens secrets à usage unique expliqués",
-  blogOneTimeLinksMetaDescription: "Comment fonctionnent les liens chiffrés burn-after-reading, quand les utiliser plutôt qu'e-mail ou Slack et pourquoi l'éphémérité réduit les risques.",
+  blogOneTimeLinksTitle: "Qu'est-ce qu'un lien à usage unique ? Partager un secret en toute sécurité",
+  blogOneTimeLinksSubtitle: "Remise chiffrée temporaire—pas un coffre, pas une conversation",
+  blogOneTimeLinksExcerpt:
+    "Un lien à usage unique livre un mot de passe, un identifiant ou un message privé sans laisser le texte en clair dans l’e-mail ou le chat. Voici le modèle, quand l’utiliser, et comment PrivateNote le met en œuvre.",
+  blogOneTimeLinksMetaTitle: "Qu'est-ce qu'un lien à usage unique ?",
+  blogOneTimeLinksMetaDescription:
+    "Comment fonctionne un lien à usage unique, quand l'utiliser, et comment le chiffrement côté client plus l'expiration réduisent les copies restantes.",
   blogEncryptedFileSharingTitle: "Partage chiffré vs. partage sécurisé de fichiers",
   blogEncryptedFileSharingSubtitle: "Quelle est la différence ?",
   blogEncryptedFileSharingExcerpt: "TLS et chiffrement côté navigateur sont tous deux présentés comme du « partage sécurisé ». Ce n'est pas la même chose. Où le chiffrement a lieu, et pourquoi cela compte.",
@@ -1613,6 +1615,10 @@ export const fr: Translations = {
   documentMetaSecureFileTransferTitle: "Transfert de fichiers sécurisé",
   documentMetaSecureFileTransferDescription:
     "Envoyez des fichiers avec chiffrement navigateur. Données chiffrées uniquement, liens expirants, sans compte pour les destinataires.",
+  documentMetaOneTimeLinkTitle: "Créer un lien secret à usage unique",
+  documentMetaOneTimeLinkDescription:
+    "Créez un lien chiffré à usage unique pour mots de passe, messages privés et fichiers, sans laisser le clair dans l’e-mail ou le chat.",
+  otlFooterLabel: "Lien à usage unique",
   devBadge: "Intégrations développeurs",
   devHeroTitle: "Partagez les secrets là où le travail se fait vraiment",
   devHeroSubtitle: "PrivateNote fonctionne très bien comme application web, mais les équipes de développement ont souvent besoin du même transfert sécurisé dans leurs éditeurs, agents IA locaux, scripts et déploiements contrôlés. Cette page présente ces points d’entrée et la limite de confiance de chacun.",

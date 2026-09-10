@@ -16,6 +16,11 @@ export type OneTimeSecretLinksTableRow = {
   verdict: string;
 };
 
+export type OneTimeSecretLinksFaq = {
+  question: string;
+  answer: string;
+};
+
 export type OneTimeSecretLinksSection = {
   title: string;
   paragraphs: string[];
@@ -28,10 +33,18 @@ export type OneTimeSecretLinksSection = {
   table?: OneTimeSecretLinksTableRow[];
   goodFits?: string[];
   poorFits?: string[];
+  subsections?: Array<{ title: string; paragraphs: string[] }>;
+  numberedSteps?: Array<{ title: string; body: string }>;
+  checklist?: string[];
+  closingNote?: string;
+  midCta?: { body: string; button: string };
+  faqs?: OneTimeSecretLinksFaq[];
+  comparisonTable?: { headers: string[]; rows: string[][] };
 };
 
 export type OneTimeSecretLinksArticleCopy = {
   intro: string[];
+  earlyCta?: { body: string; linkLabel: string };
   sections: OneTimeSecretLinksSection[];
   tableHeaders: {
     channel: string;
@@ -46,4 +59,7 @@ export type OneTimeSecretLinksArticleCopy = {
   encryptLu: string;
   tagline: string;
   relatedReading: string;
+  ctaTitle?: string;
+  ctaBody?: string;
+  ctaButton?: string;
 };

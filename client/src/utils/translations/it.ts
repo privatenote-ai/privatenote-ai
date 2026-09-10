@@ -1501,11 +1501,13 @@ export const it: Translations = {
   blogDevelopersExcerpt: "Guida semplice per condividere segreti da VS Code, Cursor, un agente AI o qualsiasi browser — con crittografia che non lascia il tuo dispositivo.",
   blogCodexTitle: "Utilizzo di PrivateNote con OpenAI Codex",
   blogCodexExcerpt: "Un comando collega PrivateNote MCP a ogni sessione Codex. Configurazione, cosa può fare Codex e come tenere i segreti fuori dal prompt dell'agente.",
-  blogOneTimeLinksTitle: "Link segreti monouso",
-  blogOneTimeLinksSubtitle: "Condividi informazioni sensibili senza lasciare una traccia permanente",
-  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger e Slack sono pensati per conservare i messaggi. Alcuni segreti non dovrebbero persistere. Ecco come funzionano i link cifrati monouso, quando usarli e perché la lettura unica è una funzione di sicurezza.",
-  blogOneTimeLinksMetaTitle: "Link segreti monouso spiegati",
-  blogOneTimeLinksMetaDescription: "Scopri come funzionano i link cifrati che spariscono dopo la lettura, quando usarli al posto di e-mail o Slack e perché l’effimerità riduce il rischio.",
+  blogOneTimeLinksTitle: "Che cos'è un link monouso? Come condividere un messaggio in modo sicuro",
+  blogOneTimeLinksSubtitle: "Consegna cifrata temporanea—non una cassaforte, non una conversazione",
+  blogOneTimeLinksExcerpt:
+    "Un link monouso consegna una password, una credenziale o un messaggio privato senza lasciare il testo in chiaro in e-mail o chat. Ecco il modello, quando usarlo e come PrivateNote lo applica.",
+  blogOneTimeLinksMetaTitle: "Che cos'è un link monouso?",
+  blogOneTimeLinksMetaDescription:
+    "Come funziona un link monouso, quando usarlo e come la cifratura nel browser più la scadenza riducono le copie residue.",
   blogEncryptedFileSharingTitle: "Condivisione cifrata vs. condivisione sicura dei file",
   blogEncryptedFileSharingSubtitle: "Qual è la differenza?",
   blogEncryptedFileSharingExcerpt: "TLS e cifratura nel browser vengono entrambi presentati come «condivisione sicura». Non sono la stessa cosa: conta dove avviene la cifratura.",
@@ -1610,6 +1612,10 @@ export const it: Translations = {
   documentMetaSecureFileTransferTitle: "Trasferimento file sicuro",
   documentMetaSecureFileTransferDescription:
     "Invia file con crittografia nel browser. Solo dati cifrati, link a scadenza e senza account per i destinatari.",
+  documentMetaOneTimeLinkTitle: "Crea un link segreto monouso",
+  documentMetaOneTimeLinkDescription:
+    "Crea un link cifrato monouso per password, messaggi privati e file, senza lasciare testo in chiaro in email o chat.",
+  otlFooterLabel: "Link monouso",
   devBadge: "Integrazioni per sviluppatori",
   devHeroTitle: "Condividi segreti dagli strumenti in cui il lavoro avviene davvero",
   devHeroSubtitle: "PrivateNote funziona bene come app web, ma i team di sviluppo spesso hanno bisogno dello stesso trasferimento sicuro dentro editor, agenti IA locali, script e ambienti controllati. Questa pagina mostra quei punti di ingresso e il confine di fiducia di ciascuno.",

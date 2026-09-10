@@ -138,7 +138,7 @@ export const shareApiKeySecurelyNl: ShareApiKeyArticleCopy = {
       p1: "PrivateNote is gebouwd voor het mens-tot-mens-moment: API-sleutels, SSH-privésleutels, databasegegevens, herstelcodes, webhook-signing-secrets en tijdelijke wachtwoorden die één persoon moeten bereiken zonder permanent record te worden.",
       relatedSsh:
         "Gaat het om een SSH-sleutel in plaats van een API-credential? Zie [SSH-sleutels veilig delen](blog:how-to-share-ssh-keys-securely) over publieke vs privésleutels, deploy keys en editor-extensies.",
-      p2: "Het geheim wordt in je browser versleuteld vóór upload. PrivateNote slaat ciphertext op, geen platte tekst. De ontsleutelingssleutel zit in het URL-fragment—het deel na `#`—dat de browser bij het laden niet naar de server stuurt.",
+      p2: "Het geheim wordt in je browser versleuteld vóór upload. PrivateNote slaat ciphertext op, geen platte tekst. De ontsleutelingssleutel zit in het URL-fragment—het deel na `#`—dat de browser bij het laden niet naar de server stuurt. Dat is het model van de [eenmalige link](blog:one-time-secret-links), toegepast op API-gegevens.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "De server ontvangt de notitie-ID en de versleutelde payload.",
       bullet2: "De server ontvangt de ontsleutelingssleutel niet.",

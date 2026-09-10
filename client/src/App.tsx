@@ -37,6 +37,7 @@ import { NativePageAnalytics } from "@/components/NativePageAnalytics";
 
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
+const OneTimeLink = lazy(() => import("@/pages/OneTimeLink"));
 const SecureFileTransfer = lazy(() => import("@/pages/SecureFileTransfer"));
 const SecurityResources = lazy(() => import("@/pages/SecurityResources"));
 const PrivacyTools = lazy(() => import("@/pages/PrivacyTools"));
@@ -59,6 +60,7 @@ const AuthSignUp = lazy(() => import("@/pages/AuthSignUp"));
 const AuthEmailChange = lazy(() => import("@/pages/AuthEmailChange"));
 const AuthTotp = lazy(() => import("@/pages/AuthTotp"));
 const AuthDevice = lazy(() => import("@/pages/AuthDevice"));
+const ExtensionConnected = lazy(() => import("@/pages/ExtensionConnected"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
@@ -332,6 +334,7 @@ function Router() {
           {NON_ENGLISH_LANGUAGES.map((language) => (
             <Fragment key={language}>
               <Route path={`/${language}/password-generator`} component={() => <LocalizedRoute language={language} component={PasswordGenerator} />} />
+              <Route path={`/${language}/one-time-link`} component={() => <LocalizedRoute language={language} component={OneTimeLink} />} />
               <Route path={`/${language}/secure-file-transfer`} component={() => <LocalizedRoute language={language} component={SecureFileTransfer} />} />
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
@@ -357,6 +360,7 @@ function Router() {
           ))}
           <Route path="/note/:id" component={ViewNoteRoute} />
           <Route path="/password-generator" component={() => <LazyRoute component={PasswordGenerator} />} />
+          <Route path="/one-time-link" component={() => <LazyRoute component={OneTimeLink} />} />
           <Route path="/secure-file-transfer" component={() => <LazyRoute component={SecureFileTransfer} />} />
           <Route path="/privacy-tools" component={() => <LazyRoute component={PrivacyTools} />} />
           <Route path="/security-resources" component={() => <LazyRoute component={SecurityResources} />} />
@@ -398,6 +402,7 @@ function Router() {
           <Route path="/auth/email-change" component={() => <LazyRoute component={AuthEmailChange} />} />
           <Route path="/auth/totp" component={() => <LazyRoute component={AuthTotp} />} />
           <Route path="/auth/device" component={() => <LazyRoute component={AuthDevice} />} />
+          <Route path="/extension/connected" component={() => <LazyRoute component={ExtensionConnected} />} />
           <Route path="/auth">
             <Redirect to="/auth/sign-in" />
           </Route>

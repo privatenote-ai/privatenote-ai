@@ -2088,13 +2088,13 @@ export const en: Translations = {
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
   blogCodexTitle: "Using PrivateNote with OpenAI Codex",
   blogCodexExcerpt: "One command wires PrivateNote MCP into every Codex session. Setup steps, what Codex can do, and how to keep secrets out of the agent prompt.",
-  blogOneTimeLinksTitle: "One-Time Secret Links",
-  blogOneTimeLinksSubtitle: "Share sensitive information without leaving a permanent record",
+  blogOneTimeLinksTitle: "What Is a One-Time Secret Link? How Secure Sharing Works",
+  blogOneTimeLinksSubtitle: "Temporary encrypted handoff—not a vault, and not a conversation",
   blogOneTimeLinksExcerpt:
-    "Email, WhatsApp, Facebook Messenger, and Slack were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
-  blogOneTimeLinksMetaTitle: "One-time secret links explained",
+    "A one-time secret link delivers a password, credential, or private message without leaving plaintext in email or chat history. Here is how the model works, when to use it, and how PrivateNote implements it.",
+  blogOneTimeLinksMetaTitle: "What is a one-time secret link?",
   blogOneTimeLinksMetaDescription:
-    "Learn how burn-after-reading encrypted links work, when to use them instead of email or Slack, and why ephemerality reduces risk after delivery.",
+    "Learn how one-time secret links work, when to use them, and how client-side encryption plus expiry reduce leftover passwords, credentials, and private messages.",
   blogEncryptedFileSharingTitle: "Encrypted vs. Secure File Sharing",
   blogEncryptedFileSharingSubtitle: "What’s the difference?",
   blogEncryptedFileSharingExcerpt:
@@ -2238,6 +2238,10 @@ export const en: Translations = {
   documentMetaSecureFileTransferTitle: "Secure File Transfer",
   documentMetaSecureFileTransferDescription:
     "Send files securely with browser-side encryption. PrivateNote stores only encrypted file data, with expiring links and no account required for recipients.",
+  documentMetaOneTimeLinkTitle: "Create a One-Time Secret Link",
+  documentMetaOneTimeLinkDescription:
+    "Create an encrypted one-time link for passwords, private messages and files. Share sensitive information without leaving plaintext in email or chat.",
+  otlFooterLabel: "One-time link",
   devBadge: "Developer integrations",
   devHeroTitle: "Share secrets from the tools where work actually happens",
   devHeroSubtitle:

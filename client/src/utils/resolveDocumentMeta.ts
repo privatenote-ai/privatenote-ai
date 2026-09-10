@@ -284,6 +284,11 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
         title: buildDocumentTitle(t.passwordGenerator),
         description: t.passwordGeneratorSubtitle,
       };
+    case "one-time-link":
+      return {
+        title: buildDocumentTitle(t.documentMetaOneTimeLinkTitle),
+        description: t.documentMetaOneTimeLinkDescription,
+      };
     case "secure-file-transfer":
       return {
         title: buildDocumentTitle(t.documentMetaSecureFileTransferTitle),

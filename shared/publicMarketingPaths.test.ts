@@ -38,6 +38,10 @@ test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/developers/cli"), true);
   assert.equal(isPublicMarketingPath("/developers/chrome"), true);
   assert.equal(isPublicMarketingPath("/secure-file-transfer"), true);
+  assert.equal(isPublicMarketingPath("/one-time-link"), true);
+  assert.equal(isPublicMarketingPath("/de/one-time-link"), true);
+  assert.equal(isPublicMarketingPath("/fr/one-time-link"), true);
+  assert.equal(isPublicMarketingPath("/hr/one-time-link"), true);
   assert.equal(isPublicMarketingPath("/blog/encrypted-vs-secure-file-sharing"), true);
   assert.equal(isPublicMarketingPath("/blog/category/secrets"), true);
   assert.equal(isPublicMarketingPath("/de/blog/category/encryption"), true);

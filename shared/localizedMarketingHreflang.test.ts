@@ -13,6 +13,8 @@ test("isLocalizedMarketingHreflangRoute matches mirrored marketing paths", () =>
   assert.equal(isLocalizedMarketingHreflangRoute("/how-it-works"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/premium"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/de/premium"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/one-time-link"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/de/one-time-link"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/de/security-resources"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/fr/blog"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/blog/privacy-tools"), true);
@@ -79,4 +81,16 @@ test("buildMarketingHreflangMarkup adds en self-reference for english-only secur
   assert.match(html, /hreflang="en" href="https:\/\/privatenote\.ai\/security-guides\/browser"/);
   assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/security-guides\/browser"/);
   assert.doesNotMatch(html, /hreflang="de"/);
+});
+
+
+test("one-time landing advertises all locale alternates", () => {
+  const alternates = marketingHreflangAlternatesForRoute("/de/one-time-link");
+  assert.ok(alternates.some((alternate) => alternate.hrefLang === "en" && alternate.path === "/one-time-link"));
+  assert.ok(alternates.some((alternate) => alternate.hrefLang === "de" && alternate.path === "/de/one-time-link"));
+  assert.ok(alternates.some((alternate) => alternate.hrefLang === "fr" && alternate.path === "/fr/one-time-link"));
+  assert.ok(alternates.some((alternate) => alternate.hrefLang === "x-default" && alternate.path === "/one-time-link"));
+  assert.deepEqual(selfReferenceHreflangForRoute("/de/one-time-link"), {
+    hrefLang: "de", href: "https://privatenote.ai/de/one-time-link",
+  });
 });

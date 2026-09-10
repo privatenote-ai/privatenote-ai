@@ -1443,11 +1443,13 @@ export const hr: Translations = {
   blogDevelopersExcerpt: "Jednostavan vodič za dijeljenje tajni iz VS koda, kursora, AI agenta ili bilo kojeg preglednika — s enkripcijom koja nikada ne napušta vaš stroj.",
   blogCodexTitle: "Korištenje PrivateNote s OpenAI Codexom",
   blogCodexExcerpt: "Jedna naredba povezuje PrivateNote MCP s Codex sesijom. Postavljanje, što Codex može učiniti i kako tajne držati izvan upita agenta.",
-  blogOneTimeLinksTitle: "Jednokratne tajne veze",
-  blogOneTimeLinksSubtitle: "Dijelite osjetljive informacije bez ostavljanja trajnog zapisa",
-  blogOneTimeLinksExcerpt: "E-pošta, WhatsApp, Facebook Messenger i Slack stvoreni su da zauvijek čuvaju poruke. Neke tajne nikada nisu trebale opstati. Evo kako funkcioniraju jednokratno šifrirane poveznice, kada ih koristiti i zašto je brisanje nakon čitanja sigurnosna značajka, a ne trik.",
-  blogOneTimeLinksMetaTitle: "Objašnjene jednokratne tajne veze",
-  blogOneTimeLinksMetaDescription: "Kako funkcioniraju šifrirane veze nakon čitanja, kada ih koristiti umjesto e-pošte ili Slacka i zašto kratkotrajnost smanjuje rizik.",
+  blogOneTimeLinksTitle: "Što je jednokratna poveznica? Kako sigurno podijeliti tajnu",
+  blogOneTimeLinksSubtitle: "Privremena šifrirana predaja—nije trezor ni razgovor",
+  blogOneTimeLinksExcerpt:
+    "Jednokratna poveznica predaje lozinku, vjerodajnicu ili privatnu poruku bez ostavljanja otvorenog teksta u e-pošti ili chatu. Evo modela, kada ima smisla i kako ga PrivateNote provodi.",
+  blogOneTimeLinksMetaTitle: "Što je jednokratna poveznica?",
+  blogOneTimeLinksMetaDescription:
+    "Kako funkcionira jednokratna poveznica, kada je koristiti i kako šifriranje u pregledniku plus istek smanjuju preostale kopije.",
   blogEncryptedFileSharingTitle: "Šifrirano vs. sigurno dijeljenje datoteka",
   blogEncryptedFileSharingSubtitle: "U čemu je razlika?",
   blogEncryptedFileSharingExcerpt: "TLS i šifriranje na strani preglednika nazivaju se \"sigurnim dijeljenjem datoteka\". Nisu isti. Saznajte gdje se šifriranje događa, zašto je važno i kako odabrati.",
@@ -1552,6 +1554,10 @@ export const hr: Translations = {
   documentMetaSecureFileTransferTitle: "Siguran prijenos datoteka",
   documentMetaSecureFileTransferDescription:
     "Šaljite datoteke sigurno uz šifriranje u pregledniku. PrivateNote pohranjuje samo šifrirane podatke, s poveznicama koje istječu i bez računa za primatelje.",
+  documentMetaOneTimeLinkTitle: "Stvorite tajnu jednokratnu poveznicu",
+  documentMetaOneTimeLinkDescription:
+    "Stvorite šifriranu jednokratnu poveznicu za lozinke, privatne poruke i datoteke — bez otvorenog teksta u e-pošti ili chatu.",
+  otlFooterLabel: "Jednokratna poveznica",
   devBadge: "Integracije programera",
   devHeroTitle: "Podijelite tajne s alatima gdje se posao zapravo odvija",
   devHeroSubtitle: "PrivateNote je koristan kao web stranica, ali razvojni timovi obično trebaju isti šifrirani prijenos unutar urednika, lokalnih AI agenata, skripti i kontroliranih implementacija. Ova stranica prikazuje te ulazne točke i granice povjerenja iza njih.",

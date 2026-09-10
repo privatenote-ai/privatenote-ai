@@ -56,10 +56,10 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Werkzeug an die Bedrohung anpassen: Alltagsschutz vs. feindlicher Anbieterzugriff.",
   ],
   "one-time-secret-links": [
-    "Einmal-Links dienen der kurzlebigen Zustellung, nicht der Langzeitspeicherung.",
-    "Burn-after-read reduziert Restkopien in Chat- und E-Mail-Archiven.",
-    "Kurze TTL mit Least Privilege und Rotation nach der Übergabe kombinieren.",
-    "Den richtigen Empfänger bestätigen, bevor Sie den Link senden.",
+    "Ein Einmal-Link dient der kurzfristigen Übergabe, nicht der Speicherung oder dem Chat.",
+    "Verschlüsselung schützt den Zugriff; Ablauf und einmaliges Anzeigen reduzieren Restkopien.",
+    "Die Sicherheit hängt von der Umsetzung und dem Versand ab—nicht vom Produktnamen.",
+    "Empfängerin prüfen, Gültigkeit kurz halten und Zugangsdaten nach der Nutzung rotieren.",
   ],
   "securing-ai-agents-like-employees": [
     "Agenten mit Tools und Speicher brauchen Zugriffskontrolle wie Mitarbeitende.",
@@ -275,10 +275,10 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Adapter l’outil à la menace : vie privée courante vs. accès hostile du fournisseur.",
   ],
   "one-time-secret-links": [
-    "Les liens à usage unique servent à la livraison éphémère, pas au stockage long terme.",
-    "Le burn-after-read réduit les copies restantes dans les archives chat et e-mail.",
-    "Combiner un TTL court, le moindre privilège et une rotation après le transfert.",
-    "Confirmer le bon destinataire avant d’envoyer le lien.",
+    "Un lien à usage unique sert à une remise temporaire, pas au stockage ni à la conversation.",
+    "Le chiffrement protège l’accès ; l’expiration et l’affichage unique réduisent les copies restantes.",
+    "La sécurité dépend de l’implémentation et de l’envoi—pas du nom du produit.",
+    "Confirmez le destinataire, gardez une courte durée et faites tourner les identifiants après usage.",
   ],
   "securing-ai-agents-like-employees": [
     "Les agents avec outils et mémoire ont besoin d’un contrôle d’accès comme les employés.",
@@ -494,10 +494,10 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "Ajusta la herramienta a la amenaza: privacidad casual vs. acceso hostil del proveedor.",
   ],
   "one-time-secret-links": [
-    "Los enlaces de un solo uso son para entrega efímera, no para almacenamiento a largo plazo.",
-    "Burn-after-read reduce copias residuales en archivos de chat y email.",
-    "Combina TTL corto con mínimo privilegio y rotación tras la entrega.",
-    "Confirma al destinatario correcto antes de enviar el enlace.",
+    "Un enlace de un solo uso sirve para una entrega puntual, no para almacenar ni conversar.",
+    "El cifrado protege el acceso; la caducidad y una sola revelación reducen copias sobrantes.",
+    "La seguridad depende de la implementación y del envío, no del nombre.",
+    "Confirma al destinatario, acorta la caducidad y rota las credenciales después de usarlas.",
   ],
   "securing-ai-agents-like-employees": [
     "Los agentes con herramientas y memoria necesitan control de acceso como los empleados.",
@@ -713,10 +713,10 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "Abbina lo strumento alla minaccia: privacy casuale vs. accesso ostile del provider.",
   ],
   "one-time-secret-links": [
-    "I link monouso servono alla consegna effimera, non allo storage a lungo termine.",
-    "Burn-after-read riduce le copie residue negli archivi di chat ed email.",
-    "Combina TTL breve con least privilege e rotazione dopo il passaggio.",
-    "Conferma il destinatario giusto prima di inviare il link.",
+    "Un link monouso serve alla consegna temporanea, non all’archivio né alla conversazione.",
+    "La cifratura protegge l’accesso; scadenza e una sola visualizzazione riducono le copie residue.",
+    "La sicurezza dipende dall’implementazione e dall’invio, non dal nome.",
+    "Conferma chi riceve, tieni la scadenza breve e ruota le credenziali dopo l’uso.",
   ],
   "securing-ai-agents-like-employees": [
     "Gli agent con tool e memoria necessitano di access control come i dipendenti.",
@@ -932,10 +932,10 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Stem de tool af op de dreiging: casual privacy vs. vijandige providertoegang.",
   ],
   "one-time-secret-links": [
-    "Eenmalige links zijn voor vluchtige bezorging, niet voor langetermijnopslag.",
-    "Burn-after-read vermindert restkopieën in chat- en e-mailarchieven.",
-    "Combineer korte TTL met least privilege en rotatie na overdracht.",
-    "Bevestig de juiste ontvanger voordat je de link stuurt.",
+    "Een eenmalige link is voor tijdelijke overdracht, niet voor opslag of gesprek.",
+    "Versleuteling beschermt toegang; verval en eenmalige weergave verminderen restkopieën.",
+    "Beveiliging hangt af van implementatie en verzending—niet van de productnaam.",
+    "Bevestig de ontvanger, houd de geldigheid kort en roteer inloggegevens na gebruik.",
   ],
   "securing-ai-agents-like-employees": [
     "Agents met tools en geheugen hebben access control nodig zoals medewerkers.",
@@ -1151,10 +1151,10 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "Combine a ferramenta à ameaça: privacidade casual vs. acesso hostil do provedor.",
   ],
   "one-time-secret-links": [
-    "Links de uso único são para entrega efêmera, não para armazenamento de longo prazo.",
-    "Queimar após leitura reduz cópias residuais em arquivos de chat e e-mail.",
-    "Combine TTL curto com menor privilégio e rotação após a transferência.",
-    "Confirme o destinatário certo antes de enviar o link.",
+    "Um link de uso único serve para entrega temporária, não para armazenamento nem conversa.",
+    "A criptografia protege o acesso; validade e uma revelação reduzem cópias restantes.",
+    "A segurança depende da implementação e do envio—não do nome.",
+    "Confirme o destinatário, mantenha a validade curta e rode as credenciais depois do uso.",
   ],
   "securing-ai-agents-like-employees": [
     "Agentes com ferramentas e memória precisam de controle de acesso como funcionários.",
@@ -1370,10 +1370,10 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Uskladite alat sa pretnjom: povremena privatnost vs. neprijateljski pristup provajdera.",
   ],
   "one-time-secret-links": [
-    "Jednokratni linkovi su za efemernu isporuku, ne za dugoročno skladištenje.",
-    "Brisanje posle čitanja smanjuje preostale kopije u arhivama četa i e-pošte.",
-    "Kombinujte kratak TTL sa najmanjim privilegijama i rotacijom posle predaje.",
-    "Potvrdite pravog primaoca pre nego što pošaljete link.",
+    "Jednokratni link služi kratkotrajnoj predaji, ne skladištenju ni razgovoru.",
+    "Šifrovanje štiti pristup; istek i jednokratni prikaz smanjuju preostale kopije.",
+    "Bezbednost zavisi od implementacije i slanja—ne od naziva proizvoda.",
+    "Potvrdite primaoca, držite kratak rok i rotirajte akreditive posle korišćenja.",
   ],
   "securing-ai-agents-like-employees": [
     "Agenti sa alatima i memorijom trebaju kontrolu pristupa kao zaposleni.",
@@ -1589,10 +1589,10 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Uskladite alat s prijetnjom: povremena privatnost vs. neprijateljski pristup pružatelja.",
   ],
   "one-time-secret-links": [
-    "Jednokratne poveznice su za efemernu isporuku, ne za dugoročnu pohranu.",
-    "Brisanje nakon čitanja smanjuje preostale kopije u arhivama chata i e-pošte.",
-    "Kombinirajte kratki TTL s najmanjim privilegijama i rotacijom nakon predaje.",
-    "Potvrdite pravog primatelja prije nego pošaljete poveznicu.",
+    "Jednokratna poveznica služi kratkotrajnoj predaji, ne pohrani ni razgovoru.",
+    "Šifriranje štiti pristup; istek i jednokratni prikaz smanjuju preostale kopije.",
+    "Sigurnost ovisi o provedbi i slanju—ne o nazivu proizvoda.",
+    "Potvrdite primatelja, držite kratak rok i rotirajte vjerodajnice nakon korištenja.",
   ],
   "securing-ai-agents-like-employees": [
     "Agenti s alatima i memorijom trebaju kontrolu pristupa kao zaposlenici.",

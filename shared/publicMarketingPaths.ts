@@ -17,6 +17,7 @@ const LOCALIZED_LANGUAGE_CODES = NON_ENGLISH_LANGUAGE_CODES;
 const NON_BLOG_LOCALIZED_MARKETING_PATHS = [
   "",
   "/password-generator",
+  "/one-time-link",
   "/secure-file-transfer",
   "/privacy-tools",
   "/security-resources",

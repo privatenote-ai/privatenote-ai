@@ -1540,11 +1540,13 @@ export const de: Translations = {
   blogDevelopersExcerpt: "Ein verständlicher Leitfaden zum sicheren Teilen von Geheimnissen aus VS Code, Cursor, einem KI-Agenten oder jedem Browser.",
   blogCodexTitle: "PrivateNote mit OpenAI Codex verwenden",
   blogCodexExcerpt: "Ein Befehl verbindet PrivateNote MCP mit jeder Codex-Sitzung. Einrichtung, Möglichkeiten und wie Geheimnisse aus dem Agent-Prompt fernbleiben.",
-  blogOneTimeLinksTitle: "One-Time-Secret-Links",
-  blogOneTimeLinksSubtitle: "Sensible Informationen teilen, ohne dauerhafte Spuren zu hinterlassen",
-  blogOneTimeLinksExcerpt: "E-Mail, WhatsApp, Facebook Messenger und viele andere Chat-Apps speichern Nachrichten dauerhaft. Manche Geheimnisse sind dafür nicht gedacht. So funktionieren verschlüsselte Einmal-Links, wann Sie sie nutzen sollten und warum „nach dem Lesen löschen“ ein Sicherheitsmerkmal ist.",
-  blogOneTimeLinksMetaTitle: "One-Time-Secret-Links erklärt",
-  blogOneTimeLinksMetaDescription: "Wie Burn-after-Reading-Links funktionieren, wann sie E-Mail oder Slack ersetzen und warum Kurzlebigkeit Risiken nach der Übergabe senkt.",
+  blogOneTimeLinksTitle: "Was ist ein Einmal-Link? Geheime Nachrichten sicher teilen",
+  blogOneTimeLinksSubtitle: "Verschlüsselte Übergabe auf Zeit—kein Tresor und kein Chatverlauf",
+  blogOneTimeLinksExcerpt:
+    "Ein Einmal-Link übergibt Passwörter, Zugangsdaten oder private Nachrichten, ohne den Klartext dauerhaft in E-Mail oder Chat zu hinterlassen. So funktioniert das Modell, wann es sinnvoll ist und wie PrivateNote es umsetzt.",
+  blogOneTimeLinksMetaTitle: "Was ist ein Einmal-Link? So funktioniert's",
+  blogOneTimeLinksMetaDescription:
+    "Erfahren Sie, wie Einmal-Links funktionieren und wie sich Passwörter, Zugangsdaten und private Nachrichten verschlüsselt und zeitlich begrenzt teilen lassen.",
   blogEncryptedFileSharingTitle: "Verschlüsseltes vs. sicheres Dateiteilen",
   blogEncryptedFileSharingSubtitle: "Was ist der Unterschied?",
   blogEncryptedFileSharingExcerpt: "TLS und browserseitige Verschlüsselung werden beide als „sicheres Dateiteilen“ beworben. Das ist nicht dasselbe. Erfahren Sie, wo die Verschlüsselung stattfindet und warum das zählt.",
@@ -1787,6 +1789,10 @@ export const de: Translations = {
   documentMetaSecureFileTransferTitle: "Sichere Dateiübertragung",
   documentMetaSecureFileTransferDescription:
     "Dateien sicher mit Browser-Verschlüsselung senden. Nur Chiffretext, ablaufende Links, kein Konto für Empfänger.",
+  documentMetaOneTimeLinkTitle: "Geheimen Einmal-Link erstellen",
+  documentMetaOneTimeLinkDescription:
+    "Erstellen Sie einen verschlüsselten Einmal-Link für Passwörter, private Nachrichten und Dateien — ohne Klartext in E-Mail oder Chat zu hinterlassen.",
+  otlFooterLabel: "Einmal-Link",
   devBadge: "Entwickler-Integrationen",
   devHeroTitle: "Geheimnisse dort teilen, wo Entwickler arbeiten",
   devHeroSubtitle: "PrivateNote ist als Website nützlich, aber Entwicklerteams brauchen verschlüsselte Übergaben oft direkt in Editoren, lokalen KI-Agenten, Skripten und kontrollierten Deployments. Diese Seite zeigt die Einstiegspunkte und die Vertrauensgrenzen dahinter.",

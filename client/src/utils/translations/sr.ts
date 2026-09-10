@@ -1443,11 +1443,13 @@ export const sr: Translations = {
   blogDevelopersExcerpt: "Vodič na jednostavnom jeziku za deljenje tajni iz VS koda, kursora, AI agenta ili bilo kog pretraživača — sa šifrovanjem koje nikada ne napušta vašu mašinu.",
   blogCodexTitle: "Korišćenje PrivateNote sa OpenAI Codek-om",
   blogCodexExcerpt: "Jedna komanda povezuje PrivateNote MCP server sa Codex sesijom. Podešavanje, šta Codex može i kako tajne držati van prompta agenta.",
-  blogOneTimeLinksTitle: "Jednokratni tajni linkovi",
-  blogOneTimeLinksSubtitle: "Delite osetljive informacije bez ostavljanja trajne evidencije",
-  blogOneTimeLinksExcerpt: "E-pošta, WhatsApp, Facebook Messenger i Slack napravljeni su da čuvaju poruke zauvek. Neke tajne nikada nisu trebalo da opstaju. Evo kako funkcionišu jednokratno šifrovani linkovi, kada ih koristiti i zašto je brisanje nakon čitanja bezbednosna funkcija, a ne trik.",
-  blogOneTimeLinksMetaTitle: "Objašnjeni jednokratni tajni linkovi",
-  blogOneTimeLinksMetaDescription: "Kako funkcionišu šifrovani linkovi nakon čitanja, kada ih koristiti umesto e-pošte ili Slack-a i zašto kratkotrajnost smanjuje rizik.",
+  blogOneTimeLinksTitle: "Šta je jednokratni link? Kako bezbedno podeliti tajnu",
+  blogOneTimeLinksSubtitle: "Privremena šifrovana predaja—nije trezor ni razgovor",
+  blogOneTimeLinksExcerpt:
+    "Jednokratni link predaje lozinku, akreditiv ili privatnu poruku bez ostavljanja otvorenog teksta u e-pošti ili četu. Evo modela, kada ima smisla i kako ga PrivateNote sprovodi.",
+  blogOneTimeLinksMetaTitle: "Šta je jednokratni link?",
+  blogOneTimeLinksMetaDescription:
+    "Kako funkcioniše jednokratni link, kada ga koristiti i kako šifrovanje u pregledaču plus istek smanjuju preostale kopije.",
   blogEncryptedFileSharingTitle: "Šifrovano vs. bezbedno deljenje datoteka",
   blogEncryptedFileSharingSubtitle: "U čemu je razlika?",
   blogEncryptedFileSharingExcerpt: "TLS i šifrovanje na strani pretraživača se nazivaju „bezbedno deljenje datoteka“. Oni nisu isti. Saznajte gde se šifrovanje dešava, zašto je važno i kako da izaberete.",
@@ -1552,6 +1554,10 @@ export const sr: Translations = {
   documentMetaSecureFileTransferTitle: "Bezbedan prenos datoteka",
   documentMetaSecureFileTransferDescription:
     "Šaljite datoteke bezbedno uz šifrovanje u pregledaču. PrivateNote čuva samo šifrovane podatke, sa linkovima koji ističu i bez naloga za primaoce.",
+  documentMetaOneTimeLinkTitle: "Napravite tajni jednokratni link",
+  documentMetaOneTimeLinkDescription:
+    "Napravite šifrovani jednokratni link za lozinke, privatne poruke i datoteke — bez otvorenog teksta u imejlu ili četu.",
+  otlFooterLabel: "Jednokratni link",
   devBadge: "Integracije programera",
   devHeroTitle: "Delite tajne iz alata gde se posao zapravo dešava",
   devHeroSubtitle: "__PN_0__ je koristan kao veb lokacija, ali timovima programera obično je potrebna ista šifrovana predaja unutar uređivača, lokalnih AI agenata, skripti i kontrolisanih implementacija. Ova stranica mapira te ulazne tačke i granicu poverenja iza njih.",

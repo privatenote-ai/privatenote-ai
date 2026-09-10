@@ -1443,11 +1443,13 @@ export const pt: Translations = {
   blogDevelopersExcerpt: "Guia simples para compartilhar segredos do VS Code, Cursor, um agente de IA ou qualquer navegador — com criptografia local.",
   blogCodexTitle: "Usando PrivateNote com OpenAI Codex",
   blogCodexExcerpt: "Um comando conecta o PrivateNote MCP a cada sessão Codex. Configuração, o que o Codex pode fazer e como manter segredos fora do prompt do agente.",
-  blogOneTimeLinksTitle: "Links secretos de uso único",
-  blogOneTimeLinksSubtitle: "Compartilhe informações confidenciais sem deixar um registro permanente",
-  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger e Slack foram feitos para guardar mensagens para sempre. Alguns segredos nunca deveriam persistir. Veja como funcionam links criptografados de uso único, quando usá-los e por que queimar após a leitura é um recurso de segurança—não um artifício.",
-  blogOneTimeLinksMetaTitle: "Links secretos únicos explicados",
-  blogOneTimeLinksMetaDescription: "Como funcionam links criptografados burn-after-reading, quando usá-los em vez de e-mail ou Slack e por que a efemeridade reduz riscos.",
+  blogOneTimeLinksTitle: "O que é um link de uso único? Como compartilhar em segurança",
+  blogOneTimeLinksSubtitle: "Entrega cifrada temporária—não um cofre nem uma conversa",
+  blogOneTimeLinksExcerpt:
+    "Um link de uso único entrega uma senha, uma credencial ou uma mensagem privada sem deixar o texto em claro no e-mail ou no chat. Veja o modelo, quando usar e como o PrivateNote o aplica.",
+  blogOneTimeLinksMetaTitle: "O que é um link de uso único?",
+  blogOneTimeLinksMetaDescription:
+    "Como funciona um link de uso único, quando usá-lo e como a criptografia no cliente mais a validade reduzem cópias restantes.",
   blogEncryptedFileSharingTitle: "Compartilhamento criptografado vs. seguro de arquivos",
   blogEncryptedFileSharingSubtitle: "Qual é a diferença?",
   blogEncryptedFileSharingExcerpt: "O TLS e a criptografia do lado do navegador são chamados de “compartilhamento seguro de arquivos”. Eles não são iguais. Saiba onde a criptografia acontece, por que ela é importante e como escolher.",
@@ -1552,6 +1554,10 @@ export const pt: Translations = {
   documentMetaSecureFileTransferTitle: "Transferência segura de arquivos",
   documentMetaSecureFileTransferDescription:
     "Envie arquivos com criptografia no navegador. Só dados criptografados, links que expiram e sem conta para destinatários.",
+  documentMetaOneTimeLinkTitle: "Criar um link secreto de uso único",
+  documentMetaOneTimeLinkDescription:
+    "Crie um link criptografado de uso único para senhas, mensagens privadas e arquivos, sem deixar texto em claro no e-mail ou no chat.",
+  otlFooterLabel: "Link de uso único",
   devBadge: "Integrações de desenvolvedor",
   devHeroTitle: "Compartilhe segredos das ferramentas onde o trabalho realmente acontece",
   devHeroSubtitle: "PrivateNote é útil como site, mas as equipes de desenvolvedores geralmente precisam da mesma transferência criptografada dentro de editores, agentes locais de IA, scripts e implantações controladas. Esta página mapeia esses pontos de entrada e o limite de confiança por trás deles.",

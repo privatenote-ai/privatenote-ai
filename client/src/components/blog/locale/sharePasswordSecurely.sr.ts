@@ -30,7 +30,7 @@ export const sharePasswordSecurelySr: SharePasswordSecurelyArticleCopy = {
     {
       title: "Kako funkcionišu linkovi šifrovani u pretraživaču",
       paragraphs: [
-        "Za brzo, jednokratno deljenje lozinki, jednokratni linkovi šifrovani u pretraživaču spadaju među najbezbednije i najefikasnije opcije. Umesto da šaljete sam kredencijal, šaljete jedinstven, privremeni link ka šifrovanoj belešci.",
+        "Za brzo, jednokratno deljenje lozinki, jednokratni linkovi šifrovani u pretraživaču spadaju među najbezbednije i najefikasnije opcije. Umesto da šaljete sam kredencijal, šaljete jedinstven, privremeni link ka šifrovanoj belešci. [Šta je jednokratni link](blog:one-time-secret-links) objašnjava model iza te predaje.",
         "Vaš pretraživač obavlja težak posao: lozinka se šifruje lokalno pre uploada, tako da posrednički server čuva ciphertext—ne vašu sirovu lozinku. Ključ za dešifrovanje obično ostaje u fragmentu linka, koji pretraživači ne šalju serveru.",
       ],
       flowIntro:

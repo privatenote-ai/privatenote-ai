@@ -47,6 +47,7 @@ import {
   clampNoteReadLimitForAccount,
   type NoteReadLimit,
 } from "@shared/noteReadLimits";
+import type { NoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
 import {
   NOTE_FILE_ACCESS_DEFAULT_SECONDS,
   clampNoteFileAccessWindowForAccount,
@@ -228,6 +229,9 @@ function translatedExpiryLabel(expiryValue: NoteExpiryPresetId, t: Record<string
 interface CreateNoteProps {
   onSuccessStateChange?: (isSuccess: boolean) => void;
   mode?: "note" | "file-transfer";
+  /** Page-specific starting choice; restored drafts and later user edits take precedence. */
+  initialReadLimit?: NoteReadLimit;
+  creationEntryPoint?: NoteCreationEntryPoint;
 }
 
 const CREATE_NOTE_AUTH_DRAFT_KEY = "privatenote:create-note-auth-draft:v1";
@@ -386,7 +390,12 @@ function clearCreateNoteAuthDraft(): void {
   }
 }
 
-export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mode = "note" }) => {
+export const CreateNote: React.FC<CreateNoteProps> = ({
+  onSuccessStateChange,
+  mode = "note",
+  initialReadLimit,
+  creationEntryPoint: creationEntryPointProp,
+}) => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { entitlements, loading: entitlementsLoading } = useAccountEntitlements();
@@ -502,7 +511,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const [recipientEmail, setRecipientEmail] = useState("");
   const [recipientLinkDeliveryRetrying, setRecipientLinkDeliveryRetrying] = useState(false);
   const [noteLabel, setNoteLabel] = useState("");
-  const [readCount, setReadCount] = useState<NoteReadLimit>(NOTE_READ_LIMIT_DEFAULT);
+  const [readCount, setReadCount] = useState<NoteReadLimit>(initialReadLimit ?? NOTE_READ_LIMIT_DEFAULT);
   const [fileAccessWindowSeconds, setFileAccessWindowSeconds] =
     useState<NoteFileAccessWindowSeconds>(NOTE_FILE_ACCESS_DEFAULT_SECONDS);
   const [readerLanguage, setReaderLanguage] = useState<ReaderLanguageSetting>("auto");
@@ -990,7 +999,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
             ? noteExpirySecondsToPresetId(defaults.expirySeconds)
             : null;
         if (expiryPreset) setExpiryValue(expiryPreset);
-        if (defaults.maxReads === 1 || defaults.maxReads === 2 || defaults.maxReads === 3 || defaults.maxReads === 5) {
+        if (initialReadLimit === undefined && (defaults.maxReads === 1 || defaults.maxReads === 2 || defaults.maxReads === 3 || defaults.maxReads === 5)) {
           setReadCount(defaults.maxReads);
         }
         if (isNoteFileAccessWindowSeconds(defaults.fileAccessWindowSeconds)) {
@@ -1018,7 +1027,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
     return () => {
       cancelled = true;
     };
-  }, [user, accountType, premiumStatusLoading, prefillText]);
+  }, [user, accountType, premiumStatusLoading, prefillText, initialReadLimit]);
 
   useEffect(() => {
     if (premiumStatusLoading) return;
@@ -2140,7 +2149,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
           : {}),
         _hp: honeypotValue,
         creationSource: "web",
-        creationEntryPoint: isFileTransferMode ? "file-share" : "home",
+        creationEntryPoint:
+          creationEntryPointProp ?? (isFileTransferMode ? "file-share" : "home"),
         ...(prefillReferrer ? { referrer: prefillReferrer } : {}),
         ...(isAiMode && aiTurnstileToken && { turnstileToken: aiTurnstileToken }),
         ...(isPasswordProtected && {

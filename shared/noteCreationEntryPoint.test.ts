@@ -8,6 +8,7 @@ import {
 describe("sanitizeNoteCreationEntryPoint", () => {
   it("accepts known entry points case-insensitively", () => {
     assert.equal(sanitizeNoteCreationEntryPoint("home"), "home");
+    assert.equal(sanitizeNoteCreationEntryPoint("one-time-link"), "one-time-link");
     assert.equal(sanitizeNoteCreationEntryPoint(" Password-Share "), "password-share");
     assert.equal(sanitizeNoteCreationEntryPoint("FILE-SHARE"), "file-share");
     assert.equal(sanitizeNoteCreationEntryPoint("extension"), "extension");
@@ -25,6 +26,7 @@ describe("sanitizeNoteCreationEntryPoint", () => {
 describe("NOTE_CREATION_ENTRY_POINT_LABELS", () => {
   it("labels every supported entry point", () => {
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS.home, "Home");
+    assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS["one-time-link"], "One-time link");
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS["password-share"], "Share a password");
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS["file-share"], "Share a file");
     assert.equal(NOTE_CREATION_ENTRY_POINT_LABELS.cli, "Command line");

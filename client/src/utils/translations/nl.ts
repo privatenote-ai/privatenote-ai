@@ -1682,11 +1682,13 @@ export const nl: Translations = {
   blogDevelopersExcerpt: "Handleiding voor het delen van geheimen vanuit VS Code, Cursor, een AI-agent of elke browser — met versleuteling die uw machine nooit verlaat.",
   blogCodexTitle: "PrivateNote gebruiken met OpenAI Codex",
   blogCodexExcerpt: "Eén opdracht verbindt PrivateNote MCP met elke Codex-sessie. Instellen, wat Codex kan doen en hoe geheimen buiten de agentprompt blijven.",
-  blogOneTimeLinksTitle: "Eenmalige geheime links",
-  blogOneTimeLinksSubtitle: "Deel gevoelige informatie zonder een permanent record achter te laten",
-  blogOneTimeLinksExcerpt: "E-mail, WhatsApp, Facebook Messenger en Slack zijn gebouwd om berichten voor altijd te bewaren. Sommige geheimen waren nooit bedoeld om te blijven bestaan. Hier leest u hoe eenmalige versleutelde links werken, wanneer u ze gebruikt en waarom vernietigen na het lezen een beveiligingsfunctie is—geen gimmick.",
-  blogOneTimeLinksMetaTitle: "Eenmalige geheime links uitgelegd",
-  blogOneTimeLinksMetaDescription: "Hoe burn-after-reading-links werken, wanneer ze e-mail of Slack vervangen en waarom kortstondigheid het risico na levering vermindert.",
+  blogOneTimeLinksTitle: "Wat is een eenmalige link? Geheimen veilig delen",
+  blogOneTimeLinksSubtitle: "Tijdelijke versleutelde overdracht—geen kluis en geen gesprek",
+  blogOneTimeLinksExcerpt:
+    "Een eenmalige link bezorgt een wachtwoord, inloggegeven of privébericht zonder platte tekst in e-mail of chat achter te laten. Zo werkt het model, wanneer het past en hoe PrivateNote het uitvoert.",
+  blogOneTimeLinksMetaTitle: "Wat is een eenmalige link?",
+  blogOneTimeLinksMetaDescription:
+    "Hoe een eenmalige link werkt, wanneer u die gebruikt, en hoe versleuteling in de browser plus verval restkopieën vermindert.",
   blogEncryptedFileSharingTitle: "Versleuteld vs. veilig bestanden delen",
   blogEncryptedFileSharingSubtitle: "Wat is het verschil?",
   blogEncryptedFileSharingExcerpt: "TLS en browserversleuteling worden allebei «veilig bestanden delen» genoemd. Dat is niet hetzelfde. Waar versleuteling plaatsvindt en waarom dat ertoe doet.",
@@ -1791,6 +1793,10 @@ export const nl: Translations = {
   documentMetaSecureFileTransferTitle: "Veilige bestandsoverdracht",
   documentMetaSecureFileTransferDescription:
     "Verstuur bestanden met browserversleuteling. Alleen versleutelde data, verlopende links, geen account voor ontvangers.",
+  documentMetaOneTimeLinkTitle: "Maak een eenmalige geheime link",
+  documentMetaOneTimeLinkDescription:
+    "Maak een versleutelde eenmalige link voor wachtwoorden, privéberichten en bestanden, zonder plaintext in e-mail of chat achter te laten.",
+  otlFooterLabel: "Eenmalige link",
   devBadge: "Integraties van ontwikkelaars",
   devHeroTitle: "Deel geheimen van de tools waar het werk daadwerkelijk gebeurt",
   devHeroSubtitle: "PrivateNote is handig als website, maar ontwikkelaarsteams hebben meestal dezelfde gecodeerde overdracht nodig binnen editors, lokale AI-agents, scripts en gecontroleerde implementaties. Deze pagina brengt die toegangspunten en de vertrouwensgrens daarachter in kaart.",

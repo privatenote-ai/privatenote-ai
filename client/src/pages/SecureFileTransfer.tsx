@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/accordion";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
-import { localizedPath } from "@/utils/localizedPath";
+import { blogPostPath, localizedPath } from "@/utils/localizedPath";
+import type { SupportedLanguage } from "@/utils/translation";
 import {
   buildSecureFileTransferFaqSchema,
   SFT_FAQ_KEYS,
@@ -23,6 +24,19 @@ const CreateNote = lazy(() =>
 function CreateNoteMountPlaceholder() {
   return <div className="min-h-[28rem] w-full" aria-hidden />;
 }
+
+const ONE_TIME_SECRET_ARTICLE_CHIP: Record<SupportedLanguage, string> = {
+  en: "What is a one-time secret link?",
+  de: "Was ist ein Einmal-Link?",
+  fr: "Qu’est-ce qu’un lien à usage unique ?",
+  es: "¿Qué es un enlace de un solo uso?",
+  it: "Che cos’è un link monouso?",
+  nl: "Wat is een eenmalige link?",
+  pt: "O que é um link de uso único?",
+  hr: "Što je jednokratna poveznica?",
+  sr: "Šta je jednokratni link?",
+  tr: "Tek kullanımlık gizli bağlantı nedir?",
+};
 
 const SecureFileTransfer: React.FC = () => {
   const { t, language } = useLanguage();
@@ -200,6 +214,10 @@ const SecureFileTransfer: React.FC = () => {
                     { href: howItWorksPath, label: t.howItWorks },
                     { href: privacyPath, label: t.privacyPolicy },
                     { href: passwordGeneratorPath, label: t.sharePassword },
+                    {
+                      href: blogPostPath("one-time-secret-links", language),
+                      label: ONE_TIME_SECRET_ARTICLE_CHIP[language] ?? ONE_TIME_SECRET_ARTICLE_CHIP.en,
+                    },
                   ].map((link) => (
                     <Link
                       key={link.href}

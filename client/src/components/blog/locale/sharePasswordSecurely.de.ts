@@ -30,7 +30,7 @@ export const sharePasswordSecurelyDe: SharePasswordSecurelyArticleCopy = {
     {
       title: "So funktionieren browserseitig verschlüsselte Links",
       paragraphs: [
-        "Für schnelles, einmaliges Passwort-Sharing gehören browserverschlüsselte Einmallinks zu den sichersten und effizientesten Optionen. Statt die Zugangsdaten selbst zu senden, senden Sie einen eindeutigen, temporären Link zu einer verschlüsselten Notiz.",
+        "Für schnelles, einmaliges Passwort-Sharing gehören browserverschlüsselte Einmallinks zu den sichersten und effizientesten Optionen. Statt die Zugangsdaten selbst zu senden, senden Sie einen eindeutigen, temporären Link zu einer verschlüsselten Notiz. [Was ein Einmal-Link ist](blog:one-time-secret-links) erklärt das Modell hinter dieser Übergabe.",
         "Ihr Browser übernimmt die schwere Arbeit: Das Passwort wird lokal vor dem Upload verschlüsselt, sodass der Zwischenserver nur Ciphertext speichert—nicht Ihr Rohpasswort. Der Entschlüsselungsschlüssel bleibt typischerweise im Link-Fragment, das Browser nicht an den Server senden.",
       ],
       flowIntro:

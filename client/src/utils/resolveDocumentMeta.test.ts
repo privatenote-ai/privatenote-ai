@@ -72,3 +72,16 @@ test("resolveDocumentMeta keeps public marketing titles within SEO length", () =
   }
   assert.deepEqual(over, [], `Trim document titles for: ${over.join(", ")}`);
 });
+
+
+test("one-time landing has transactional metadata distinct from the guide", () => {
+  const deMeta = resolveDocumentMeta("/de/one-time-link", { ...en, ...de });
+  assert.match(deMeta.title, /Einmal-Link erstellen/);
+  assert.match(deMeta.description, /Passwörter, private Nachrichten und Dateien/);
+  assert.notEqual(deMeta.title, resolveDocumentMeta("/de/blog/one-time-geheime-links", { ...en, ...de }).title);
+  assert.deepEqual(resolveDocumentMeta("/de/one-time-link/", { ...en, ...de }), deMeta);
+
+  const enMeta = resolveDocumentMeta("/one-time-link", en);
+  assert.match(enMeta.title, /Create a One-Time Secret Link/);
+  assert.notEqual(enMeta.title, resolveDocumentMeta("/blog/one-time-secret-links", en).title);
+});

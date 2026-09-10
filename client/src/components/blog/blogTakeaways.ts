@@ -67,10 +67,10 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "Match the tool to the threat: casual privacy vs. hostile provider access.",
   ],
   "one-time-secret-links": [
-    "One-time links are for ephemeral delivery, not long-term storage.",
-    "Burn-after-read reduces leftover copies in chat and email archives.",
-    "Combine short TTL with least privilege and post-handoff rotation.",
-    "Confirm the right recipient before you send the link.",
+    "A one-time secret link is for temporary handoff, not storage or conversation.",
+    "Encryption protects access; expiry and one-time reveal reduce leftover copies.",
+    "Security depends on the implementation and how the link is sent—not on the name.",
+    "Confirm the recipient, keep expiry short, and rotate credentials after use.",
   ],
   "securing-ai-agents-like-employees": [
     "Agents with tools and memory need access control like employees do.",

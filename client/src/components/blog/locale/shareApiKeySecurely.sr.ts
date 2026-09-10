@@ -138,7 +138,7 @@ export const shareApiKeySecurelySr: ShareApiKeyArticleCopy = {
       p1: "PrivateNote je napravljen za trenutak čovek-čovek: API ključevi, SSH privatni ključevi, kredencijali baze podataka, kodovi za oporavak, webhook signing tajne i privremene lozinke koje treba doseći jednu osobu bez postajanja trajnim zapisom.",
       relatedSsh:
         "Ako je tajna SSH ključ umesto API kredencijala, pogledajte [kako bezbedno deliti SSH ključeve](blog:how-to-share-ssh-keys-securely) o javnim vs privatnim ključevima, deploy ključevima i proširenjima editora.",
-      p2: "Tajna se šifruje u vašem pretraživaču pre uploada. PrivateNote čuva šifrovani tekst, ne čist tekst. Ključ za dešifrovanje leži u URL fragmentu—delu posle `#`—koji pretraživač pri učitavanju ne šalje serveru.",
+      p2: "Tajna se šifruje u vašem pretraživaču pre uploada. PrivateNote čuva šifrovani tekst, ne čist tekst. Ključ za dešifrovanje leži u URL fragmentu—delu posle `#`—koji pretraživač pri učitavanju ne šalje serveru. To je model [jednokratnog linka](blog:one-time-secret-links) primenjen na API akreditive.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Server prima ID beleške i šifrovani sadržaj.",
       bullet2: "Server ne prima ključ za dešifrovanje.",

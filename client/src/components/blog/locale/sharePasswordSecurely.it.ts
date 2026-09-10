@@ -30,7 +30,7 @@ export const sharePasswordSecurelyIt: SharePasswordSecurelyArticleCopy = {
     {
       title: "Come funzionano i link cifrati lato browser",
       paragraphs: [
-        "Per la condivisione rapida e occasionale di password, i link monouso cifrati nel browser sono tra le opzioni più sicure ed efficienti. Invece di inviare la credenziale stessa, invii un link unico e temporaneo a una nota cifrata.",
+        "Per la condivisione rapida e occasionale di password, i link monouso cifrati nel browser sono tra le opzioni più sicure ed efficienti. Invece di inviare la credenziale stessa, invii un link unico e temporaneo a una nota cifrata. [Che cos’è un link monouso](blog:one-time-secret-links) spiega il modello dietro quella consegna.",
         "Il browser svolge il lavoro pesante: la password viene cifrata localmente prima del caricamento, così il server intermedio memorizza il ciphertext—non la password in chiaro. La chiave di decifratura di solito resta nel fragment del link, che i browser non inviano al server.",
       ],
       flowIntro: "Per condividere un segreto con un link temporaneo e autodistruggente, segui questi quattro passaggi:",

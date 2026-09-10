@@ -30,7 +30,7 @@ export const sharePasswordSecurelyEn: SharePasswordSecurelyArticleCopy = {
     {
       title: "How browser-side encrypted links work",
       paragraphs: [
-        "For quick, one-off password sharing, browser-encrypted one-time links are among the safest and most efficient options. Rather than sending the credential itself, you send a unique, temporary link to an encrypted note.",
+        "For quick, one-off password sharing, browser-encrypted one-time links are among the safest and most efficient options. Rather than sending the credential itself, you send a unique, temporary link to an encrypted note. [What a one-time secret link is](blog:one-time-secret-links) explains the model behind that handoff.",
         "Your browser performs the heavy lifting: the password is encrypted locally before upload, so the intermediary server stores ciphertext—not your raw password. The decryption key typically stays in the link fragment, which browsers do not send to the server.",
       ],
       flowIntro: "To share a secret using a temporary, self-destructing link, follow these four steps:",

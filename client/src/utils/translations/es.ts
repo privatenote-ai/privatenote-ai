@@ -1557,11 +1557,13 @@ export const es: Translations = {
   blogDevelopersExcerpt: "Una guía en lenguaje sencillo para compartir secretos desde VS Code, Cursor, un agente de IA o cualquier navegador.",
   blogCodexTitle: "Usar PrivateNote con OpenAI Codex",
   blogCodexExcerpt: "Un comando conecta PrivateNote MCP a cada sesión Codex. Configuración, qué puede hacer Codex y cómo mantener secretos fuera del prompt del agente.",
-  blogOneTimeLinksTitle: "Enlaces secretos de un solo uso",
-  blogOneTimeLinksSubtitle: "Comparte información sensible sin dejar un registro permanente",
-  blogOneTimeLinksExcerpt: "El correo, WhatsApp, Facebook Messenger y Slack guardan los mensajes para siempre. Algunos secretos no deben persistir. Así funcionan los enlaces cifrados de un solo uso, cuándo usarlos y por qué quemar después de leer es una función de seguridad.",
-  blogOneTimeLinksMetaTitle: "Enlaces secretos de un solo uso explicados",
-  blogOneTimeLinksMetaDescription: "Aprende cómo funcionan los enlaces cifrados burn-after-reading, cuándo usarlos en lugar de correo o Slack y por qué el carácter efímero reduce el riesgo.",
+  blogOneTimeLinksTitle: "¿Qué es un enlace de un solo uso? Cómo compartir secretos de forma segura",
+  blogOneTimeLinksSubtitle: "Entrega cifrada puntual—no una caja fuerte ni una conversación",
+  blogOneTimeLinksExcerpt:
+    "Un enlace de un solo uso entrega una contraseña, una credencial o un mensaje privado sin dejar el texto en claro en el correo o el chat. Así funciona el modelo, cuándo usarlo y cómo lo aplica PrivateNote.",
+  blogOneTimeLinksMetaTitle: "¿Qué es un enlace de un solo uso?",
+  blogOneTimeLinksMetaDescription:
+    "Cómo funciona un enlace de un solo uso, cuándo usarlo y cómo el cifrado en el cliente más la caducidad reducen copias sobrantes.",
   blogEncryptedFileSharingTitle: "Compartir archivos cifrados vs. de forma segura",
   blogEncryptedFileSharingSubtitle: "¿Cuál es la diferencia?",
   blogEncryptedFileSharingExcerpt: "TLS y el cifrado en el navegador se venden como «compartir archivos seguro». No es lo mismo. Dónde ocurre el cifrado y por qué importa.",
@@ -1800,6 +1802,10 @@ export const es: Translations = {
   documentMetaSecureFileTransferTitle: "Transferencia segura de archivos",
   documentMetaSecureFileTransferDescription:
     "Envía archivos con cifrado en el navegador. Solo datos cifrados, enlaces que caducan y sin cuenta para destinatarios.",
+  documentMetaOneTimeLinkTitle: "Crear un enlace secreto de un solo uso",
+  documentMetaOneTimeLinkDescription:
+    "Crea un enlace cifrado de un solo uso para contraseñas, mensajes privados y archivos, sin dejar texto claro en el correo o el chat.",
+  otlFooterLabel: "Enlace de un solo uso",
   devBadge: "Integraciones de desarrolladores",
   devHeroTitle: "Comparte secretos desde las herramientas donde realmente trabajas",
   devHeroSubtitle: "PrivateNote es útil como sitio web, pero los equipos de desarrolladores generalmente necesitan la misma transferencia cifrada dentro de los editores, agentes de IA locales, scripts e implementaciones controladas. Esta página mapea esos puntos de entrada y el límite de confianza detrás de ellos.",
