@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { MAX_NOTE_CIPHERTEXT_BASE64_CHARS } from "./noteSizeLimits.ts";
+import { MAX_NOTE_CIPHERTEXT_BASE64_CHARS, maxNoteCiphertextBase64CharsForAccount } from "./noteSizeLimits.ts";
 import {
   NOTE_ATTACHMENT_METADATA_CIPHERTEXT_MAX_BASE64_CHARS,
   NOTE_AES_GCM_IV_BYTE_LENGTH,
@@ -64,6 +64,13 @@ describe("validateNoteCiphertextWire", () => {
 
   it("returns too_large kind when over cap", () => {
     const r = validateNoteCiphertextWire("a".repeat(MAX_NOTE_CIPHERTEXT_BASE64_CHARS + 1));
+    assert.equal(r.ok, false);
+    assert.ok(r.ok === false && r.kind === "too_large");
+  });
+
+  it("honors a tighter per-plan cap", () => {
+    const planCap = maxNoteCiphertextBase64CharsForAccount("free");
+    const r = validateNoteCiphertextWire("a".repeat(planCap + 1), "content", planCap);
     assert.equal(r.ok, false);
     assert.ok(r.ok === false && r.kind === "too_large");
   });

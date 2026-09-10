@@ -83,6 +83,9 @@ describe("planCatalog", () => {
     assert.equal(free.attachmentTransferMaxBytes, 25 * 1024 * 1024);
     assert.equal(starter.attachmentTransferMaxBytes, 250 * 1024 * 1024);
     assert.equal(business.attachmentTransferMaxBytes, 1024 * 1024 * 1024);
+    assert.equal(free.maxNotePlaintextUtf8Bytes, 50 * 1024);
+    assert.equal(starter.maxNotePlaintextUtf8Bytes, 200 * 1024);
+    assert.equal(business.maxNotePlaintextUtf8Bytes, 500 * 1024);
   });
 
   it("enables workflow on Starter and branding on Business", () => {
@@ -114,6 +117,7 @@ describe("planCatalog", () => {
     assert.equal(free.delayedReveal, false);
     assert.equal(starter.maxExpirySeconds, 15 * 24 * 60 * 60);
     assert.deepEqual(starter.allowedReadCounts, [1, 2, 3]);
+    assert.deepEqual(planFeaturesFor("business_premium").allowedReadCounts, [1, 2, 3, 5, 10]);
     assert.equal(starter.recipientLinkDelivery, true);
     assert.equal(starter.readerLanguage, true);
     assert.equal(starter.revealBodyFont, true);

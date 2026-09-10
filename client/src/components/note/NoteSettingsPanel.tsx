@@ -251,6 +251,7 @@ function translatedReadLimitLabel(limit: NoteReadLimit, t: Record<string, string
   if (limit === 1) return t.viewLimitOnce ?? "Once (read-once)";
   if (limit === 2) return t.viewLimitTwice ?? "2 views";
   if (limit === 3) return t.viewLimitThree ?? "3 views";
+  if (limit === 10) return t.viewLimitTen ?? "10 views";
   return t.viewLimitFive ?? "5 views";
 }
 

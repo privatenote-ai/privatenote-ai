@@ -3,6 +3,8 @@ import type { Note } from "@shared/schema";
 import { insertBlogPostSchema, updateBlogPostSchema, AnalyticsMetricsType } from "@shared/schema";
 import { parseNoteExpirySecondsFromBody } from "@shared/noteExpiry";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
+import { validateNoteCiphertextWire } from "@shared/noteCryptoWire";
+import { maxNoteCiphertextBase64CharsForAccount } from "@shared/noteSizeLimits";
 import { parseNoteOpensAtFromBody } from "@shared/noteMetaEligibility";
 import { isValidReceiptAckTokenHash } from "@shared/noteReceiptAck";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
@@ -9314,6 +9316,24 @@ export async function registerRoutes(
       }
     } catch (error) {
       console.warn("[ROUTES] Skipping analytics for note creation:", error);
+    }
+
+    if (typeof requestBody?.content === "string" && requestBody.content.trim()) {
+      const contentWire = validateNoteCiphertextWire(
+        requestBody.content,
+        "content",
+        maxNoteCiphertextBase64CharsForAccount(noteCreationAccount),
+      );
+      if (!contentWire.ok) {
+        return jsonResponse(
+          {
+            error: contentWire.kind === "too_large" ? "note_too_large" : "invalid_content",
+            message: contentWire.message,
+          },
+          contentWire.kind === "too_large" ? 413 : 400,
+          request,
+        );
+      }
     }
 
     const aiMode = !!requestBody?.aiMode;

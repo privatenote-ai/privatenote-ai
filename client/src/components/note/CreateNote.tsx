@@ -6,7 +6,7 @@ import {
 } from "@/lib/r2DirectUpload";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import {
-  MAX_NOTE_PLAINTEXT_UTF8_BYTES,
+  maxNotePlaintextUtf8BytesForAccount,
   truncateUtf8StringToMaxBytes,
   utf8ByteLength,
 } from "@shared/noteSizeLimits";
@@ -562,6 +562,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   const canRequireReceiptAck = isPremiumUser && planCapabilities.receiptAcknowledgment;
   const fileLimitBytes = noteFileLimitBytesForAccount(accountType);
   const fileLimitLabel = formatNoteFileSize(fileLimitBytes);
+  const notePlaintextLimitBytes = maxNotePlaintextUtf8BytesForAccount(accountType);
+  const notePlaintextLimitKb = String(notePlaintextLimitBytes / 1024);
+  const notesLimitTrimmedMessage = t.notesLimitTrimmed.replace("{maxKb}", notePlaintextLimitKb);
   const transferLimitBytes = noteFileTransferLimitBytesForAccount(accountType);
   const attachmentsMaxCount = noteFileAttachmentsMaxCountForAccount(accountType);
   const selectedFilesTotalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
@@ -886,10 +889,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   useEffect(() => {
     if (prefillText && !prefillAppliedRef.current) {
       prefillAppliedRef.current = true;
-      const { text } = truncateUtf8StringToMaxBytes(prefillText, MAX_NOTE_PLAINTEXT_UTF8_BYTES);
+      const { text } = truncateUtf8StringToMaxBytes(prefillText, notePlaintextLimitBytes);
       setNoteContent(text);
     }
-  }, [prefillText]);
+  }, [prefillText, notePlaintextLimitBytes]);
 
   const authDraftRestoredRef = useRef(false);
   const authDraftAppliedRef = useRef(false);
@@ -903,7 +906,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
 
     const { text } = truncateUtf8StringToMaxBytes(
       draft.noteContent,
-      MAX_NOTE_PLAINTEXT_UTF8_BYTES,
+      notePlaintextLimitBytes,
     );
     setNoteContent(text);
     setIsAiMode(draft.isAiMode);
@@ -1119,19 +1122,19 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
   // ── Content helpers ───────────────────────────────────────────────────────
   const setNoteContentFromAiOutput = useCallback(
     (raw: string) => {
-      const { text, truncated } = truncateUtf8StringToMaxBytes(raw, MAX_NOTE_PLAINTEXT_UTF8_BYTES);
+      const { text, truncated } = truncateUtf8StringToMaxBytes(raw, notePlaintextLimitBytes);
       if (truncated) {
         toast({
           title: t.toastContentTrimmedTitle,
           description: t.toastAiOutputTrimmedDesc.replace(
             "{limit}",
-            String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024),
+            notePlaintextLimitKb,
           ),
         });
       }
       setNoteContent(text);
     },
-    [toast, t],
+    [toast, t, notePlaintextLimitBytes, notePlaintextLimitKb],
   );
 
   const applyNoteContentInput = useCallback(
@@ -1638,12 +1641,12 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
       return;
     }
 
-    if (utf8ByteLength(noteContent) > MAX_NOTE_PLAINTEXT_UTF8_BYTES) {
+    if (utf8ByteLength(noteContent) > notePlaintextLimitBytes) {
       toast({
         title: t.toastNoteTooLargeTitle,
         description: t.toastNoteTooLargeDesc.replace(
           "{limit}",
-          String(MAX_NOTE_PLAINTEXT_UTF8_BYTES / 1024),
+          notePlaintextLimitKb,
         ),
         variant: "destructive",
       });
@@ -3278,7 +3281,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 ) : null}
                 <NotePlaintextUtf8Meter
                   noteContent={noteContent}
-                  maxBytes={MAX_NOTE_PLAINTEXT_UTF8_BYTES}
+                  maxBytes={notePlaintextLimitBytes}
                   className="mb-0 shrink-0 text-right"
                 />
               </div>
@@ -3287,8 +3290,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                 onChange={(e) =>
                   applyNoteContentInput(
                     e,
-                    MAX_NOTE_PLAINTEXT_UTF8_BYTES,
-                    t.notesLimitTrimmed,
+                    notePlaintextLimitBytes,
+                    notesLimitTrimmedMessage,
                   )
                 }
                 rows={6}
@@ -3331,8 +3334,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({ onSuccessStateChange, mo
                   onChange={(e) =>
                     applyNoteContentInput(
                       e,
-                      MAX_NOTE_PLAINTEXT_UTF8_BYTES,
-                      t.notesLimitTrimmed,
+                      notePlaintextLimitBytes,
+                      notesLimitTrimmedMessage,
                     )
                   }
                   rows={2}
