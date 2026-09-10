@@ -14,3 +14,7 @@ prerender
 
 # Large model files - downloaded from HuggingFace at runtime
 r2_upload/models/
+
+# iCloud Drive duplicate copies ("File 2.tsx")
+* 2.*
+* 3.*
