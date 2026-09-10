@@ -9,6 +9,8 @@ export const MCP_DEVICE_USER_CODE_LENGTH = 8;
 export const MCP_DEVICE_TTL_SECONDS = 10 * 60;
 export const MCP_DEVICE_POLL_INTERVAL_SECONDS = 3;
 export const MCP_DEVICE_KV_PREFIX = "mcp_device:";
+/** Approve links for MCP/CLI must open the stable app, never a Pages preview host. */
+export const MCP_DEVICE_PRODUCTION_ORIGIN = "https://privatenote.ai";
 
 export type McpDeviceAuthStatus = "pending" | "authorized" | "denied";
 
@@ -56,6 +58,56 @@ export function generateMcpUserCode(randomBytes: Uint8Array): string {
     out += MCP_DEVICE_USER_CODE_ALPHABET[randomBytes[i]! % MCP_DEVICE_USER_CODE_ALPHABET.length];
   }
   return out;
+}
+
+function originFromCandidate(raw: string): string | null {
+  const trimmed = raw.trim().replace(/\/$/, "");
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    const host = url.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") {
+      return `${url.protocol}//${url.host}`;
+    }
+    if (host === "privatenote.ai" || host === "app.privatenote.ai") {
+      return `${url.protocol}//${host}`;
+    }
+    if (host === "www.privatenote.ai") {
+      return MCP_DEVICE_PRODUCTION_ORIGIN;
+    }
+    if (host === "premium.privatenote.ai") {
+      return `${url.protocol}//${host}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Origin for `/auth/device` links. MCP has no browser Origin, and
+ * `PUBLIC_WEB_APP_ORIGIN` is often `*.pages.dev` — never send users there.
+ */
+export function resolveMcpDeviceVerificationOrigin(input: {
+  requestOrigin?: string | null;
+  configuredPublicOrigin?: string | null;
+}): string {
+  return (
+    originFromCandidate(input.requestOrigin ?? "") ||
+    originFromCandidate(input.configuredPublicOrigin ?? "") ||
+    MCP_DEVICE_PRODUCTION_ORIGIN
+  );
+}
+
+/** First successful poll returns the session id; later polls must not. */
+export function takeMcpDeviceSessionId(
+  record: McpDeviceAuthRecord,
+): { accessToken: string; consumed: McpDeviceAuthRecord } | null {
+  if (record.status !== "authorized" || typeof record.sessionId !== "string" || !record.sessionId) {
+    return null;
+  }
+  const { sessionId, ...rest } = record;
+  return { accessToken: sessionId, consumed: { ...rest } };
 }
 
 export function mcpDeviceVerificationPath(userCode: string, client = "mcp"): string {

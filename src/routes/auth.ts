@@ -94,6 +94,8 @@ import {
   mcpDeviceVerificationPath,
   mcpUserCodeKvKey,
   normalizeMcpUserCode,
+  resolveMcpDeviceVerificationOrigin,
+  takeMcpDeviceSessionId,
   type McpDeviceAuthRecord,
 } from "@shared/mcpDeviceAuth";
 
@@ -4523,7 +4525,10 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
       expirationTtl: MCP_DEVICE_TTL_SECONDS,
     });
     await kv.put(mcpUserCodeKvKey(userCode), deviceCodeHash, { expirationTtl: MCP_DEVICE_TTL_SECONDS });
-    const origin = getMagicLinkOrigin(env, request);
+    const origin = resolveMcpDeviceVerificationOrigin({
+      requestOrigin: request.headers.get("Origin"),
+      configuredPublicOrigin: env.PUBLIC_WEB_APP_ORIGIN,
+    });
     const verificationPath = mcpDeviceVerificationPath(userCode, client);
     const verificationUri = `${origin}${verificationPath}`;
     return jsonResponse(
@@ -4575,8 +4580,24 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (record.status === "denied") {
       return jsonResponse({ message: "denied", error: "denied" }, 403, request);
     }
-    if (record.status === "authorized" && record.sessionId) {
-      return jsonResponse({ status: "authorized", accessToken: record.sessionId }, 200, request);
+    if (record.status === "authorized") {
+      const taken = takeMcpDeviceSessionId(record);
+      if (!taken) {
+        return jsonResponse({ message: "expired", error: "expired" }, 400, request);
+      }
+      const ttlRemaining = Math.max(
+        30,
+        Math.ceil((new Date(record.expiresAt).getTime() - Date.now()) / 1000),
+      );
+      await kv.put(mcpDeviceCodeKvKey(deviceCodeHash), JSON.stringify(taken.consumed), {
+        expirationTtl: ttlRemaining,
+      });
+      try {
+        await kv.delete(mcpUserCodeKvKey(record.userCode));
+      } catch {
+        /* best-effort */
+      }
+      return jsonResponse({ status: "authorized", accessToken: taken.accessToken }, 200, request);
     }
     return jsonResponse({ status: "pending" }, 200, request);
   }

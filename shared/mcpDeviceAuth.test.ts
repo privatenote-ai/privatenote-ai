@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  MCP_DEVICE_PRODUCTION_ORIGIN,
   formatMcpUserCode,
   generateMcpUserCode,
   isMcpDeviceAuthRecord,
@@ -8,6 +9,9 @@ import {
   mcpDeviceVerificationPath,
   mcpUserCodeKvKey,
   normalizeMcpUserCode,
+  resolveMcpDeviceVerificationOrigin,
+  takeMcpDeviceSessionId,
+  type McpDeviceAuthRecord,
 } from "./mcpDeviceAuth.ts";
 
 describe("mcpDeviceAuth", () => {
@@ -49,5 +53,43 @@ describe("mcpDeviceAuth", () => {
       true,
     );
     assert.equal(isMcpDeviceAuthRecord({ v: 1, status: "pending" }), false);
+  });
+
+  it("pins device approve links to privatenote.ai instead of pages.dev", () => {
+    assert.equal(
+      resolveMcpDeviceVerificationOrigin({
+        configuredPublicOrigin: "https://privatenote-ai.pages.dev",
+      }),
+      MCP_DEVICE_PRODUCTION_ORIGIN,
+    );
+    assert.equal(
+      resolveMcpDeviceVerificationOrigin({
+        requestOrigin: "https://privatenote.ai",
+        configuredPublicOrigin: "https://privatenote-ai.pages.dev",
+      }),
+      MCP_DEVICE_PRODUCTION_ORIGIN,
+    );
+    assert.equal(
+      resolveMcpDeviceVerificationOrigin({
+        requestOrigin: "http://localhost:5173",
+      }),
+      "http://localhost:5173",
+    );
+  });
+
+  it("returns the session id once then strips it from the record", () => {
+    const record: McpDeviceAuthRecord = {
+      v: 1,
+      userCode: "ABCD2345",
+      status: "authorized",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: "2026-01-01T00:10:00.000Z",
+      clientName: "privatenote-mcp",
+      sessionId: "opaque-session",
+    };
+    const first = takeMcpDeviceSessionId(record);
+    assert.equal(first?.accessToken, "opaque-session");
+    assert.equal(first?.consumed.sessionId, undefined);
+    assert.equal(takeMcpDeviceSessionId(first!.consumed), null);
   });
 });

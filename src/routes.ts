@@ -66,6 +66,7 @@ import {
 import { buildRecipientNoteLinkEmail, parseDeliverableNoteUrl } from "@shared/noteLinkDelivery";
 import { getApiContentSecurityPolicy, resolveAccessControlAllowHeaders, SECURITY_HEADERS, buildUploadRelayCorsHeaders } from "./httpSecurity";
 import { canonicalizeMagicLinkOrigin } from "@shared/magicLinkOrigin";
+import { readSessionIdFromRequest } from "./sessionBearer";
 import { isUploadRelayHostname } from "@shared/apiWorkerOrigin";
 import {
   type NoteReservationRecord,
@@ -3334,7 +3335,9 @@ async function getSessionFromRequest(
   if (!env.AUTH_DB) return null;
   const cookies = parseCookies(request.headers.get("Cookie"));
   const cookieName = sessionCookieNameForKind(getSessionCookieKindForRequest(request));
-  const sessionId = cookies[cookieName];
+  const sessionFromRequest = readSessionIdFromRequest(request, cookieName, cookies);
+  const sessionId = sessionFromRequest?.sessionId;
+  const fromBearer = sessionFromRequest?.fromBearer === true;
   if (!sessionId) return null;
   const sessionHash = await sha256Base64Url(sessionId);
   const currentIp = getRequestIp(request);
@@ -3440,7 +3443,8 @@ async function getSessionFromRequest(
   const lastSeenMs = lastSeenAt ? new Date(lastSeenAt).getTime() : now;
 
   let newSessionId: string | undefined;
-  if (options.rotate && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
+  // Bearer plugin/mobile sessions cannot receive a rotated cookie; keep the opaque id stable.
+  if (options.rotate && !fromBearer && now - lastSeenMs > SESSION_POLICY.ROTATE_SECONDS * 1000) {
     const rotated = await createSession(env, row.user_id, request, "magic");
     if (rotated?.sessionId) {
       newSessionId = rotated.sessionId;
