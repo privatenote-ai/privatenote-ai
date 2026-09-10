@@ -63,7 +63,7 @@ type PrivacyCopy = {
 const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
   en: {
     title: "Privacy Policy",
-    subtitle: "Version 2.4 • Last updated: September 8, 2026 • Luxembourg, EU",
+    subtitle: "Version 2.5 • Last updated: September 10, 2026 • Luxembourg, EU",
     controllerTitle: "1. Data Controller",
     controllerIntro:
       "For the purposes of the General Data Protection Regulation (GDPR), the data controller is:",
@@ -126,12 +126,11 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
     analyticsBody: (
       <>
         We collect <strong>aggregated, first-party</strong> statistics about how public pages are used so we
-        can operate and improve the product. This includes page-visit counts, time a page stays visible in
-        the foreground, coarse scroll-depth, and a low-resolution click/attention grid. We do{" "}
-        <strong>not</strong> record session replays, keystrokes, note content, note IDs, or individual
-        profiles, and we do <strong>not</strong> send this data to advertising or third-party analytics
-        companies. Legal basis: <strong>Art. 6(1)(f) GDPR</strong> (legitimate interests in understanding and
-        improving the service).
+        can operate and improve the product. This includes page-visit counts and time a page stays visible in
+        the foreground. We do <strong>not</strong> record click maps, cursor position, session replays,
+        keystrokes, note content, note IDs, or individual profiles, and we do <strong>not</strong> send this
+        data to advertising or third-party analytics companies. Legal basis:{" "}
+        <strong>Art. 6(1)(f) GDPR</strong> (legitimate interests in understanding and improving the service).
       </>
     ),
     cookieTitle: "First-Party Rate-Limit Cookie (pn_client_id)",
@@ -159,7 +158,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
     legalBasisItems: [
       "Optional on-device AI text processing: Art. 6(1)(a) GDPR (consent).",
       "Security, abuse prevention, rate limiting, and network protection metadata: Art. 6(1)(f) GDPR (legitimate interests).",
-      "Aggregated first-party product analytics (page visits, visible time, coarse click/scroll heatmaps): Art. 6(1)(f) GDPR (legitimate interests).",
+      "Aggregated first-party product analytics (page visits and visible time): Art. 6(1)(f) GDPR (legitimate interests).",
       "Support/legal correspondence initiated by you: Art. 6(1)(b) and/or Art. 6(1)(f) GDPR.",
     ],
     retentionTitle: "Retention Windows (Data Minimization)",
@@ -167,7 +166,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
       "Encrypted note payload: retained until expiry/one-time read settings trigger deletion.",
       "Security metadata (IP/request-level anti-abuse logs): retained up to 30 days, then deleted or anonymized.",
       "Rate-limit cookie (pn_client_id): approximately 30 days from last renewal.",
-      "Aggregated first-party page-engagement statistics (visits, visible time, coarse heatmaps): retained for up to 24 months.",
+      "Aggregated first-party page statistics (visits and visible time): retained for up to 24 months.",
       "Support/legal emails: retained for up to 24 months after resolution unless a longer legal retention period is required.",
     ],
     transfersTitle: "4. International Data Transfers",
@@ -240,7 +239,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
   },
   de: {
     title: "Datenschutzerklaerung",
-    subtitle: "Version 2.4 • Zuletzt aktualisiert: 8. September 2026 • Luxemburg, EU",
+    subtitle: "Version 2.5 • Zuletzt aktualisiert: 10. September 2026 • Luxemburg, EU",
     controllerTitle: "1. Verantwortliche Stelle",
     controllerIntro:
       "Im Sinne der Datenschutz-Grundverordnung (DSGVO) ist die verantwortliche Stelle:",
@@ -306,12 +305,12 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
     analyticsBody: (
       <>
         Wir erfassen <strong>aggregierte First-Party</strong>-Statistiken zur Nutzung oeffentlicher Seiten,
-        um den Dienst zu betreiben und zu verbessern: Seitenbesuche, sichtbare Verweildauer im Vordergrund,
-        grobe Scrolltiefe sowie ein grobes Klick-/Aufmerksamkeitsraster. Wir speichern{" "}
-        <strong>keine</strong> Session-Replays, Tastatureingaben, Notizinhalte, Notiz-IDs oder individuelle
-        Profile und senden diese Daten <strong>nicht</strong> an Werbe- oder Drittanbieter-Analytics.
-        Rechtsgrundlage: <strong>Art. 6 Abs. 1 lit. f DSGVO</strong> (berechtigte Interessen am Verstehen und
-        Verbessern des Dienstes).
+        um den Dienst zu betreiben und zu verbessern: Seitenbesuche und sichtbare Verweildauer im Vordergrund.
+        Wir speichern <strong>keine</strong> Klickkarten, Cursorpositionen, Session-Replays, Tastatureingaben,
+        Notizinhalte, Notiz-IDs oder individuelle Profile und senden diese Daten <strong>nicht</strong> an
+        Werbe- oder Drittanbieter-Analytics. Rechtsgrundlage:{" "}
+        <strong>Art. 6 Abs. 1 lit. f DSGVO</strong> (berechtigte Interessen am Verstehen und Verbessern des
+        Dienstes).
       </>
     ),
     cookieTitle: "First-Party Rate-Limit-Cookie (pn_client_id)",
@@ -341,7 +340,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
     legalBasisItems: [
       "Optionale On-Device-KI-Textverarbeitung: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).",
       "Sicherheit, Missbrauchspraevention, Rate-Limiting und Netzwerkschutz-Metadaten: Art. 6 Abs. 1 lit. f DSGVO (berechtigte Interessen).",
-      "Aggregierte First-Party-Produktanalytik (Seitenbesuche, sichtbare Zeit, grobe Klick-/Scroll-Heatmaps): Art. 6 Abs. 1 lit. f DSGVO (berechtigte Interessen).",
+      "Aggregierte First-Party-Produktanalytik (Seitenbesuche und sichtbare Zeit): Art. 6 Abs. 1 lit. f DSGVO (berechtigte Interessen).",
       "Von Ihnen initiierte Support-/Rechtskommunikation: Art. 6 Abs. 1 lit. b und/oder Art. 6 Abs. 1 lit. f DSGVO.",
     ],
     retentionTitle: "Aufbewahrungsfristen (Datenminimierung)",
@@ -349,7 +348,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
       "Verschluesselte Notizinhalte: Speicherung bis Ablauf bzw. bis die Einmal-Lese-Einstellungen die Loeschung ausloesen.",
       "Sicherheitsmetadaten (IP-/Request-Anti-Abuse-Logs): Aufbewahrung bis zu 30 Tage, danach Loeschung oder Anonymisierung.",
       "Rate-Limit-Cookie (pn_client_id): etwa 30 Tage ab letzter Erneuerung.",
-      "Aggregierte First-Party Seitenengagement-Statistiken (Besuche, sichtbare Zeit, grobe Heatmaps): Aufbewahrung bis zu 24 Monate.",
+      "Aggregierte First-Party Seitenstatistiken (Besuche und sichtbare Zeit): Aufbewahrung bis zu 24 Monate.",
       "Support-/Rechts-E-Mails: Aufbewahrung bis zu 24 Monate nach Abschluss, sofern keine laengere gesetzliche Pflicht besteht.",
     ],
     transfersTitle: "4. Internationale Datentransfers",
@@ -423,7 +422,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
   },
   fr: {
     title: "Politique de confidentialite",
-    subtitle: "Version 2.4 • Derniere mise a jour : 8 septembre 2026 • Luxembourg, UE",
+    subtitle: "Version 2.5 • Derniere mise a jour : 10 septembre 2026 • Luxembourg, UE",
     controllerTitle: "1. Responsable du traitement",
     controllerIntro:
       "Aux fins du Reglement general sur la protection des donnees (RGPD), le responsable du traitement est :",
@@ -489,13 +488,12 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
     analyticsBody: (
       <>
         Nous collectons des statistiques <strong>agregees first-party</strong> sur l&apos;usage des pages
-        publiques afin d&apos;exploiter et d&apos;ameliorer le service : visites de pages, temps pendant
-        lequel une page reste visible au premier plan, profondeur de defilement approximative, et une grille
-        basse resolution des clics/de l&apos;attention. Nous n&apos;enregistrons <strong>pas</strong> de
-        session replay, de frappes, de contenu de note, d&apos;identifiants de note ni de profils
-        individuels, et nous n&apos;envoyons <strong>pas</strong> ces donnees a des publicitaires ou a des
-        outils d&apos;analytique tiers. Base legale : <strong>art. 6, par. 1, f) RGPD</strong> (interet
-        legitime a comprendre et ameliorer le service).
+        publiques afin d&apos;exploiter et d&apos;ameliorer le service : visites de pages et temps pendant
+        lequel une page reste visible au premier plan. Nous n&apos;enregistrons <strong>pas</strong> de cartes
+        de clics, de position du curseur, de session replay, de frappes, de contenu de note, d&apos;identifiants
+        de note ni de profils individuels, et nous n&apos;envoyons <strong>pas</strong> ces donnees a des
+        publicitaires ou a des outils d&apos;analytique tiers. Base legale :{" "}
+        <strong>art. 6, par. 1, f) RGPD</strong> (interet legitime a comprendre et ameliorer le service).
       </>
     ),
     cookieTitle: "Cookie first-party de limitation de debit (pn_client_id)",
@@ -525,7 +523,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
     legalBasisItems: [
       "Traitement optionnel du texte via IA sur l&apos;appareil : art. 6, par. 1, a) RGPD (consentement).",
       "Metadonnees de securite, prevention des abus, limitation de debit et protection reseau : art. 6, par. 1, f) RGPD (interet legitime).",
-      "Analytique produit first-party agregee (visites, temps visible, heatmaps clics/defilement grossiers) : art. 6, par. 1, f) RGPD (interet legitime).",
+      "Analytique produit first-party agregee (visites de pages et temps visible) : art. 6, par. 1, f) RGPD (interet legitime).",
       "Communications support/juridique initiees par vous : art. 6, par. 1, b) et/ou art. 6, par. 1, f) RGPD.",
     ],
     retentionTitle: "Durees de conservation (minimisation des donnees)",
@@ -533,7 +531,7 @@ const PRIVACY_COPY: Record<PrivacyLocale, PrivacyCopy> = {
       "Contenu de note chiffre : conserve jusqu&apos;a expiration ou suppression declenchee par le mode lecture unique.",
       "Metadonnees de securite (logs anti-abus IP/requetes) : conservation jusqu&apos;a 30 jours puis suppression ou anonymisation.",
       "Cookie de limitation de debit (pn_client_id) : environ 30 jours depuis le dernier renouvellement.",
-      "Statistiques d&apos;engagement first-party agregees (visites, temps visible, heatmaps grossiers) : conservation jusqu&apos;a 24 mois.",
+      "Statistiques de pages first-party agregees (visites et temps visible) : conservation jusqu&apos;a 24 mois.",
       "E-mails support/juridique : conservation jusqu&apos;a 24 mois apres resolution, sauf obligation legale plus longue.",
     ],
     transfersTitle: "4. Transferts internationaux de donnees",
