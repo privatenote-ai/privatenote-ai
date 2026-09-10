@@ -1723,7 +1723,7 @@ export const nl: Translations = {
   homeFaq_size_question: "Hoe groot mag een notitie, foto of video maximaal zijn?",
   homeFaq_size_answer: "Tekst is beperkt tot 50 KB—genoeg voor korte tot middellange geheimen. Foto’s, video’s en andere bestanden volgen je plan: tot 25 MB per bestand op Free, 250 MB op Starter en 1 GB op Business.",
   homeFaq_pricing_question: "Is PrivateNote.ai gratis?",
-  homeFaq_pricing_answer: "PrivateNote.ai biedt gratis versleutelde notities, plus Starter- en Business-abonnementen voor bezorgcontroles en hogere limieten.",
+  homeFaq_pricing_answer: "PrivateNote.ai biedt gratis versleutelde notities, plus Starter- en Business-abonnementen voor bezorgcontroles en hogere limieten. Free omvat tot 10 bestand-, foto-, audio- of opnameoverdrachten per maand als je bent ingelogd; tekstnotities blijven onbeperkt onder fair use.",
   homeFaq_ai_question: "Waarom .ai – gebruiken jullie AI in mijn aantekeningen?",
   homeFaq_ai_answer: "AI-functies zijn strikt opt-in. Normale notities werken zonder AI en notitiepagina's worden niet gebruikt voor het bijhouden van advertenties.",
   homeFaq_expirationDefaults_question: "Hoe lang blijven notities bestaan als ik geen vervaldatum instel?",

@@ -1484,7 +1484,7 @@ export const hr: Translations = {
   homeFaq_size_question: "Koja je najveća veličina bilješke, fotografije ili videa?",
   homeFaq_size_answer: "Tekst je ograničen na 50 KB—dovoljno za kratke do srednje tajne. Fotografije, video i druge datoteke slijede vaš plan: do 25 MB po datoteci na Free, 250 MB na Starter i 1 GB na Business.",
   homeFaq_pricing_question: "Je li PrivateNote.ai besplatan?",
-  homeFaq_pricing_answer: "PrivateNote.ai nudi besplatne šifrirane bilješke, plus planove Starter i Business za kontrole isporuke i veća ograničenja.",
+  homeFaq_pricing_answer: "PrivateNote.ai nudi besplatne šifrirane bilješke, plus planove Starter i Business za kontrole isporuke i veća ograničenja. Besplatni račun uključuje do 10 prijenosa datoteka, fotografija, audija ili snimaka mjesečno kada ste prijavljeni; tekstualne bilješke ostaju neograničene uz fer korištenje.",
   homeFaq_ai_question: "Zašto .ai — koristite li AI u mojim bilješkama?",
   homeFaq_ai_answer: "AI značajke su strogo opt-in. Uobičajene bilješke rade bez AI, a stranice s bilješkama ne koriste se za praćenje oglasa.",
   homeFaq_expirationDefaults_question: "Koliko dugo žive bilješke ako ne postavim istek?",

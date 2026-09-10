@@ -1732,7 +1732,7 @@ export const es: Translations = {
   homeFaq_size_question: "¿Cuál es el tamaño máximo de una nota, foto o vídeo?",
   homeFaq_size_answer: "El texto está limitado a 50 KB—suficiente para secretos cortos o medianos. Fotos, vídeos y otros archivos siguen tu plan: hasta 25 MB por archivo en Free, 250 MB en Starter y 1 GB en Business.",
   homeFaq_pricing_question: "¿PrivateNote.ai es gratis?",
-  homeFaq_pricing_answer: "PrivateNote.ai ofrece notas cifradas gratuitas, más los planes Starter y Business para controles de entrega y límites más altos.",
+  homeFaq_pricing_answer: "PrivateNote.ai ofrece notas cifradas gratuitas, más los planes Starter y Business para controles de entrega y límites más altos. Free incluye hasta 10 transferencias de archivos, fotos, audio o grabaciones al mes si has iniciado sesión; las notas de solo texto siguen ilimitadas con un uso justo.",
   homeFaq_ai_question: "¿Por qué .ai? ¿Usan IA en mis notas?",
   homeFaq_ai_answer: "Las funciones de IA son estrictamente opcionales. Las notas normales funcionan sin IA y las páginas de notas no se usan para seguimiento publicitario.",
   homeFaq_expirationDefaults_question: "¿Cuánto duran las notas si no configuro caducidad?",

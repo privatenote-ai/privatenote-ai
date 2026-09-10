@@ -1719,7 +1719,7 @@ export const de: Translations = {
   homeFaq_size_question: "Wie groß dürfen Notiz, Foto oder Video maximal sein?",
   homeFaq_size_answer: "Text ist auf 50 KB begrenzt—genug für kurze bis mittellange Geheimnisse. Fotos, Videos und andere Dateien folgen Ihrem Plan: bis 25 MB pro Datei bei Free, 250 MB bei Starter und 1 GB bei Business.",
   homeFaq_pricing_question: "Ist PrivateNote.ai kostenlos?",
-  homeFaq_pricing_answer: "PrivateNote.ai bietet kostenlose verschlüsselte Notizen sowie Starter- und Business-Pläne für Zustellkontrollen und höhere Limits.",
+  homeFaq_pricing_answer: "PrivateNote.ai bietet kostenlose verschlüsselte Notizen sowie Starter- und Business-Pläne für Zustellkontrollen und höhere Limits. Free umfasst bis zu 10 Datei-, Foto-, Audio- oder Aufnahmeübertragungen pro Monat, wenn Sie angemeldet sind; reine Textnotizen bleiben unter Fair Use unbegrenzt.",
   homeFaq_ai_question: "Warum .ai — verwenden Sie KI für meine Notizen?",
   homeFaq_ai_answer: "KI-Funktionen sind strikt optional. Normale Notizen funktionieren ohne KI, und Notizseiten werden nicht für Werbe-Tracking genutzt.",
   homeFaq_expirationDefaults_question: "Wie lange bleiben Notizen erhalten, wenn ich keinen Ablauf festlege?",

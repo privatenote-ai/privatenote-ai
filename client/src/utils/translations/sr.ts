@@ -1484,7 +1484,7 @@ export const sr: Translations = {
   homeFaq_size_question: "Koja je maksimalna veličina poruke, fotografije ili videa?",
   homeFaq_size_answer: "Tekst je ograničen na 50 KB—dovoljno za kratke do srednje tajne. Fotografije, video i druge datoteke prate vaš plan: do 25 MB po datoteci na Free, 250 MB na Starter i 1 GB na Business.",
   homeFaq_pricing_question: "Da li je PrivateNote.ai besplatan?",
-  homeFaq_pricing_answer: "PrivateNote.ai nudi besplatne šifrovane poruke, plus planove Starter i Business za kontrole isporuke i veća ograničenja.",
+  homeFaq_pricing_answer: "PrivateNote.ai nudi besplatne šifrovane poruke, plus planove Starter i Business za kontrole isporuke i veća ograničenja. Besplatni nalog uključuje do 10 prenosa datoteka, fotografija, audija ili snimaka mesečno kada ste prijavljeni; tekstualne poruke ostaju neograničene uz fer korišćenje.",
   homeFaq_ai_question: "Zašto .ai — da li koristite AI u mojim porukama?",
   homeFaq_ai_answer: "AI funkcije su opcione. Obične poruke rade bez AI, a stranice sa porukama se ne koriste za praćenje oglasa.",
   homeFaq_expirationDefaults_question: "Koliko dugo traju poruke ako ne podesim rok trajanja?",

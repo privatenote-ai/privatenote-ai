@@ -2159,10 +2159,10 @@ export const en: Translations = {
     "They can forward the link. PrivateNote reduces risk with read-once notes and expirations, but it cannot prevent screenshots, copy/paste, or forwarding after access.",
   homeFaq_size_question: "How large can a note, photo, or video be?",
   homeFaq_size_answer:
-    "Text is limited to 50 KB—enough for short to medium secrets. Photos, videos, and other files follow your plan: up to 25 MB per file on Free (10 file/photo/audio/recording transfers per day), 250 MB on Starter, and 1 GB on Business. Starter and Business also remove the Free daily transfer cap.",
+    "Text is limited to 50 KB—enough for short to medium secrets. Photos, videos, and other files follow your plan: up to 25 MB per file on Free (10 file/photo/audio/recording transfers a month), 250 MB on Starter, and 1 GB on Business. Starter and Business also remove the Free monthly transfer cap.",
   homeFaq_pricing_question: "Is PrivateNote.ai free?",
   homeFaq_pricing_answer:
-    "PrivateNote.ai offers Free encrypted notes, plus Starter and Business plans for delivery controls and higher limits. Free includes up to 10 file, photo, audio, or recording transfers per day when you are signed in; text-only notes stay unlimited under fair use.",
+    "PrivateNote.ai offers Free encrypted notes, plus Starter and Business plans for delivery controls and higher limits. Free includes up to 10 file, photo, audio, or recording transfers per month when you are signed in; text-only notes stay unlimited under fair use.",
   homeFaq_ai_question: "Why .ai — do you use AI on my notes?",
   homeFaq_ai_answer:
     "AI features are strictly opt-in. Regular notes work without AI, and note pages are not used for ad tracking.",
