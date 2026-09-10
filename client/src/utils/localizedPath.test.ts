@@ -32,6 +32,20 @@ describe("localizedPath", () => {
     assert.equal(localizedPath("/developers", "de"), "/de/developers");
   });
 
+  it("localizes one-time link for all locales", () => {
+    assert.equal(localizedPath("/one-time-link", "en"), "/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "de"), "/de/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "es"), "/es/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "nl"), "/nl/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "fr"), "/fr/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "it"), "/it/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "pt"), "/pt/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "hr"), "/hr/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "sr"), "/sr/one-time-link");
+    assert.equal(switchLanguagePath("/de/one-time-link", "en"), "/one-time-link");
+    assert.equal(switchLanguagePath("/one-time-link", "fr"), "/fr/one-time-link");
+  });
+
   it("translates blog slugs per locale", () => {
     assert.equal(
       localizedPath("/blog/secrets-never-send-in-chat", "nl"),
@@ -71,6 +85,7 @@ describe("localizedPath", () => {
     assert.equal(localizedPath("/secure-file-transfer", "pt"), "/pt/secure-file-transfer");
     assert.equal(localizedPath("/secure-file-transfer", "sr"), "/sr/secure-file-transfer");
     assert.equal(localizedPath("/secure-file-transfer", "hr"), "/hr/secure-file-transfer");
+    assert.equal(localizedPath("/secure-file-transfer", "tr"), "/tr/secure-file-transfer");
   });
 
   it("localizes the pricing page for all locales", () => {

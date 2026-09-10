@@ -1612,6 +1612,10 @@ export const it: Translations = {
   documentMetaSecureFileTransferTitle: "Trasferimento file sicuro",
   documentMetaSecureFileTransferDescription:
     "Invia file con crittografia nel browser. Solo dati cifrati, link a scadenza e senza account per i destinatari.",
+  documentMetaOneTimeLinkTitle: "Crea un link segreto monouso",
+  documentMetaOneTimeLinkDescription:
+    "Crea un link cifrato monouso per password, messaggi privati e file, senza lasciare testo in chiaro in email o chat.",
+  otlFooterLabel: "Link monouso",
   devBadge: "Integrazioni per sviluppatori",
   devHeroTitle: "Condividi segreti dagli strumenti in cui il lavoro avviene davvero",
   devHeroSubtitle: "PrivateNote funziona bene come app web, ma i team di sviluppo spesso hanno bisogno dello stesso trasferimento sicuro dentro editor, agenti IA locali, script e ambienti controllati. Questa pagina mostra quei punti di ingresso e il confine di fiducia di ciascuno.",

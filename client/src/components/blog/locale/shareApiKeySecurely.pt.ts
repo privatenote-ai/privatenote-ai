@@ -138,7 +138,7 @@ export const shareApiKeySecurelyPt: ShareApiKeyArticleCopy = {
       p1: "O PrivateNote foi construído para o momento humano-a-humano: chaves de API, chaves privadas SSH, credenciais de banco de dados, códigos de recuperação, segredos de assinatura webhook e senhas temporárias que precisam chegar a uma pessoa sem virar registro permanente.",
       relatedSsh:
         "Se o segredo for uma chave SSH em vez de uma credencial de API, veja [como compartilhar chaves SSH com segurança](blog:how-to-share-ssh-keys-securely) sobre chaves públicas vs privadas, deploy keys e extensões do editor.",
-      p2: "O segredo é criptografado no seu navegador antes do upload. O PrivateNote armazena ciphertext, não texto plano. A chave de descriptografia fica no fragmento da URL — a parte após `#` — que o navegador não envia ao servidor ao carregar.",
+      p2: "O segredo é criptografado no seu navegador antes do upload. O PrivateNote armazena ciphertext, não texto plano. A chave de descriptografia fica no fragmento da URL — a parte após `#` — que o navegador não envia ao servidor ao carregar. Esse é o modelo do [link de uso único](blog:one-time-secret-links) aplicado a credenciais de API.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "O servidor recebe o ID da nota e o payload criptografado.",
       bullet2: "O servidor não recebe a chave de descriptografia.",

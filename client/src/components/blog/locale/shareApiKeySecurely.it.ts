@@ -136,7 +136,7 @@ export const shareApiKeySecurelyIt: ShareApiKeyArticleCopy = {
       p1: "PrivateNote è pensato per il momento da persona a persona: chiavi API, chiavi private SSH, credenziali database, codici di recupero, segreti di firma webhook e password temporanee che devono raggiungere una persona senza diventare un record permanente.",
       relatedSsh:
         "Se il segreto è una chiave SSH invece di una credenziale API, vedi [come condividere chiavi SSH in modo sicuro](blog:how-to-share-ssh-keys-securely) su chiavi pubbliche vs private, deploy key ed estensioni dell’editor.",
-      p2: "Il segreto viene cifrato nel browser prima dell’invio. PrivateNote conserva testo cifrato, non testo in chiaro. La chiave di decifratura vive nel frammento dell’URL, la parte dopo `#`, che i browser non inviano al server quando caricano la pagina.",
+      p2: "Il segreto viene cifrato nel browser prima dell’invio. PrivateNote conserva testo cifrato, non testo in chiaro. La chiave di decifratura vive nel frammento dell’URL, la parte dopo `#`, che i browser non inviano al server quando caricano la pagina. È il modello del [link monouso](blog:one-time-secret-links) applicato alle credenziali API.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Il server riceve l’ID della nota e il payload cifrato.",
       bullet2: "Il server non riceve la chiave di decifratura.",

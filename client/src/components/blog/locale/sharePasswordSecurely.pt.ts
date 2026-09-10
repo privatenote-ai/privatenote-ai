@@ -30,7 +30,7 @@ export const sharePasswordSecurelyPt: SharePasswordSecurelyArticleCopy = {
     {
       title: "Como funcionam as ligações cifradas no browser",
       paragraphs: [
-        "Para partilha rápida e pontual de palavras-passe, as ligações de utilização única cifradas no browser estão entre as opções mais seguras e eficientes. Em vez de enviar a credencial em si, envia uma ligação única e temporária para uma nota cifrada.",
+        "Para partilha rápida e pontual de palavras-passe, as ligações de utilização única cifradas no browser estão entre as opções mais seguras e eficientes. Em vez de enviar a credencial em si, envia uma ligação única e temporária para uma nota cifrada. [O que é um link de uso único](blog:one-time-secret-links) explica o modelo por trás dessa entrega.",
         "O browser faz o trabalho pesado: a palavra-passe é cifrada localmente antes do carregamento, pelo que o servidor intermediário armazena ciphertext—não a sua palavra-passe em bruto. A chave de decifração fica tipicamente no fragmento da ligação, que os browsers não enviam ao servidor.",
       ],
       flowIntro: "Para partilhar um segredo com uma ligação temporária e autodestrutiva, siga estes quatro passos:",

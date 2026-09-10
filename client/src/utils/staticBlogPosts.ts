@@ -536,7 +536,7 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
       coverImage: null,
       published: true,
       createdAt: at("one-time-secret-links"),
-      updatedAt: at("one-time-secret-links"),
+      updatedAt: new Date("2026-09-10T12:00:00.000Z"),
     },
     {
       id: -7,

@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { EngagementAnalyticsTab } from '@/pages/admin/EngagementAnalyticsTab';
+import { AnalyticsPaceTable } from '@/pages/admin/AnalyticsPaceTable';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -271,6 +272,8 @@ function AnalyticsTab({ onUnauth }: { onUnauth: () => void }) {
 
   return (
     <div className="space-y-6">
+      <AnalyticsPaceTable onUnauth={onUnauth} fetchAdmin={fetchAdmin} />
+
       {/* Controls */}
       <div className="flex flex-wrap items-end gap-3">
         <div>

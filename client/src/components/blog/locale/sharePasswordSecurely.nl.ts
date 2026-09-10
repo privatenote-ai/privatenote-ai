@@ -30,7 +30,7 @@ export const sharePasswordSecurelyNl: SharePasswordSecurelyArticleCopy = {
     {
       title: "Hoe browserversleutelde links werken",
       paragraphs: [
-        "Voor snelle, eenmalige wachtwoorddeling behoren browserversleutelde eenmalige links tot de veiligste en efficiëntste opties. In plaats van de inloggegevens zelf te sturen, stuur je een unieke, tijdelijke link naar een versleutelde notitie.",
+        "Voor snelle, eenmalige wachtwoorddeling behoren browserversleutelde eenmalige links tot de veiligste en efficiëntste opties. In plaats van de inloggegevens zelf te sturen, stuur je een unieke, tijdelijke link naar een versleutelde notitie. [Wat een eenmalige link is](blog:one-time-secret-links) legt het model achter die overdracht uit.",
         "Je browser doet het zware werk: het wachtwoord wordt lokaal versleuteld vóór upload, zodat de tussenliggende server ciphertext opslaat—niet je ruwe wachtwoord. De ontsleutelingsleutel blijft doorgaans in het linkfragment, dat browsers niet naar de server sturen.",
       ],
       flowIntro: "Om een geheim te delen met een tijdelijke, zelfvernietigende link, volg je deze vier stappen:",

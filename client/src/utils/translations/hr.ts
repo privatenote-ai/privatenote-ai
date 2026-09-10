@@ -1554,6 +1554,10 @@ export const hr: Translations = {
   documentMetaSecureFileTransferTitle: "Siguran prijenos datoteka",
   documentMetaSecureFileTransferDescription:
     "Šaljite datoteke sigurno uz šifriranje u pregledniku. PrivateNote pohranjuje samo šifrirane podatke, s poveznicama koje istječu i bez računa za primatelje.",
+  documentMetaOneTimeLinkTitle: "Stvorite tajnu jednokratnu poveznicu",
+  documentMetaOneTimeLinkDescription:
+    "Stvorite šifriranu jednokratnu poveznicu za lozinke, privatne poruke i datoteke — bez otvorenog teksta u e-pošti ili chatu.",
+  otlFooterLabel: "Jednokratna poveznica",
   devBadge: "Integracije programera",
   devHeroTitle: "Podijelite tajne s alatima gdje se posao zapravo odvija",
   devHeroSubtitle: "PrivateNote je koristan kao web stranica, ali razvojni timovi obično trebaju isti šifrirani prijenos unutar urednika, lokalnih AI agenata, skripti i kontroliranih implementacija. Ova stranica prikazuje te ulazne točke i granice povjerenja iza njih.",

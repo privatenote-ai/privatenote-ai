@@ -1789,6 +1789,10 @@ export const de: Translations = {
   documentMetaSecureFileTransferTitle: "Sichere Dateiübertragung",
   documentMetaSecureFileTransferDescription:
     "Dateien sicher mit Browser-Verschlüsselung senden. Nur Chiffretext, ablaufende Links, kein Konto für Empfänger.",
+  documentMetaOneTimeLinkTitle: "Geheimen Einmal-Link erstellen",
+  documentMetaOneTimeLinkDescription:
+    "Erstellen Sie einen verschlüsselten Einmal-Link für Passwörter, private Nachrichten und Dateien — ohne Klartext in E-Mail oder Chat zu hinterlassen.",
+  otlFooterLabel: "Einmal-Link",
   devBadge: "Entwickler-Integrationen",
   devHeroTitle: "Geheimnisse dort teilen, wo Entwickler arbeiten",
   devHeroSubtitle: "PrivateNote ist als Website nützlich, aber Entwicklerteams brauchen verschlüsselte Übergaben oft direkt in Editoren, lokalen KI-Agenten, Skripten und kontrollierten Deployments. Diese Seite zeigt die Einstiegspunkte und die Vertrauensgrenzen dahinter.",

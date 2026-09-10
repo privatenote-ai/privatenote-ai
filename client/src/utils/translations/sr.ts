@@ -1554,6 +1554,10 @@ export const sr: Translations = {
   documentMetaSecureFileTransferTitle: "Bezbedan prenos datoteka",
   documentMetaSecureFileTransferDescription:
     "Šaljite datoteke bezbedno uz šifrovanje u pregledaču. PrivateNote čuva samo šifrovane podatke, sa linkovima koji ističu i bez naloga za primaoce.",
+  documentMetaOneTimeLinkTitle: "Napravite tajni jednokratni link",
+  documentMetaOneTimeLinkDescription:
+    "Napravite šifrovani jednokratni link za lozinke, privatne poruke i datoteke — bez otvorenog teksta u imejlu ili četu.",
+  otlFooterLabel: "Jednokratni link",
   devBadge: "Integracije programera",
   devHeroTitle: "Delite tajne iz alata gde se posao zapravo dešava",
   devHeroSubtitle: "__PN_0__ je koristan kao veb lokacija, ali timovima programera obično je potrebna ista šifrovana predaja unutar uređivača, lokalnih AI agenata, skripti i kontrolisanih implementacija. Ova stranica mapira te ulazne tačke i granicu poverenja iza njih.",

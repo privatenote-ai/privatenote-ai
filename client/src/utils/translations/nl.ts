@@ -1793,6 +1793,10 @@ export const nl: Translations = {
   documentMetaSecureFileTransferTitle: "Veilige bestandsoverdracht",
   documentMetaSecureFileTransferDescription:
     "Verstuur bestanden met browserversleuteling. Alleen versleutelde data, verlopende links, geen account voor ontvangers.",
+  documentMetaOneTimeLinkTitle: "Maak een eenmalige geheime link",
+  documentMetaOneTimeLinkDescription:
+    "Maak een versleutelde eenmalige link voor wachtwoorden, privéberichten en bestanden, zonder plaintext in e-mail of chat achter te laten.",
+  otlFooterLabel: "Eenmalige link",
   devBadge: "Integraties van ontwikkelaars",
   devHeroTitle: "Deel geheimen van de tools waar het werk daadwerkelijk gebeurt",
   devHeroSubtitle: "PrivateNote is handig als website, maar ontwikkelaarsteams hebben meestal dezelfde gecodeerde overdracht nodig binnen editors, lokale AI-agents, scripts en gecontroleerde implementaties. Deze pagina brengt die toegangspunten en de vertrouwensgrens daarachter in kaart.",

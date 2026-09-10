@@ -1,5 +1,6 @@
 export const NOTE_CREATION_ENTRY_POINTS = [
   "home",
+  "one-time-link",
   "password-share",
   "file-share",
   "extension",
@@ -14,6 +15,7 @@ export function sanitizeNoteCreationEntryPoint(raw: unknown): NoteCreationEntryP
   const normalized = raw.trim().toLowerCase();
   if (
     normalized === "home" ||
+    normalized === "one-time-link" ||
     normalized === "password-share" ||
     normalized === "file-share" ||
     normalized === "extension" ||
@@ -27,6 +29,7 @@ export function sanitizeNoteCreationEntryPoint(raw: unknown): NoteCreationEntryP
 
 export const NOTE_CREATION_ENTRY_POINT_LABELS: Record<NoteCreationEntryPoint, string> = {
   home: "Home",
+  "one-time-link": "One-time link",
   "password-share": "Share a password",
   "file-share": "Share a file",
   extension: "Editor extension",

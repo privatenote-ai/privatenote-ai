@@ -2238,6 +2238,10 @@ export const en: Translations = {
   documentMetaSecureFileTransferTitle: "Secure File Transfer",
   documentMetaSecureFileTransferDescription:
     "Send files securely with browser-side encryption. PrivateNote stores only encrypted file data, with expiring links and no account required for recipients.",
+  documentMetaOneTimeLinkTitle: "Create a One-Time Secret Link",
+  documentMetaOneTimeLinkDescription:
+    "Create an encrypted one-time link for passwords, private messages and files. Share sensitive information without leaving plaintext in email or chat.",
+  otlFooterLabel: "One-time link",
   devBadge: "Developer integrations",
   devHeroTitle: "Share secrets from the tools where work actually happens",
   devHeroSubtitle:

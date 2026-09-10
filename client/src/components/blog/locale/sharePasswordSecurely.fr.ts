@@ -30,7 +30,7 @@ export const sharePasswordSecurelyFr: SharePasswordSecurelyArticleCopy = {
     {
       title: "Comment fonctionnent les liens chiffrés côté navigateur",
       paragraphs: [
-        "Pour un partage ponctuel et rapide de mots de passe, les liens à usage unique chiffrés dans le navigateur comptent parmi les options les plus sûres et efficaces. Plutôt que d’envoyer l’identifiant lui-même, vous envoyez un lien unique et temporaire vers une note chiffrée.",
+        "Pour un partage ponctuel et rapide de mots de passe, les liens à usage unique chiffrés dans le navigateur comptent parmi les options les plus sûres et efficaces. Plutôt que d’envoyer l’identifiant lui-même, vous envoyez un lien unique et temporaire vers une note chiffrée. [Qu’est-ce qu’un lien à usage unique](blog:one-time-secret-links) explique le modèle derrière cette remise.",
         "Votre navigateur fait le travail lourd : le mot de passe est chiffré localement avant l’envoi, de sorte que le serveur intermédiaire stocke du ciphertext—pas votre mot de passe brut. La clé de déchiffrement reste généralement dans le fragment du lien, que les navigateurs n’envoient pas au serveur.",
       ],
       flowIntro:

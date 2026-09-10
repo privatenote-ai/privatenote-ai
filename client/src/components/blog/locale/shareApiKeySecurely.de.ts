@@ -138,7 +138,7 @@ export const shareApiKeySecurelyDe: ShareApiKeyArticleCopy = {
       p1: "PrivateNote ist für den Mensch-zu-Mensch-Moment gebaut: API-Schlüssel, SSH-Privatschlüssel, Datenbank-Zugangsdaten, Wiederherstellungscodes, Webhook-Signing-Secrets und temporäre Passwörter, die eine Person erreichen sollen, ohne dauerhafter Datensatz zu werden.",
       relatedSsh:
         "Geht es um einen SSH-Schlüssel statt um API-Zugangsdaten, siehe [SSH-Schlüssel sicher teilen](blog:how-to-share-ssh-keys-securely) zu öffentlichen vs. privaten Schlüsseln, Deploy Keys und Editor-Erweiterungen.",
-      p2: "Das Geheimnis wird in Ihrem Browser vor dem Upload verschlüsselt. PrivateNote speichert Chiffretext, nicht Klartext. Der Entschlüsselungsschlüssel liegt im URL-Fragment—dem Teil nach `#`—den Browser beim Laden nicht an den Server senden.",
+      p2: "Das Geheimnis wird in Ihrem Browser vor dem Upload verschlüsselt. PrivateNote speichert Chiffretext, nicht Klartext. Der Entschlüsselungsschlüssel liegt im URL-Fragment—dem Teil nach `#`—den Browser beim Laden nicht an den Server senden. Das ist das Modell des [Einmal-Links](blog:one-time-secret-links), angewandt auf API-Zugangsdaten.",
       urlExample: "https://privatenote.ai/note/abc123#kL8mN4...",
       bullet1: "Der Server erhält die Notiz-ID und die verschlüsselte Nutzlast.",
       bullet2: "Der Server erhält den Entschlüsselungsschlüssel nicht.",

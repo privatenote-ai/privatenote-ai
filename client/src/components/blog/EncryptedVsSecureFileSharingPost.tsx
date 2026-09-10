@@ -28,6 +28,19 @@ import { encryptedVsSecureFileSharingSr } from "@/components/blog/locale/encrypt
 
 type FlowKind = "tls" | "browser";
 
+const ONE_TIME_LINK_EXPLAINER: Record<SupportedLanguage, { prefix: string; label: string }> = {
+  en: { prefix: "For the delivery model behind the link, see ", label: "what a one-time secret link is" },
+  de: { prefix: "Zum Zustellmodell hinter dem Link: ", label: "Was ist ein Einmal-Link?" },
+  fr: { prefix: "Pour le modèle de remise derrière le lien, voir ", label: "qu’est-ce qu’un lien à usage unique" },
+  es: { prefix: "Para el modelo de entrega detrás del enlace, consulta ", label: "qué es un enlace de un solo uso" },
+  it: { prefix: "Per il modello di consegna dietro il link, vedi ", label: "che cos’è un link monouso" },
+  nl: { prefix: "Voor het overdrachtsmodel achter de link, zie ", label: "wat is een eenmalige link" },
+  pt: { prefix: "Para o modelo de entrega por trás do link, veja ", label: "o que é um link de uso único" },
+  hr: { prefix: "Model predaje iza poveznice: ", label: "što je jednokratna poveznica" },
+  sr: { prefix: "Model predaje iza linka: ", label: "šta je jednokratni link" },
+  tr: { prefix: "Bağlantının arkasındaki teslim modeli: ", label: "tek kullanımlık gizli bağlantı nedir" },
+};
+
 type ArticleSection = {
   title: string;
   level?: "primary" | "secondary";
@@ -551,8 +564,18 @@ export const EncryptedVsSecureFileSharingPost: React.FC = () => {
             <ShieldCheck className="h-5 w-5 text-primary/80" />
             {article.closingTitle}
           </h2>
-          <p className="mb-7 max-w-2xl text-[1.0625rem] leading-[1.8] text-gray-700 dark:text-gray-300">
+          <p className="mb-4 max-w-2xl text-[1.0625rem] leading-[1.8] text-gray-700 dark:text-gray-300">
             {article.closingBody}
+          </p>
+          <p className="mb-7 max-w-2xl text-[1.0625rem] leading-[1.8] text-gray-700 dark:text-gray-300">
+            {(ONE_TIME_LINK_EXPLAINER[language] ?? ONE_TIME_LINK_EXPLAINER.en).prefix}
+            <Link
+              href={blogPostPath("one-time-secret-links", language)}
+              className="font-medium text-primary hover:underline"
+            >
+              {(ONE_TIME_LINK_EXPLAINER[language] ?? ONE_TIME_LINK_EXPLAINER.en).label}
+            </Link>
+            .
           </p>
           <Link
             href={fileTransferPath}

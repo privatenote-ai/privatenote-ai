@@ -30,7 +30,7 @@ export const sharePasswordSecurelyEs: SharePasswordSecurelyArticleCopy = {
     {
       title: "Cómo funcionan los enlaces cifrados en el navegador",
       paragraphs: [
-        "Para un intercambio rápido y puntual de contraseñas, los enlaces de un solo uso cifrados en el navegador se encuentran entre las opciones más seguras y eficientes. En lugar de enviar la credencial en sí, envía un enlace único y temporal a una nota cifrada.",
+        "Para un intercambio rápido y puntual de contraseñas, los enlaces de un solo uso cifrados en el navegador se encuentran entre las opciones más seguras y eficientes. En lugar de enviar la credencial en sí, envía un enlace único y temporal a una nota cifrada. [Qué es un enlace de un solo uso](blog:one-time-secret-links) explica el modelo detrás de esa entrega.",
         "Su navegador hace el trabajo pesado: la contraseña se cifra localmente antes de la carga, de modo que el servidor intermediario almacena ciphertext—no su contraseña en bruto. La clave de descifrado suele permanecer en el fragmento del enlace, que los navegadores no envían al servidor.",
       ],
       flowIntro:

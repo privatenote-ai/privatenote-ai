@@ -18,6 +18,7 @@ import { isSupportedLanguage, SUPPORTED_LANGUAGES, type SupportedLanguage } from
 
 const LOCALIZED_MARKETING_STEMS = new Set([
   "password-generator",
+  "one-time-link",
   "secure-file-transfer",
   "privacy-tools",
   "security-resources",

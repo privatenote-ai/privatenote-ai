@@ -1615,6 +1615,10 @@ export const fr: Translations = {
   documentMetaSecureFileTransferTitle: "Transfert de fichiers sécurisé",
   documentMetaSecureFileTransferDescription:
     "Envoyez des fichiers avec chiffrement navigateur. Données chiffrées uniquement, liens expirants, sans compte pour les destinataires.",
+  documentMetaOneTimeLinkTitle: "Créer un lien secret à usage unique",
+  documentMetaOneTimeLinkDescription:
+    "Créez un lien chiffré à usage unique pour mots de passe, messages privés et fichiers, sans laisser le clair dans l’e-mail ou le chat.",
+  otlFooterLabel: "Lien à usage unique",
   devBadge: "Intégrations développeurs",
   devHeroTitle: "Partagez les secrets là où le travail se fait vraiment",
   devHeroSubtitle: "PrivateNote fonctionne très bien comme application web, mais les équipes de développement ont souvent besoin du même transfert sécurisé dans leurs éditeurs, agents IA locaux, scripts et déploiements contrôlés. Cette page présente ces points d’entrée et la limite de confiance de chacun.",

@@ -36,6 +36,11 @@ import {
   buildPasswordGeneratorFaqSchema,
   isPasswordGeneratorRoute,
 } from "./passwordGeneratorStructuredData.ts";
+import {
+  buildOneTimeLinkFaqSchema,
+  isOneTimeLinkRoute,
+} from "./oneTimeLinkStructuredData.ts";
+import { getOneTimeLinkCopy } from "../client/src/pages/oneTimeLink/copy.ts";
 import { isSupportedLanguage, type SupportedLanguage } from "./supportedLanguages.ts";
 
 const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations> = {
@@ -368,6 +373,20 @@ function injectPasswordGeneratorFaqSchema(html: string, route: string, t: Transl
   return withoutExisting.replace("</head>", `${script}\n</head>`);
 }
 
+function injectOneTimeLinkFaqSchema(html: string, route: string, language: SupportedLanguage): string {
+  if (!isOneTimeLinkRoute(route)) return html;
+
+  const copy = getOneTimeLinkCopy(language);
+  const schema = buildOneTimeLinkFaqSchema(copy.faqs);
+  const script = `<script type="application/ld+json" data-structured-data-id="one-time-link-faq">${serializeJsonLd(schema)}</script>`;
+
+  const withoutExisting = html.replace(
+    /\s*<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*\bdata-structured-data-id=["']one-time-link-faq["'][^>]*>[\s\S]*?<\/script>/gi,
+    "",
+  );
+  return withoutExisting.replace("</head>", `${script}\n</head>`);
+}
+
 function injectSecureFileTransferFaqSchema(html: string, route: string, t: Translations): string {
   if (!isSecureFileTransferRoute(route)) return html;
 
@@ -411,6 +430,7 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
   out = injectBlogPostCrawlerFallback(out, route, t);
   out = injectPasswordGeneratorFaqSchema(out, route, t);
   out = injectSecureFileTransferFaqSchema(out, route, t);
+  out = injectOneTimeLinkFaqSchema(out, route, lang);
   out = stripPrerenderCloudflareAnalyticsBeacons(out);
 
   return out;
