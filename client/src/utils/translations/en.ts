@@ -27,7 +27,7 @@ export const en: Translations = {
   sftFeatureAccessTitle: "Controlled access",
   sftFeatureAccessText: "Set expiry, view limits, and file access windows so the transfer disappears after the recipient opens it.",
   sftFeatureSignInTitle: "Sign in to send",
-  sftFeatureSignInText: "Sending requires a free PrivateNote account (up to 25 MB per file, 250 MB total storage, 10 file/photo/audio/recording transfers per day). Recipients never need an account to open the link.",
+  sftFeatureSignInText: "Sending requires a free PrivateNote account (up to 25 MB per file, 250 MB total storage, 10 file/photo/audio/recording transfers per month). Recipients never need an account to open the link.",
   sftFeatureNoScanTitle: "No file scanning",
   sftFeatureNoScanText: "We cannot scan your files or train an AI model on them — encryption happens before upload.",
   sftFeaturesHeading: "Key features",
@@ -35,15 +35,15 @@ export const en: Translations = {
   sftFaqHeading: "FAQ",
   sftFaqSubtitle: "Practical details about encrypted file and folder sharing with PrivateNote.",
   sftFaq1Q: "Are my files visible to PrivateNote?",
-  sftFaq1A: "No. Files are encrypted in your browser before upload using AES-256-GCM. PrivateNote stores only ciphertext — the server never has access to readable file contents or the encryption key.",
+  sftFaq1A: "No. Files are encrypted in your browser before upload using libsodium secretstream (XChaCha20-Poly1305). PrivateNote stores only ciphertext — the server never has readable file contents or the encryption key, which stays in the URL fragment.",
   sftFaq2Q: "Do I need an account to send files?",
-  sftFaq2A: "Yes, sending requires a free PrivateNote account so we can enforce per-user storage and daily transfer limits and keep the service abuse-free. Recipients do not need an account — anyone with the link can open the transfer.",
+  sftFaq2A: "Yes, sending requires a free PrivateNote account so we can enforce per-user storage and monthly transfer limits. Recipients do not need an account. Anyone with the full link can open an unprotected transfer; add a password or, on Starter and Business, recipient verification if the link might be intercepted.",
   sftFaq3Q: "Can I send a whole folder?",
   sftFaq3A: "Yes. Choose a folder and PrivateNote prepares a local zip first, then encrypts that archive before it leaves your device. The recipient downloads and decrypts the zip automatically.",
   sftFaq4Q: "What are the file size limits?",
-  sftFaq4A: "Signed-in free accounts can attach up to 25 MB per file, 250 MB total encrypted storage, and start up to 10 file, photo, audio, or recording transfers per day. Starter and Business raise size and remove the daily transfer cap. If you need to send a folder, use the built-in folder picker — PrivateNote zips and encrypts it automatically.",
+  sftFaq4A: "Signed-in Free accounts can attach up to 25 MB per file and per transfer (up to 5 files), 250 MB total encrypted storage, and start up to 10 file, photo, audio, or recording transfers per month. Starter raises that to 250 MB and 10 files, with 5 GB storage and 50 transfers per month. Business allows 1 GB and 20 files, with 50 GB storage and no monthly transfer cap. If you need to send a folder, use the built-in folder picker — PrivateNote zips and encrypts it automatically.",
   sftFaq5Q: "What happens after the recipient opens the transfer?",
-  sftFaq5A: "The transfer follows the same disappearing model as PrivateNote messages. Depending on your settings, access expires after the first view, after a set time limit, or when the file access window ends.",
+  sftFaq5A: "The note payload follows your open limit; by default that is one open. Attached files then stay viewable for the file access window you chose — 1 hour by default. Access also ends when the note expires.",
   sftFaq6Q: "Is this different from cloud drive sharing?",
   sftFaq6A: "Yes. PrivateNote is built for temporary, encrypted one-time delivery — not long-term collaboration. Files are never stored in a readable form on the server and the link stops working once the conditions you set are met.",
   sftFaq7Q: "How long can recipients download the files?",
@@ -2088,13 +2088,13 @@ export const en: Translations = {
   blogDevelopersExcerpt: "A plain-language guide to sharing secrets from VS Code, Cursor, an AI agent, or any browser — with encryption that never leaves your machine.",
   blogCodexTitle: "Using PrivateNote with OpenAI Codex",
   blogCodexExcerpt: "One command wires PrivateNote MCP into every Codex session. Setup steps, what Codex can do, and how to keep secrets out of the agent prompt.",
-  blogOneTimeLinksTitle: "One-Time Secret Links",
-  blogOneTimeLinksSubtitle: "Share sensitive information without leaving a permanent record",
+  blogOneTimeLinksTitle: "What Is a One-Time Secret Link? How Secure Sharing Works",
+  blogOneTimeLinksSubtitle: "Temporary encrypted handoff—not a vault, and not a conversation",
   blogOneTimeLinksExcerpt:
-    "Email, WhatsApp, Facebook Messenger, and Slack were built to keep messages forever. Some secrets were never meant to persist. Here's how one-time encrypted links work, when to use them, and why burn after reading is a security feature—not a gimmick.",
-  blogOneTimeLinksMetaTitle: "One-time secret links explained",
+    "A one-time secret link delivers a password, credential, or private message without leaving plaintext in email or chat history. Here is how the model works, when to use it, and how PrivateNote implements it.",
+  blogOneTimeLinksMetaTitle: "What is a one-time secret link?",
   blogOneTimeLinksMetaDescription:
-    "Learn how burn-after-reading encrypted links work, when to use them instead of email or Slack, and why ephemerality reduces risk after delivery.",
+    "Learn how one-time secret links work, when to use them, and how client-side encryption plus expiry reduce leftover passwords, credentials, and private messages.",
   blogEncryptedFileSharingTitle: "Encrypted vs. Secure File Sharing",
   blogEncryptedFileSharingSubtitle: "What’s the difference?",
   blogEncryptedFileSharingExcerpt:
@@ -2167,19 +2167,19 @@ export const en: Translations = {
   homeFaqTryTestNote: "or start by writing a test note and opening it yourself; you can see the full flow in seconds.",
   homeFaq_howItWorks_question: "How does PrivateNote.ai work?",
   homeFaq_howItWorks_answer:
-    "You write a note, take a photo, record a video, or attach a file in your browser. Your device encrypts it locally, and only the encrypted content is uploaded. You share a unique link; by default the note is deleted after it is opened once. If it is never opened, it is deleted when the chosen expiration time passes.",
+    "You write a note, take a photo, record a video, or attach a file in your browser. Your device encrypts it locally; only ciphertext is uploaded. You share a unique link. By default the note can be opened once, then it is deleted. Starter and Business can allow a few extra opens. Text notes do not need an account; photos, files, and recordings do. Recipients never need an account. Unopened notes are deleted when the expiry you chose passes.",
   homeFaq_seeContent_question: "Can PrivateNote.ai see my note content?",
   homeFaq_seeContent_answer:
-    "No. Notes are encrypted in your browser before they are uploaded. We only store the encrypted payload, so we cannot read your plaintext message.",
+    "No. Stored notes are encrypted in your browser before upload. We keep only ciphertext, so we cannot read your message. Optional Cloud Assist is the exception: if you turn it on, the draft you send to the model leaves this device before you encrypt the note. On-device Private AI stays in the browser. Regular notes work without any AI.",
   homeFaq_afterOpen_question: "What happens after the note is opened?",
   homeFaq_afterOpen_answer:
-    "Notes are read-once for maximum privacy. After someone opens the link, the note is destroyed and cannot be viewed again. If it is never opened, it is deleted when the expiration time passes. Once a note is destroyed or expired, it cannot be recovered.",
+    "By default a note can be opened once, then it is deleted and cannot be recovered. Starter allows up to 3 opens; Business up to 10. After the first reveal, attached photos, videos, and files stay available for a limited window—1 hour by default (15 minutes or 1 hour on Free, up to 4 hours on Starter, 24 hours on Business). If nobody opens the link, the note is deleted when it expires. Recipients can still copy, screenshot, or save what they see.",
   homeFaq_takePhoto_question: "Can I take a photo and send it privately?",
   homeFaq_takePhoto_answer:
-    "Yes. Use Take photo to capture from your camera. The image is encrypted in your browser like a file attachment before upload. You can crop first, and location metadata is removed by default for common photo formats. Sending photos requires a free account; recipients do not. They can still save or screenshot what they open.",
+    "Yes. Use Take photo to capture from your camera. The shot is re-encoded in the browser, which drops common location metadata, and you can crop it before it is encrypted and uploaded like a file. Sending photos requires a signed-in Free account; recipients do not. They can still screenshot or save what they open.",
   homeFaq_video_question: "Can I record a video message?",
   homeFaq_video_answer:
-    "Yes. Use Record and choose Video. The clip is encrypted in your browser like a file attachment, then sent as a disappearing note. Recording voice or video is available on Free with a signed-in account. Starter and Business allow longer recordings and larger files. Recipients can still download or save the video after they open the link.",
+    "Yes. Use Record and choose Video. The clip is encrypted in your browser like a file attachment. Recording needs a signed-in Free account. Length follows your plan: 5 minutes on Free, 15 on Starter, 30 on Business, with larger file limits on paid plans. Recipients can still screenshot or save what they open. Business view-only hides the normal download; it does not stop screenshots.",
   homeFaq_linkLength_question: "Why is the link longer than other note-sharing services?",
   homeFaq_linkLength_answer:
     "The link is longer because the decryption key travels in the link itself, not on our servers. The key sits after the `#` in the URL. When someone opens the link, the browser only sends the part before `#` to websites—the rest stays on the device—so that key never reaches PrivateNote.ai.",
@@ -2194,31 +2194,31 @@ export const en: Translations = {
     "No. For standard notes, our server stores the encrypted note and metadata, not the usable decryption key. The key is in the part of the link after `#`. Browsers keep everything after `#` on the device when loading a page—they do not send it to our servers—so we never receive your decryption key.",
   homeFaq_metadata_question: "What metadata do you store?",
   homeFaq_metadata_answer:
-    "We store encrypted note payloads and the settings needed for expiration and read limits—not your plaintext. We also keep aggregated, first-party service statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, page visits, time a page stays visible in the foreground, and similar operational totals. Those statistics never include note content, note IDs, or session recordings, and are not shared with advertising or third-party analytics providers. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
+    "We store encrypted note payloads and the settings needed to run them—expiry, open limits, and similar controls—not your plaintext. If you use signed-in delivery controls, we may also keep sent-note status and a recipient email when you turn on verification. We keep aggregated first-party statistics: daily counters such as notes created or viewed, password-protection and AI mode usage, coarse country and UI language, page visits, and time a page stays visible in the foreground. Those statistics never include note content, note IDs, or session recordings, and are not shared with advertising or third-party analytics. Limited security and abuse-prevention logs (for example IP-level metadata and rate limiting) are retained for a short period, as described in our Privacy Policy.",
   homeFaq_euStorage_question: "Is PrivateNote.ai data stored in the EU?",
   homeFaq_euStorage_answer:
-    "Yes. Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure. Some network traffic may still pass through security and delivery systems before reaching storage.",
+    "Yes. Authentication data, encrypted notes, and file ciphertext are stored in EU-jurisdiction infrastructure. Some network traffic still passes through Cloudflare’s global security and delivery network. Optional Cloud Assist and Stripe payments can process data outside the EU.",
   homeFaq_recover_question: "Can I recover a note after it is destroyed or expired?",
   homeFaq_recover_answer:
     "No. Once a note is deleted because it was read or expired, it cannot be recovered.",
   homeFaq_shareLink_question: "Is it safe to share the link over email or chat?",
   homeFaq_shareLink_answer:
-    "The encrypted note is safe, but the link is the key. Anyone with the link can open the note, so use trusted channels and short expirations. Recipients can also forward the link, screenshot, or copy what they see—PrivateNote cannot prevent that after access.",
+    "The encrypted note is safe, but the full link is the key. Anyone with that link can open an unprotected note, so use trusted channels and short expirations. Add a password and send it on a different channel, or on Starter and Business turn on recipient verification so an intercepted link is not enough on its own. Recipients can still forward the link, screenshot, or copy what they see.",
   homeFaq_protectAgainstAttack_question: "How do I best protect a note against an attack?",
   homeFaq_protectAgainstAttack_answer:
-    "Treat the link as the key. Add a password and send it on a different channel than the link (for example, the link by email and the password by text or a call). On Starter and Business, also turn on recipient verification: we email a one-time code to the recipient’s address before the note can be revealed, so an intercepted link is not enough on its own. Keep your device operating system and browser on the latest security updates, use a short expiry, and leave burn after reading on. After someone opens the note, they can still copy or screenshot it.",
+    "Treat the link as the key. Add a password and send it on a different channel than the link (for example, the link by email and the password by text or a call). On Starter and Business, also turn on recipient verification: we email a one-time code to the recipient before the note can be revealed. Keep your device OS and browser updated, use a short expiry, and keep the open count at 1. After someone opens the note, they can still copy or screenshot it.",
   homeFaq_forwarding_question: "Can recipients forward the note?",
   homeFaq_forwarding_answer:
     "They can forward the link. PrivateNote reduces risk with read-once notes and expirations, but it cannot prevent screenshots, copy/paste, or forwarding after access.",
   homeFaq_size_question: "How large can a note, photo, or video be?",
   homeFaq_size_answer:
-    "Text is limited to 50 KB—enough for short to medium secrets. Photos, videos, and other files follow your plan: up to 25 MB per file on Free (10 file/photo/audio/recording transfers a month), 250 MB on Starter, and 1 GB on Business. Starter and Business also remove the Free monthly transfer cap.",
+    "Text is limited to 50 KB on Free, 200 KB on Starter, and 500 KB on Business. Photos, videos, and other files are capped per file and per transfer: 25 MB on Free (up to 5 files), 250 MB on Starter (up to 10 files), and 1 GB on Business (up to 20 files). Free accounts can start 10 file, photo, audio, or recording transfers per month; Starter allows 50 per month; Business removes that monthly cap.",
   homeFaq_pricing_question: "Is PrivateNote.ai free?",
   homeFaq_pricing_answer:
-    "PrivateNote.ai offers Free encrypted notes, plus Starter and Business plans for delivery controls and higher limits. Free includes up to 10 file, photo, audio, or recording transfers per month when you are signed in; text-only notes stay unlimited under fair use.",
+    "Yes. Encrypted text notes can be sent without an account. Photos, files, and recordings need a signed-in Free account, with up to 10 of those transfers per month. Starter raises that to 50 per month and adds delivery controls and higher size limits. Business removes the transfer cap. Hosted AI drafts are a separate monthly allowance (3 on Free).",
   homeFaq_ai_question: "Why .ai — do you use AI on my notes?",
   homeFaq_ai_answer:
-    "AI features are strictly opt-in. Regular notes work without AI, and note pages are not used for ad tracking.",
+    "AI is optional and off unless you turn it on. Regular notes are encrypted locally and are not sent to a model. On-device Private AI runs in the browser when your device supports it. Cloud Assist is different: it sends your draft to Cloudflare Workers AI (Google Gemma 4 26B) before you encrypt the note, so it is not fully private. Hosted drafts need a signed-in account. Note pages are not used for ad tracking.",
   homeFaq_expirationDefaults_question: "How long do notes live if I do not set an expiration?",
   homeFaq_expirationDefaults_answer:
     "PrivateNote.ai encourages short-lived notes. You can choose the lifetime when creating a note; after expiration, the note is deleted automatically.",
@@ -3115,7 +3115,7 @@ export const en: Translations = {
     "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
   pricingFaqDifferenceQ: "What is the difference between Starter and Business?",
   pricingFaqDifferenceA:
-    "Starter ({starterMonthly}/month) unlocks proof of access, recipient verification, revoke, the sent-notes overview, reveal-page typefaces, and higher limits. Business ({businessMonthly}/month) adds branded reveal pages, browser-saved custom AI prompt templates, files up to 1 GB, and 50 GB encrypted storage — still one professional account, not team seats.",
+    "Starter ({starterMonthly}/month) unlocks proof of access, recipient verification, delayed reveal, revoke, the sent-notes overview, reveal-page typefaces, and higher limits. Business ({businessMonthly}/month) adds branded reveal pages, view-only file access, browser-saved custom AI prompt templates, files up to 1 GB, and 50 GB encrypted storage — still one professional account, not team seats.",
   pricingFaqAnnualQ: "How does annual billing work?",
   pricingFaqAnnualA:
     "Annual plans are charged once per year at {starterYearly} for Starter and {businessYearly} for Business — two months free versus paying monthly. Stripe charges USD or EUR based on your region at checkout.",

@@ -239,12 +239,12 @@ class FakeD1Database {
     }
     if (
       q.startsWith("SELECT COUNT(*) AS transfer_count FROM account_file_storage_reservations") &&
-      q.includes("date(created_at) = date('now')")
+      q.includes("strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')")
     ) {
       const userId = String(args[0]);
-      const today = new Date().toISOString().slice(0, 10);
+      const month = new Date().toISOString().slice(0, 7);
       const transfer_count = [...this.reservations.values()].filter(
-        (row) => row.user_id === userId && row.created_at.slice(0, 10) === today,
+        (row) => row.user_id === userId && row.created_at.slice(0, 7) === month,
       ).length;
       return { transfer_count };
     }
@@ -422,7 +422,7 @@ describe("note file storage accounting", () => {
     }
   });
 
-  it("blocks free accounts after 10 file transfers in a day", async () => {
+  it("blocks accounts after 10 file transfers in a UTC month", async () => {
     const db = new FakeD1Database();
     const env = makeEnv(db);
     const limit = 10;
@@ -435,7 +435,7 @@ describe("note file storage accounting", () => {
         noteId,
         100,
         FREE_STORAGE_LIMIT,
-        { maxTransfersPerDay: limit },
+        { maxTransfersPerMonth: limit },
       );
       assert.deepEqual(result, { ok: true });
     }
@@ -446,12 +446,12 @@ describe("note file storage accounting", () => {
       NOTE_ID_2,
       100,
       FREE_STORAGE_LIMIT,
-      { maxTransfersPerDay: limit },
+      { maxTransfersPerMonth: limit },
     );
     assert.equal(blocked.ok, false);
     if (!blocked.ok) {
       assert.equal(blocked.status, 429);
-      assert.equal(blocked.body.error, "attachment_transfer_daily_limit");
+      assert.equal(blocked.body.error, "attachment_transfer_monthly_limit");
       assert.equal(blocked.body.limit, limit);
       assert.equal(blocked.body.used, limit);
     }
@@ -465,7 +465,42 @@ describe("note file storage accounting", () => {
         firstNoteId,
         100,
         FREE_STORAGE_LIMIT,
-        { maxTransfersPerDay: limit },
+        { maxTransfersPerMonth: limit },
+      ),
+      { ok: true },
+    );
+  });
+
+  it("does not count last month's transfers against the UTC month cap", async () => {
+    const db = new FakeD1Database();
+    const env = makeEnv(db);
+    const lastMonth = new Date();
+    lastMonth.setUTCMonth(lastMonth.getUTCMonth() - 1);
+    const priorId = "00000000-0000-4000-8000-000000000001";
+
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(
+        env,
+        USER_ID,
+        priorId,
+        100,
+        FREE_STORAGE_LIMIT,
+        { maxTransfersPerMonth: 1 },
+      ),
+      { ok: true },
+    );
+    const prior = db.reservations.get(priorId);
+    assert.ok(prior);
+    prior.created_at = lastMonth.toISOString();
+
+    assert.deepEqual(
+      await reserveAccountFileStorageBytes(
+        env,
+        USER_ID,
+        NOTE_ID_2,
+        100,
+        FREE_STORAGE_LIMIT,
+        { maxTransfersPerMonth: 1 },
       ),
       { ok: true },
     );
