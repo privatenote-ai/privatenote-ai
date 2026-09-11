@@ -1273,6 +1273,11 @@ export const nl: Translations = {
   successShareViaSlack: "Delen via Slack",
   successShowQrCode: "QR-code tonen",
   successMoreSharingOptions: "Meer deelopties",
+  successLetPrivateNoteSend: "Laat PrivateNote het versturen",
+  successSendLink: "Link versturen",
+  successDeliveryLinkOnly: "PrivateNote verstuurt alleen de beveiligde link — nooit de inhoud van je notitie.",
+  successDeliveryLinkOnlyHint:
+    "De notitie blijft versleuteld. E-mail draagt alleen de link; deel extra gevoelige geheimen liever zelf.",
   passwordProtectionEnabledTitle: "Wachtwoordbeveiliging ingeschakeld.",
   passwordProtectionEnabledBody: "Deze notitie vereist zowel de link als uw wachtwoord om te ontsleutelen.",
   passwordProtectionSendSeparately: "Stuur het wachtwoord voor de beste beveiliging apart van de link.",

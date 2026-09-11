@@ -1200,6 +1200,11 @@ export const sr: Translations = {
   successShareViaSlack: "Podeli putem Slack-a",
   successShowQrCode: "Prikaži QR kod",
   successMoreSharingOptions: "Više opcija deljenja",
+  successLetPrivateNoteSend: "Neka PrivateNote pošalje",
+  successSendLink: "Pošalji link",
+  successDeliveryLinkOnly: "PrivateNote šalje samo bezbedan link — nikad sadržaj poruke.",
+  successDeliveryLinkOnlyHint:
+    "Poruka ostaje šifrovana. Imejl samo nosi link; za najosetljivije tajne, podelite ga sami.",
   passwordProtectionEnabledTitle: "Zaštita lozinkom je omogućena.",
   passwordProtectionEnabledBody: "Ova poruka zahteva i link i vašu lozinku za dešifrovanje.",
   passwordProtectionSendSeparately: "Za najbolju sigurnost, pošaljite lozinku odvojeno od linka.",

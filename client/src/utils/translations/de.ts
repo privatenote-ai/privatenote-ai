@@ -1276,6 +1276,11 @@ export const de: Translations = {
   successShareViaSlack: "Über Slack teilen",
   successShowQrCode: "QR-Code anzeigen",
   successMoreSharingOptions: "Weitere Teilen-Optionen",
+  successLetPrivateNoteSend: "PrivateNote soll es senden",
+  successSendLink: "Link senden",
+  successDeliveryLinkOnly: "PrivateNote sendet nur den sicheren Link — niemals den Inhalt Ihrer Notiz.",
+  successDeliveryLinkOnlyHint:
+    "Die Notiz bleibt verschlüsselt. E-Mail transportiert nur den Link; für besonders sensible Inhalte teilen Sie ihn besser selbst.",
   passwordProtectionEnabledTitle: "Passwortschutz aktiviert.",
   passwordProtectionEnabledBody: "Diese Notiz erfordert sowohl den Link als auch Ihr Passwort zur Entschlüsselung.",
   passwordProtectionSendSeparately: "Senden Sie das Passwort aus Sicherheitsgründen getrennt vom Link.",

@@ -1200,6 +1200,11 @@ export const pt: Translations = {
   successShareViaSlack: "Partilhar via Slack",
   successShowQrCode: "Mostrar código QR",
   successMoreSharingOptions: "Mais opções de partilha",
+  successLetPrivateNoteSend: "Deixar a PrivateNote enviar",
+  successSendLink: "Enviar link",
+  successDeliveryLinkOnly: "A PrivateNote envia apenas o link seguro — nunca o conteúdo da nota.",
+  successDeliveryLinkOnlyHint:
+    "A nota permanece encriptada. O e-mail só transporta o link; para segredos mais sensíveis, partilhe-o você mesmo.",
   passwordProtectionEnabledTitle: "Proteção por senha ativada.",
   passwordProtectionEnabledBody: "Esta nota requer o link e sua senha para descriptografar.",
   passwordProtectionSendSeparately: "Para melhor segurança, envie a senha separadamente do link.",

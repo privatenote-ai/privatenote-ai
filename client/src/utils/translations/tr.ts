@@ -1468,6 +1468,11 @@ export const tr: Translations = {
   successShareViaSlack: "Slack ile paylaş",
   successShowQrCode: "QR kodu göster",
   successMoreSharingOptions: "Daha fazla paylaşım seçeneği",
+  successLetPrivateNoteSend: "PrivateNote göndersin",
+  successSendLink: "Bağlantıyı gönder",
+  successDeliveryLinkOnly: "PrivateNote yalnızca güvenli bağlantıyı gönderir — not içeriğini asla göndermez.",
+  successDeliveryLinkOnlyHint:
+    "Not şifreli kalır. E-posta yalnızca bağlantıyı taşır; en hassas sırlar için bağlantıyı kendiniz paylaşın.",
   passwordProtectionEnabledTitle: "Şifre koruması açık.",
   passwordProtectionEnabledBody: "Bu notu çözmek için hem bağlantı hem şifre gerekir.",
   passwordProtectionSendSeparately: "Şifre bağlantıdan ayrı gönderilmelidir.",

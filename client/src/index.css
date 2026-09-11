@@ -208,6 +208,19 @@
     font-family: "Snell Roundhand", "Segoe Script", "Bradley Hand ITC", "Bradley Hand", "Apple Chancery", cursive;
     font-weight: 500;
   }
+
+  button.success-share-action,
+  a.success-share-action,
+  button.success-quiet-btn,
+  button.success-share-action:hover,
+  a.success-share-action:hover,
+  button.success-quiet-btn:hover,
+  button.success-share-action:focus,
+  a.success-share-action:focus,
+  button.success-quiet-btn:focus {
+    box-shadow: none;
+    transform: none;
+  }
   /* 13.3" laptop height: pull the two-line hero down so compose actions stay on-screen. */
   @media (min-width: 768px) and (max-height: 900px) {
     .page-title {

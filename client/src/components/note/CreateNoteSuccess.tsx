@@ -8,6 +8,7 @@ import { type NoteExpiryPresetId } from "@shared/noteExpiry";
 import {
   Ban,
   Check,
+  CircleHelp,
   CirclePlus,
   Copy,
   Eye,
@@ -64,7 +65,7 @@ function slackShareHref(url: string): string {
 function SuccessBurstCheck() {
   return (
     <div
-      className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center sm:mb-5"
+      className="relative mx-auto mb-3 flex h-14 w-14 items-center justify-center sm:mb-4 sm:h-16 sm:w-16"
       aria-hidden
     >
       <svg viewBox="0 0 64 64" className="absolute inset-0 h-16 w-16 text-primary/40">
@@ -196,6 +197,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [localLabel, setLocalLabel] = useState(noteLabel);
+  const [showDeliveryPanel, setShowDeliveryPanel] = useState(false);
   const copyResetRef = useRef<number | null>(null);
   const copyInFlightRef = useRef(false);
   const isFileTransfer = variant === "file-transfer";
@@ -242,6 +244,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const deliverySent = recipientLinkDelivery?.status === "sent";
   const deliveryFailed = recipientLinkDelivery?.status === "failed";
   const canSubmitDelivery = recipientLinkDeliveryGate === "ready" && Boolean(onDeliverRecipientLink);
+  const deliveryPanelOpen = showDeliveryPanel || deliverySent || deliveryFailed;
   const copyLabel = t.successCopy ?? "Copy";
   const copiedLabel = t.successCopied ?? t.copied ?? "Copied!";
   const namePlaceholder = t.successNameNoteOptional ?? "Name this note (optional)";
@@ -329,18 +332,20 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   };
 
   const shareActionClass =
-    "group flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center gap-2 rounded-lg px-1 py-2 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+    "success-share-action group flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+  const shareIconClass =
+    "flex h-11 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-gray-100 group-focus-visible:bg-gray-100 dark:group-hover:bg-gray-800 dark:group-focus-visible:bg-gray-800";
 
   return (
-    <section className="w-full max-w-4xl mx-auto py-3 sm:py-5">
-      <div className="space-y-5 sm:space-y-6">
-        <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-1 sm:pt-2">
+    <section className="w-full max-w-4xl mx-auto py-2 sm:py-4">
+      <div className="space-y-4 sm:space-y-5">
+        <section className="px-4 pb-0 sm:px-6 lg:px-8 pt-1">
           <div className="text-center">
             <SuccessBurstCheck />
             <h1 className="page-title text-gray-900 dark:text-white">
               {headingPrefix} <span className="text-primary italic">{t.ready}</span>
             </h1>
-            <div className="mt-3 max-w-3xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-4 md:text-xl space-y-1">
+            <div className="mt-2 max-w-3xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-3 md:text-xl space-y-1">
               <p className="m-0">{subtitleLine}</p>
               <p className="m-0">{t.onlySomeoneWithLinkCanRead}</p>
             </div>
@@ -363,7 +368,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
         ) : null}
 
-        <div className="relative px-4 pb-2 sm:px-6 lg:mb-16 lg:pb-4">
+        <div className="relative px-4 sm:px-6">
           <div className="mx-auto w-full max-w-3xl rounded-[20px] border border-gray-200/90 bg-white px-4 py-5 shadow-[0_10px_28px_-18px_rgba(15,23,42,0.28)] sm:px-6 sm:py-6 dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.65)]">
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-gray-200 bg-slate-50 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900">
@@ -407,7 +412,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               </button>
             </div>
 
-            <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:flex-wrap sm:items-center lg:flex-nowrap">
+            <div className="mt-4 flex flex-col gap-3 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center lg:flex-nowrap">
               <label className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-1">
                 <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
                 <span className="sr-only">{t.successNoteLabelTitle ?? "Name this note"}</span>
@@ -430,7 +435,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               <button
                 type="button"
                 onClick={onCreateNewNote}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="success-quiet-btn inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               >
                 <CirclePlus className="h-4 w-4 shrink-0" aria-hidden />
                 {createAnotherLabel}
@@ -455,7 +460,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       type="button"
                       onClick={() => setRevokeDialogOpen(true)}
                       disabled={revoking || !onRevoke}
-                      className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-rose-500/90 transition-colors hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+                      className="success-quiet-btn inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
                     >
                       <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
                       {revoking ? t.notificationRevoking ?? "Revoking..." : burnLabel}
@@ -465,15 +470,15 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               ) : null}
             </div>
 
-            <div className="mt-5 border-t border-gray-200 pt-5 sm:mt-6 sm:pt-6 dark:border-gray-800">
-              <div className="grid grid-cols-3 gap-1 sm:grid-cols-5 sm:gap-2">
+            <div className="mt-4 border-t border-gray-200 pt-4 sm:mt-5 sm:pt-5 dark:border-gray-800">
+              <div className="grid grid-cols-3 gap-x-1 gap-y-2 sm:grid-cols-5 sm:gap-2">
                 <a
                   href={mailtoShareHref(successUrl)}
                   className={shareActionClass}
                   aria-label={t.successShareViaEmail ?? "Share via email"}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-                    <Mail className="h-4 w-4" aria-hidden />
+                  <span className={`${shareIconClass} text-primary`}>
+                    <Mail className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                     {t.successShareEmail ?? "Email"}
@@ -486,7 +491,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   className={shareActionClass}
                   aria-label={t.successShareViaWhatsApp ?? "Share via WhatsApp"}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white">
+                  <span className={`${shareIconClass} text-[#25D366]`}>
                     <WhatsAppGlyph />
                   </span>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -500,7 +505,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   className={shareActionClass}
                   aria-label={t.successShareViaSlack ?? "Share via Slack"}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-200/80 dark:bg-gray-900 dark:ring-gray-700">
+                  <span className={shareIconClass}>
                     <SlackGlyph />
                   </span>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -514,7 +519,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   aria-label={t.successShowQrCode ?? t.shareViaQrCode}
                   aria-expanded={showSuccessQr}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-primary/15">
+                  <span className={`${shareIconClass} text-primary`}>
                     <QrCode className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -527,7 +532,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   className={shareActionClass}
                   aria-label={t.successMoreSharingOptions ?? "More sharing options"}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <span className={`${shareIconClass} text-gray-500 dark:text-gray-400`}>
                     <MoreHorizontal className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -538,28 +543,30 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
             </div>
           </div>
 
-          <div className="pointer-events-none absolute -bottom-14 left-6 hidden lg:flex xl:left-10">
+          <div
+            className="mx-auto mt-3 hidden min-h-[3.75rem] w-full max-w-3xl items-start gap-1 pl-3 lg:flex"
+            aria-hidden
+          >
             <svg
               viewBox="0 0 72 56"
-              className="mt-1 h-12 w-16 text-primary/80"
+              className="mt-0.5 h-11 w-14 shrink-0 text-primary/80"
               fill="none"
-              aria-hidden
             >
               <path
-                d="M58 10C38 8 18 22 16 38"
+                d="M58 44C36 42 20 28 22 10"
                 stroke="currentColor"
                 strokeWidth="1.75"
                 strokeLinecap="round"
               />
               <path
-                d="M10 32l6 8 10-4"
+                d="M14 16l8-8 10 5"
                 stroke="currentColor"
                 strokeWidth="1.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
-            <p className="success-hand-accent mt-8 -ml-1 rotate-[-8deg] text-[1.15rem] leading-none text-primary">
+            <p className="success-hand-accent mt-6 -ml-1 rotate-[-8deg] text-[1.05rem] leading-none text-primary">
               {shareYourWay}
             </p>
           </div>
@@ -645,14 +652,14 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
         ) : null}
 
-        <div className="mx-4 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3.5 sm:mx-6 dark:border-gray-700 dark:bg-gray-900/40">
+        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
           {deliverySent && recipientLinkDelivery ? (
-            <div className="text-sm text-emerald-900 dark:text-emerald-100" role="status">
-              <p className="m-0 inline-flex items-center gap-1.5 font-medium">
-                <Mail className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+            <div className="text-center text-sm text-emerald-800 dark:text-emerald-200" role="status">
+              <p className="m-0 inline-flex items-center justify-center gap-1.5 font-medium">
+                <Mail className="h-4 w-4 shrink-0" aria-hidden />
                 {t.recipientLinkDeliverySentTitle ?? "Link emailed"}
               </p>
-              <p className="mt-1.5 m-0 text-xs leading-snug opacity-90">
+              <p className="mt-1 m-0 text-xs leading-snug opacity-90">
                 {(t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
                   "{email}",
                   recipientLinkDelivery.email,
@@ -660,86 +667,116 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               </p>
             </div>
           ) : (
-            <form
-              className="space-y-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitRecipientLinkDelivery();
-              }}
-            >
-              <label
-                htmlFor="success-deliver-recipient-email"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-gray-200"
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowDeliveryPanel((open) => !open)}
+                className="success-quiet-btn inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-sm font-medium text-gray-500 underline-offset-4 transition-colors hover:text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-400 dark:hover:text-primary"
+                aria-expanded={deliveryPanelOpen}
+                aria-controls="success-private-note-delivery"
               >
-                <Mail className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" aria-hidden />
-                {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
-              </label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                <input
-                  id="success-deliver-recipient-email"
-                  type="email"
-                  autoComplete="off"
-                  inputMode="email"
-                  value={deliverEmailInput}
-                  onChange={(event) => setDeliverEmailInput(event.target.value)}
-                  disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
-                  placeholder={
-                    t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
-                  }
-                  className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
-                />
-                <button
-                  type="submit"
-                  disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
-                  className="inline-flex shrink-0 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                {t.successLetPrivateNoteSend ?? "Let PrivateNote send it"}
+                <span aria-hidden className="text-primary">
+                  →
+                </span>
+              </button>
+
+              {deliveryPanelOpen ? (
+                <form
+                  id="success-private-note-delivery"
+                  className="mx-auto mt-3 max-w-xl space-y-2 text-left"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitRecipientLinkDelivery();
+                  }}
                 >
-                  {recipientLinkDeliveryRetrying
-                    ? t.recipientLinkDeliveryRetrying ?? "Sending…"
-                    : deliveryFailed
-                      ? t.recipientLinkDeliveryRetry ?? "Try again"
-                      : t.recipientLinkDeliverySend ?? "Send"}
-                </button>
-              </div>
-              <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                {t.settingsDeliverRecipientEmailHint ??
-                  "Optional. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity."}
-              </p>
-              {deliveryFailed && recipientLinkDelivery ? (
-                <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
-                  {(
-                    t.recipientLinkDeliveryFailedBody ??
-                    "We could not send the link to {email}. You can still copy it above."
-                  ).replace("{email}", recipientLinkDelivery.email)}
-                </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                    <label htmlFor="success-deliver-recipient-email" className="sr-only">
+                      {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
+                    </label>
+                    <input
+                      id="success-deliver-recipient-email"
+                      type="email"
+                      autoComplete="off"
+                      inputMode="email"
+                      value={deliverEmailInput}
+                      onChange={(event) => setDeliverEmailInput(event.target.value)}
+                      disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                      placeholder={
+                        t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                      }
+                      className="min-h-11 min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm placeholder:text-gray-600 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:placeholder:text-gray-400"
+                    />
+                    <button
+                      type="submit"
+                      disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                      className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {recipientLinkDeliveryRetrying
+                        ? t.recipientLinkDeliveryRetrying ?? "Sending…"
+                        : deliveryFailed
+                          ? t.recipientLinkDeliveryRetry ?? "Try again"
+                          : t.successSendLink ?? "Send link"}
+                    </button>
+                  </div>
+                  <p className="m-0 flex items-start gap-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                    <span className="min-w-0 flex-1">
+                      {t.successDeliveryLinkOnly ??
+                        "PrivateNote sends only the secure link — never your note contents."}
+                    </span>
+                    <button
+                      type="button"
+                      className="success-quiet-btn inline-flex shrink-0 rounded-full p-0.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:text-gray-300"
+                      title={
+                        t.successDeliveryLinkOnlyHint ??
+                        "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
+                      }
+                      aria-label={
+                        t.successDeliveryLinkOnlyHint ??
+                        "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
+                      }
+                    >
+                      <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </p>
+                  {deliveryFailed && recipientLinkDelivery ? (
+                    <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
+                      {(
+                        t.recipientLinkDeliveryFailedBody ??
+                        "We could not send the link to {email}. You can still copy it above."
+                      ).replace("{email}", recipientLinkDelivery.email)}
+                    </p>
+                  ) : null}
+                  {recipientLinkDeliveryGate === "sign_in" ? (
+                    <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.recipientLinkDeliverySignInHint ??
+                        "Sign in with Starter or Business to email the link —"}{" "}
+                      <Link href={signInHref} className="font-medium text-primary hover:underline">
+                        {t.settingsEmailAlertsSignInLink ?? "Sign in"}
+                      </Link>
+                    </p>
+                  ) : null}
+                  {recipientLinkDeliveryGate === "upgrade" ? (
+                    <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                      {t.recipientLinkDeliveryUpgradeHint ??
+                        "Starter and Business can email the link —"}{" "}
+                      <Link
+                        href={premiumUpgradeHref}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                      </Link>
+                    </p>
+                  ) : null}
+                  {recipientLinkDeliveryGate === "verify_email" ? (
+                    <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
+                      {t.recipientLinkDeliveryVerifyEmailHint ??
+                        "Verify your account email before we can send the link for you."}
+                    </p>
+                  ) : null}
+                </form>
               ) : null}
-              {recipientLinkDeliveryGate === "sign_in" ? (
-                <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                  {t.recipientLinkDeliverySignInHint ??
-                    "Sign in with Starter or Business to email the link —"}{" "}
-                  <Link href={signInHref} className="font-medium text-primary hover:underline">
-                    {t.settingsEmailAlertsSignInLink ?? "Sign in"}
-                  </Link>
-                </p>
-              ) : null}
-              {recipientLinkDeliveryGate === "upgrade" ? (
-                <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                  {t.recipientLinkDeliveryUpgradeHint ??
-                    "Starter and Business can email the link —"}{" "}
-                  <Link
-                    href={premiumUpgradeHref}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
-                  </Link>
-                </p>
-              ) : null}
-              {recipientLinkDeliveryGate === "verify_email" ? (
-                <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
-                  {t.recipientLinkDeliveryVerifyEmailHint ??
-                    "Verify your account email before we can send the link for you."}
-                </p>
-              ) : null}
-            </form>
+            </div>
           )}
         </div>
 
@@ -747,7 +784,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           <ChromeExtensionOnboardingBanner />
         </div>
 
-        <section className="relative mt-14 sm:mt-16 mb-6 sm:mb-8 w-full px-4 sm:px-6 lg:px-8">
+        <section className="relative mt-10 sm:mt-12 mb-6 sm:mb-8 w-full px-4 sm:px-6 lg:px-8">
           <div className="grid gap-5 md:grid-cols-2 md:gap-5 xl:gap-6">
             <div
               role="button"
