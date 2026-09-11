@@ -39,6 +39,7 @@ const ONE_TIME_LINK_EXPLAINER: Record<SupportedLanguage, { prefix: string; label
   hr: { prefix: "Model predaje iza poveznice: ", label: "što je jednokratna poveznica" },
   sr: { prefix: "Model predaje iza linka: ", label: "šta je jednokratni link" },
   tr: { prefix: "Bağlantının arkasındaki teslim modeli: ", label: "tek kullanımlık gizli bağlantı nedir" },
+  pl: { prefix: "Model dostawy za linkiem: ", label: "czym jest jednorazowy tajny link" },
 };
 
 type ArticleSection = {

@@ -12,6 +12,7 @@ import { nl } from "./translations/nl.ts";
 import { pt } from "./translations/pt.ts";
 import { sr } from "./translations/sr.ts";
 import { tr } from "./translations/tr.ts";
+import { pl } from "./translations/pl.ts";
 
 const META_DESCRIPTION_MAX = 160;
 
@@ -26,6 +27,7 @@ const localePacks = {
   hr,
   sr,
   tr,
+  pl,
 } as const;
 
 test("resolveDocumentMeta compounds German security-resources hero title", () => {

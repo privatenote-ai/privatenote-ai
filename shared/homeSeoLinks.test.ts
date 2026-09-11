@@ -30,6 +30,7 @@ test("buildHomeSeoHeadMarkup includes reciprocal hreflang set", () => {
   assert.match(html, /hreflang="sr" href="https:\/\/privatenote\.ai\/sr\/"/);
   assert.match(html, /hreflang="hr" href="https:\/\/privatenote\.ai\/hr\/"/);
   assert.match(html, /hreflang="tr" href="https:\/\/privatenote\.ai\/tr\/"/);
+  assert.match(html, /hreflang="pl" href="https:\/\/privatenote\.ai\/pl\/"/);
   assert.match(html, /hreflang="x-default" href="https:\/\/privatenote\.ai\/"/);
   assert.doesNotMatch(html, /href="\/fr\/"/);
 });

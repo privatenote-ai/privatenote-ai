@@ -22,6 +22,7 @@ test("LOCALIZED_SECURITY_GUIDE_MARKETING_PATHS includes English plus every local
   assert.ok(LOCALIZED_SECURITY_GUIDE_MARKETING_PATHS.includes("/de/security-guides/vpn"));
   assert.ok(LOCALIZED_SECURITY_GUIDE_MARKETING_PATHS.includes("/hr/security-guides/password"));
   assert.ok(LOCALIZED_SECURITY_GUIDE_MARKETING_PATHS.includes("/tr/security-guides/vpn"));
+  assert.ok(LOCALIZED_SECURITY_GUIDE_MARKETING_PATHS.includes("/pl/security-guides/vpn"));
 });
 
 test("isLocalizedSecurityGuideTopic distinguishes full guides from stubs", () => {

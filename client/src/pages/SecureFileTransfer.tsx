@@ -36,6 +36,7 @@ const ONE_TIME_SECRET_ARTICLE_CHIP: Record<SupportedLanguage, string> = {
   hr: "Što je jednokratna poveznica?",
   sr: "Šta je jednokratni link?",
   tr: "Tek kullanımlık gizli bağlantı nedir?",
+  pl: "Czym jest jednorazowy tajny link?",
 };
 
 const SecureFileTransfer: React.FC = () => {
