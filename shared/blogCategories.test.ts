@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { BLOG_CANONICAL_SLUGS } from "./localizedBlogSlugs.ts";
+import { NON_ENGLISH_LANGUAGE_CODES } from "./supportedLanguages.ts";
 import {
   BLOG_CATEGORIES,
   BLOG_POST_CATEGORY,
@@ -34,7 +35,10 @@ test("blogCategoryPath and parseBlogCategoryFromPath round-trip", () => {
   assert.equal(parseBlogCategoryFromPath("/blog/category/privacy"), "privacy");
   assert.equal(parseBlogCategoryFromPath("/fr/blog/category/developers"), "developers");
   assert.equal(parseBlogCategoryFromPath("/blog/privacy-tools"), null);
-  assert.equal(allBlogCategoryMarketingPaths().length, BLOG_CATEGORIES.length * 9);
+  assert.equal(
+    allBlogCategoryMarketingPaths().length,
+    BLOG_CATEGORIES.length * (1 + NON_ENGLISH_LANGUAGE_CODES.length),
+  );
 });
 
 test("blog listing excludes dated news and off-pillar posts", async () => {
