@@ -13,8 +13,8 @@ export default {
   theme: {
     extend: {
       screens: {
-        /** 13.3" Mac default (1440×900). 13.6" Air is 1470×956 and should stay unchanged. */
-        "h-short": { raw: "(max-height: 900px)" },
+        /** 13.3" Mac default (1440×900). Phones are excluded so home hero spacing stays intact. */
+        "h-short": { raw: "(min-width: 768px) and (max-height: 900px)" },
       },
       fontFamily: {
         sans: ["Inter", ...defaultTheme.fontFamily.sans],
