@@ -13,9 +13,11 @@ import { useLanguage } from "@/context/LanguageContext";
 import { formatNoteFileSize } from "@shared/noteFileLimits";
 import {
   type CameraFacing,
+  attachStreamToVideoElement,
   captureJpegFromVideo,
   createPhotoFile,
   isCameraCaptureSupported,
+  shouldFallbackToBasicVideoConstraints,
   toggleCameraFacing,
   videoConstraintsForFacing,
 } from "@/utils/photoCapture";
@@ -54,6 +56,8 @@ function revokeUrl(url: string | null): void {
   if (url) URL.revokeObjectURL(url);
 }
 
+const PERMISSION_DISMISS_GRACE_MS = 1000;
+
 export function PhotoCaptureDialog({
   open,
   onOpenChange,
@@ -76,6 +80,7 @@ export function PhotoCaptureDialog({
   const capturedBlobRef = useRef<Blob | null>(null);
   const facingRef = useRef<CameraFacing>("environment");
   const startGenerationRef = useRef(0);
+  const suppressDismissUntilRef = useRef(0);
 
   const clearPreview = () => {
     capturedBlobRef.current = null;
@@ -108,6 +113,16 @@ export function PhotoCaptureDialog({
     setFacing("environment");
   };
 
+  const armDismissSuppression = () => {
+    suppressDismissUntilRef.current = Date.now() + PERMISSION_DISMISS_GRACE_MS;
+  };
+
+  const handleDismissAttempt = (event: { preventDefault: () => void }) => {
+    if (isStarting || Date.now() < suppressDismissUntilRef.current) {
+      event.preventDefault();
+    }
+  };
+
   const startCamera = async (nextFacing: CameraFacing) => {
     if (!isCameraCaptureSupported()) {
       setErrorMessage(
@@ -129,12 +144,14 @@ export function PhotoCaptureDialog({
           audio: false,
           video: videoConstraintsForFacing(nextFacing),
         });
-      } catch {
+      } catch (error) {
+        if (!shouldFallbackToBasicVideoConstraints(error)) throw error;
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: true,
         });
       }
+      armDismissSuppression();
       if (generation !== startGenerationRef.current) {
         stopMediaStream(stream);
         return;
@@ -148,14 +165,10 @@ export function PhotoCaptureDialog({
 
       const video = videoRef.current;
       if (video) {
-        video.srcObject = stream;
-        video.muted = true;
-        video.playsInline = true;
-        await video.play().catch(() => {
-          // Autoplay can fail if the tab is backgrounded; the user can still capture after play.
-        });
+        await attachStreamToVideoElement(video, stream);
       }
     } catch {
+      armDismissSuppression();
       if (generation !== startGenerationRef.current) return;
       setErrorMessage(
         t.takePhotoDenied ??
@@ -294,7 +307,12 @@ export function PhotoCaptureDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.25rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-lg sm:p-6 sm:pb-6">
+      <DialogContent
+        className="flex max-h-[calc(100svh-0.75rem)] w-[calc(100%-0.75rem)] flex-col gap-3 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+4.25rem))] sm:max-h-[min(90vh,40rem)] sm:w-full sm:max-w-lg sm:p-6 sm:pb-6"
+        onPointerDownOutside={handleDismissAttempt}
+        onInteractOutside={handleDismissAttempt}
+        onFocusOutside={handleDismissAttempt}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="line-clamp-2 sm:line-clamp-none">
