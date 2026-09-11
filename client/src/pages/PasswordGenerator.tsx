@@ -317,7 +317,6 @@ const PasswordGenerator: React.FC = () => {
       await copyTextToClipboard(sharedNoteUrl);
       setSuccessLinkCopied(true);
       setCopied(true);
-      toast({ title: t.copied, description: t.secretLinkCopied });
       window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error("Error copying shared password link:", error);
