@@ -39,3 +39,14 @@ test("billingFaqPath points at the shared page anchor", () => {
   assert.equal(billingFaqPath("/premium"), "/premium#billing-faq");
   assert.equal(billingFaqPath("/contact"), "/contact#billing-faq");
 });
+
+test("billing FAQ overlay uses German and Polish questions", async () => {
+  const { de } = await import("../client/src/utils/translations/de.ts");
+  const { pl } = await import("../client/src/utils/translations/pl.ts");
+  const german = billingFaqItem("cancel-vs-withdraw", de);
+  const polish = billingFaqItem("cancel-vs-withdraw", pl);
+  assert.match(german.question, /Kündigung/);
+  assert.match(polish.question, /anulowaniem|odstąpieniem/i);
+  assert.notEqual(german.question, billingFaqItem("cancel-vs-withdraw").question);
+  assert.match(billingFaqItem("invoices", pl).answer, new RegExp(BILLING_INVOICE_VAT_FOOTER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+});

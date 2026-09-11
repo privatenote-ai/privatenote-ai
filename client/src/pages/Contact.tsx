@@ -7,7 +7,7 @@ import { localizedPath } from "@/utils/localizedPath";
 import { BILLING_SUPPORT_EMAIL } from "@shared/billingFaq";
 
 export default function Contact() {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
 
   return (
@@ -101,7 +101,8 @@ export default function Contact() {
 
         <BillingFaqSection
           schemaId="contact-billing-faq"
-          intro="Written from the same billing rules as Checkout, the customer portal, and Terms. Start here before emailing — it is what we send back for these tickets."
+          title={t.pricingBillingFaqTitle}
+          intro={t.contactBillingFaqIntro}
         />
 
         <section className="text-center p-8">

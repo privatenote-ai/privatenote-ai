@@ -27,13 +27,13 @@ export function BillingFaqSection({
   title?: string;
   intro?: string;
 }) {
-  const { language } = useLanguage();
-  const items = useMemo(() => billingFaqItems(), []);
+  const { language, t } = useLanguage();
+  const items = useMemo(() => billingFaqItems(t), [t]);
 
   useEffect(() => {
-    setStructuredDataScript(schemaId, buildBillingFaqSchema());
+    setStructuredDataScript(schemaId, buildBillingFaqSchema(items));
     return () => setStructuredDataScript(schemaId, null);
-  }, [schemaId]);
+  }, [schemaId, items]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -59,7 +59,7 @@ export function BillingFaqSection({
   return (
     <section id={BILLING_FAQ_ANCHOR} className="scroll-mt-28">
       <h2 className="text-2xl font-semibold tracking-tight text-gray-950 dark:text-white">
-        {title ?? "Billing FAQ"}
+        {title ?? t.pricingBillingFaqTitle ?? "Billing FAQ"}
       </h2>
       {intro ? (
         <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-400">{intro}</p>
