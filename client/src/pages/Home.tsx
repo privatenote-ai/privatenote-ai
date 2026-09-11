@@ -126,7 +126,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-16 sm:pb-32 h-short:!pt-0">
+    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
       <div
         className={
           isCreateSuccessView
@@ -135,7 +135,7 @@ const Home: React.FC = () => {
         }
       >
         {!isCreateSuccessView && (
-          <section className="relative mx-auto max-w-4xl px-4 pt-12 sm:px-6 sm:pt-5 lg:px-8 h-short:pt-3 h-short:sm:pt-2">
+          <section className="relative mx-auto max-w-4xl px-4 pt-16 sm:px-6 sm:pt-8 lg:px-8 h-short:pt-6 h-short:sm:pt-5">
             <div className="text-center">
               <h1 className="page-title text-gray-900 dark:text-white">
                 <span className="md:hidden">
