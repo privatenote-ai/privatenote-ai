@@ -38,10 +38,12 @@ const REQUIRED_FLAT_HTML = [
   "sr/about.html",
   "hr/index.html",
   "hr/about.html",
+  "tr/index.html",
+  "tr/about.html",
   "de/terms.html",
 ];
 
-const LOCALE_HOME_PATTERN = "de|fr|es|it|nl|pt|sr|hr";
+const LOCALE_HOME_PATTERN = "de|fr|es|it|nl|pt|sr|hr|tr";
 
 const NOINDEX_META_RE = /<meta\s+[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i;
 /** Canonical must not end with slash except https://privatenote.ai/ and locale homes (/de/, /fr/, /es/, /it/, /nl/) */
