@@ -205,8 +205,16 @@
   }
 
   .success-hand-accent {
-    font-family: "Snell Roundhand", "Segoe Script", "Bradley Hand ITC", "Bradley Hand", "Apple Chancery", cursive;
-    font-weight: 500;
+    font-family: "Snell Roundhand", "Apple Chancery", "Segoe Script", "Bradley Hand ITC", "Bradley Hand", cursive;
+    font-weight: 600;
+    font-style: italic;
+    font-size: 1.7rem;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.22em;
+    text-decoration-skip-ink: none;
   }
 
   button.success-share-action,
@@ -231,7 +239,9 @@
 
   .success-plain-field,
   .success-plain-field input,
-  input.success-plain-field {
+  .success-plain-field textarea,
+  input.success-plain-field,
+  textarea.success-plain-field {
     background-image: none !important;
     box-shadow: none !important;
   }

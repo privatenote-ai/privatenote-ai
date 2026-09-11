@@ -8,15 +8,19 @@ import { type NoteExpiryPresetId } from "@shared/noteExpiry";
 import {
   Ban,
   Check,
+  ChevronDown,
+  ChevronUp,
   CircleHelp,
   CirclePlus,
   Copy,
   Eye,
   EyeOff,
   FileText,
+  GripVertical,
   Key,
   Link2,
   Mail,
+  MessageSquare,
   MoreHorizontal,
   QrCode,
   Share2,
@@ -27,6 +31,16 @@ import {
 import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
 import { useToast } from "@/hooks/use-toast";
 import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
+import {
+  DEFAULT_SUCCESS_SHARE_ORDER,
+  PINNED_SUCCESS_SHARE_COUNT,
+  moveShareShortcut,
+  readShareShortcutOrder,
+  shareChannelHref,
+  shareChannelKind,
+  writeShareShortcutOrder,
+  type SuccessShareChannelId,
+} from "@/utils/successShareShortcuts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,18 +63,6 @@ export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verif
 const COPY_SUCCESS_MS = 1800;
 const ghostBtn =
   "inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800";
-
-function mailtoShareHref(url: string): string {
-  return `mailto:?body=${encodeURIComponent(url)}`;
-}
-
-function whatsappShareHref(url: string): string {
-  return `https://wa.me/?text=${encodeURIComponent(url)}`;
-}
-
-function slackShareHref(url: string): string {
-  return `https://slack.com/share?url=${encodeURIComponent(url)}`;
-}
 
 function WhatsAppGlyph() {
   return (
@@ -86,6 +88,92 @@ function SlackGlyph() {
       <path fill="#ECB22E" d="M14.1 16.6a2.1 2.1 0 1 1 0-4.2h5.3a2.1 2.1 0 1 1 0 4.2h-5.3z" />
     </svg>
   );
+}
+
+function TelegramGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M21.5 3.6 2.8 10.8c-1.3.5-1.3 1.2-.2 1.5l4.8 1.5 11.1-7c.5-.3 1-.1.6.2l-9 8.2-.3 4.8c.5 0 .7-.2 1-.5l2.4-2.3 5 3.7c.9.5 1.6.2 1.8-.9l3.3-15.4c.3-1.3-.5-1.9-1.4-1.5z"
+      />
+    </svg>
+  );
+}
+
+function SignalGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12 2.1c-5.4 0-9.8 4.3-9.8 9.6 0 1.7.4 3.3 1.2 4.7L2 21.8l5.6-1.5c1.4.7 2.9 1.1 4.4 1.1 5.4 0 9.8-4.3 9.8-9.7S17.4 2.1 12 2.1zm0 17.4c-1.4 0-2.7-.3-3.9-.9l-.3-.1-3.3.9.9-3.2-.2-.3c-.7-1.2-1.1-2.5-1.1-3.9 0-4.3 3.6-7.8 7.9-7.8s7.9 3.5 7.9 7.8-3.6 7.8-7.9 7.8z"
+      />
+    </svg>
+  );
+}
+
+function DiscordGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M19.3 5.3A17.4 17.4 0 0 0 15 4c-.2.4-.5.9-.6 1.3a15.4 15.4 0 0 0-4.8 0C9.4 4.9 9.1 4.4 8.9 4 7.4 4.3 6 4.8 4.7 5.4 2 9.5 1.3 13.4 1.6 17.3c1.8 1.3 3.5 2.1 5.2 2.7.4-.6.8-1.2 1.1-1.8-.6-.2-1.2-.5-1.7-.8.1-.1.3-.2.4-.3 3.4 1.6 7.1 1.6 10.5 0 .1.1.3.2.4.3-.5.3-1.1.6-1.7.8.3.6.7 1.2 1.1 1.8 1.7-.5 3.5-1.3 5.3-2.7.4-3.9-.7-7.8-3.1-12zm-11 9.6c-1 0-1.9-1-1.9-2.1s.8-2.2 1.9-2.2 1.9 1 1.9 2.2-.8 2.1-1.9 2.1zm6.9 0c-1 0-1.9-1-1.9-2.1s.8-2.2 1.9-2.2 1.9 1 1.9 2.2-.8 2.1-1.9 2.1z"
+      />
+    </svg>
+  );
+}
+
+function TeamsGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M16.6 8.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4zM8.4 9.1H3.9c-.6 0-1.1.5-1.1 1.1v8.2c0 .6.5 1.1 1.1 1.1h4.5c.6 0 1.1-.5 1.1-1.1v-8.2c0-.6-.5-1.1-1.1-1.1zm11.2.3h-5.1c-.5 0-.9.4-.9.9v7.6c0 1.7 1.4 3.1 3.2 3.1 1.9 0 3.7-1.5 3.7-3.4v-7.3c0-.5-.4-.9-.9-.9zM8.2 7.6A2.6 2.6 0 1 0 8.2 2a2.6 2.6 0 0 0 0 5.6z"
+      />
+    </svg>
+  );
+}
+
+function ShareChannelGlyph({ id }: { id: SuccessShareChannelId }) {
+  switch (id) {
+    case "email":
+      return <Mail className="h-5 w-5" aria-hidden />;
+    case "whatsapp":
+      return <WhatsAppGlyph />;
+    case "slack":
+      return <SlackGlyph />;
+    case "qr":
+      return <QrCode className="h-5 w-5" aria-hidden />;
+    case "telegram":
+      return <TelegramGlyph />;
+    case "signal":
+      return <SignalGlyph />;
+    case "discord":
+      return <DiscordGlyph />;
+    case "teams":
+      return <TeamsGlyph />;
+    case "sms":
+      return <MessageSquare className="h-5 w-5" aria-hidden />;
+  }
+}
+
+function shareChannelIconClass(id: SuccessShareChannelId): string {
+  switch (id) {
+    case "whatsapp":
+      return "text-[#25D366]";
+    case "telegram":
+      return "text-[#229ED9]";
+    case "signal":
+      return "text-[#3A76F0]";
+    case "discord":
+      return "text-[#5865F2]";
+    case "teams":
+      return "text-[#6264A7]";
+    case "sms":
+      return "text-emerald-600 dark:text-emerald-400";
+    default:
+      return "text-primary";
+  }
 }
 
 export type CreatedNoteMeta = {
@@ -173,6 +261,12 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const [linkCopied, setLinkCopied] = useState(false);
   const [localLabel, setLocalLabel] = useState(noteLabel);
   const [nameEditing, setNameEditing] = useState(false);
+  const [linkInspecting, setLinkInspecting] = useState(false);
+  const [shareOrder, setShareOrder] = useState<SuccessShareChannelId[]>(() => [
+    ...DEFAULT_SUCCESS_SHARE_ORDER,
+  ]);
+  const [showShareMore, setShowShareMore] = useState(false);
+  const [draggingShareId, setDraggingShareId] = useState<SuccessShareChannelId | null>(null);
   const copyResetRef = useRef<number | null>(null);
   const copyInFlightRef = useRef(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +290,10 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     nameInputRef.current?.focus();
     nameInputRef.current?.select();
   }, [nameEditing]);
+
+  useEffect(() => {
+    setShareOrder(readShareShortcutOrder());
+  }, []);
 
   if (!createdNoteMeta) {
     return (
@@ -230,7 +328,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const copiedLabel = t.successCopied ?? t.copied ?? "Copied";
   const nameActionLabel = t.successNameThisNote ?? "Name this note";
   const nameEditLabel = t.successNameEdit ?? "Edit";
-  const orSendDirectly = t.successOrSendDirectly ?? "or send it directly";
   const burnLabel = t.successBurnThisOne ?? "Burn this one";
   const shareYourWay = t.successShareItYourWay ?? "Share it your way";
   const qrScanLabel = t.successQrScanToOpen ?? "Scan to open this secure note";
@@ -303,7 +400,67 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     await copyCreatedPassword();
   };
 
-  const shareMore = async () => {
+  const shareMore = () => setShowShareMore(true);
+
+  const commitShareOrder = (next: SuccessShareChannelId[]) => {
+    setShareOrder(next);
+    writeShareShortcutOrder(next);
+  };
+
+  const shareChannelLabel = (id: SuccessShareChannelId): string => {
+    switch (id) {
+      case "email":
+        return t.successShareEmail ?? "Email";
+      case "whatsapp":
+        return t.successShareWhatsApp ?? "WhatsApp";
+      case "slack":
+        return t.successShareSlack ?? "Slack";
+      case "qr":
+        return t.qrCode ?? "QR Code";
+      case "telegram":
+        return t.successShareTelegram ?? "Telegram";
+      case "signal":
+        return t.successShareSignal ?? "Signal";
+      case "discord":
+        return t.successShareDiscord ?? "Discord";
+      case "teams":
+        return t.successShareTeams ?? "Teams";
+      case "sms":
+        return t.successShareSms ?? "SMS";
+    }
+  };
+
+  const copyLinkForApp = async (appName: string) => {
+    try {
+      await navigator.clipboard.writeText(successUrl);
+      toast({
+        title: t.copied ?? "Copied",
+        description: (t.successShareCopiedForApp ?? "Copied — paste this link in {app}.").replace(
+          "{app}",
+          appName,
+        ),
+      });
+    } catch {
+      toast({
+        title: t.toastCouldNotCopyLinkTitle ?? "Could not copy",
+        description: t.toastCouldNotCopyLinkDesc ?? "Copy the link manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const activateShareChannel = (id: SuccessShareChannelId) => {
+    if (id === "qr") {
+      setShowShareMore(false);
+      setShowSuccessQr(true);
+      return;
+    }
+    if (shareChannelKind(id) === "copy-app") {
+      void copyLinkForApp(shareChannelLabel(id));
+    }
+  };
+
+  const nativeShare = async () => {
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ url: successUrl });
@@ -314,6 +471,8 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     }
     await copySecureUrl();
   };
+
+  const pinnedShareIds = shareOrder.slice(0, PINNED_SUCCESS_SHARE_COUNT);
 
   const shareActionClass =
     "success-share-action group flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
@@ -353,27 +512,35 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
 
         <div className="relative mt-11 px-4 sm:mt-12 sm:px-6">
           <div className="mx-auto w-full max-w-[960px] rounded-[20px] border border-gray-200/90 bg-white px-5 py-6 shadow-[0_10px_28px_-18px_rgba(15,23,42,0.28)] sm:px-7 sm:py-7 dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.65)]">
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="success-plain-field flex min-w-0 flex-1 items-center gap-2.5 rounded-[13px] border border-gray-200 bg-[#f7faff] px-3 py-2 dark:border-gray-700 dark:bg-gray-950">
+            <div className={`flex gap-2.5 sm:gap-3 ${linkInspecting ? "items-start" : "items-center"}`}>
+              <div className="success-plain-field flex min-w-0 flex-1 items-start gap-2.5 rounded-[13px] border border-gray-200 bg-[#f7faff] px-3 py-2 dark:border-gray-700 dark:bg-gray-950">
                 <Link2
-                  className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
                   aria-hidden
                 />
-                <input
-                  type="text"
+                <textarea
                   readOnly
+                  rows={linkInspecting ? 3 : 1}
                   value={successUrl}
                   title={successUrl}
-                  className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium text-gray-950 select-text shadow-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm dark:text-white"
+                  className={`min-w-0 flex-1 resize-none bg-transparent text-sm font-medium text-gray-950 select-text shadow-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm dark:text-white ${
+                    linkInspecting
+                      ? "min-h-[4.25rem] leading-snug break-all"
+                      : "h-6 overflow-hidden whitespace-nowrap [text-overflow:ellipsis]"
+                  }`}
                   aria-label={linkAriaLabel}
-                  onFocus={(event) => event.currentTarget.select()}
+                  onFocus={(event) => {
+                    setLinkInspecting(true);
+                    event.currentTarget.select();
+                  }}
+                  onBlur={() => setLinkInspecting(false)}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => void copySecureUrl()}
                 disabled={noteRevoked}
-                className={`success-primary-btn inline-flex h-[45px] shrink-0 items-center justify-center gap-1 rounded-md px-3.5 text-sm font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                className={`success-primary-btn inline-flex h-11 min-w-[7.5rem] shrink-0 items-center justify-center gap-1.5 rounded-md px-5 text-sm font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                   linkCopied
                     ? "bg-emerald-600 hover:bg-emerald-600 focus-visible:ring-emerald-500"
                     : "bg-primary hover:bg-primary/90 focus-visible:ring-primary"
@@ -395,9 +562,9 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               </button>
             </div>
 
-            <div className="mt-4 flex flex-col gap-1 sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1">
+            <div className="mt-4 flex flex-col items-center gap-1 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-1">
               {nameEditing ? (
-                <label className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5">
+                <label className="flex min-w-0 w-full max-w-md items-center gap-2 rounded-lg px-2 py-1.5 sm:w-auto sm:min-w-[16rem]">
                   <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
                   <span className="sr-only">{nameActionLabel}</span>
                   <input
@@ -484,65 +651,66 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
 
             <div className="mt-4 border-t border-gray-200 pt-4 sm:mt-5 sm:pt-5 dark:border-gray-800">
               <div className="grid grid-cols-3 gap-x-1 gap-y-2 sm:grid-cols-5 sm:gap-2">
-                <a
-                  href={mailtoShareHref(successUrl)}
-                  className={shareActionClass}
-                  aria-label={t.successShareViaEmail ?? "Share via email"}
-                >
-                  <span className={`${shareIconClass} text-primary`}>
-                    <Mail className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {t.successShareEmail ?? "Email"}
-                  </span>
-                </a>
-                <a
-                  href={whatsappShareHref(successUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={shareActionClass}
-                  aria-label={t.successShareViaWhatsApp ?? "Share via WhatsApp"}
-                >
-                  <span className={`${shareIconClass} text-[#25D366]`}>
-                    <WhatsAppGlyph />
-                  </span>
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {t.successShareWhatsApp ?? "WhatsApp"}
-                  </span>
-                </a>
-                <a
-                  href={slackShareHref(successUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={shareActionClass}
-                  aria-label={t.successShareViaSlack ?? "Share via Slack"}
-                >
-                  <span className={shareIconClass}>
-                    <SlackGlyph />
-                  </span>
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {t.successShareSlack ?? "Slack"}
-                  </span>
-                </a>
+                {pinnedShareIds.map((id) => {
+                  const kind = shareChannelKind(id);
+                  const href = shareChannelHref(id, successUrl);
+                  const label = shareChannelLabel(id);
+                  const inner = (
+                    <>
+                      <span className={`${shareIconClass} ${shareChannelIconClass(id)}`}>
+                        <ShareChannelGlyph id={id} />
+                      </span>
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {label}
+                      </span>
+                    </>
+                  );
+                  if (kind === "link" && href) {
+                    const external = id !== "email" && id !== "sms" && id !== "signal";
+                    return (
+                      <a
+                        key={id}
+                        href={href}
+                        className={shareActionClass}
+                        target={external ? "_blank" : undefined}
+                        rel={external ? "noopener noreferrer" : undefined}
+                        onClick={
+                          id === "signal"
+                            ? () => void copyLinkForApp(label)
+                            : undefined
+                        }
+                        aria-label={
+                          (t.successShareViaApp ?? "Share via {app}").replace("{app}", label)
+                        }
+                      >
+                        {inner}
+                      </a>
+                    );
+                  }
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={shareActionClass}
+                      onClick={() => activateShareChannel(id)}
+                      aria-label={
+                        id === "qr"
+                          ? t.successShowQrCode ?? t.shareViaQrCode
+                          : (t.successShareViaApp ?? "Share via {app}").replace("{app}", label)
+                      }
+                      aria-expanded={id === "qr" ? showSuccessQr : undefined}
+                    >
+                      {inner}
+                    </button>
+                  );
+                })}
                 <button
                   type="button"
-                  onClick={() => setShowSuccessQr(true)}
-                  className={shareActionClass}
-                  aria-label={t.successShowQrCode ?? t.shareViaQrCode}
-                  aria-expanded={showSuccessQr}
-                >
-                  <span className={`${shareIconClass} text-primary`}>
-                    <QrCode className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {t.qrCode}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void shareMore()}
+                  onClick={shareMore}
                   className={shareActionClass}
                   aria-label={t.successMoreSharingOptions ?? "More sharing options"}
+                  aria-haspopup="dialog"
+                  aria-expanded={showShareMore}
                 >
                   <span className={`${shareIconClass} text-gray-500 dark:text-gray-400`}>
                     <MoreHorizontal className="h-5 w-5" aria-hidden />
@@ -553,153 +721,153 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 </button>
               </div>
             </div>
+          </div>
 
-            <div
-              className="mt-2 hidden items-start gap-1 pl-1 lg:flex"
-              aria-hidden
+          <div
+            className="mx-auto mt-2 hidden w-full max-w-[960px] items-start gap-1 pl-2 lg:flex"
+            aria-hidden
+          >
+            <svg
+              viewBox="0 0 72 56"
+              className="mt-1 h-12 w-[3.75rem] shrink-0 text-primary"
+              fill="none"
             >
-              <svg
-                viewBox="0 0 72 56"
-                className="mt-0.5 h-9 w-12 shrink-0 text-primary/80"
-                fill="none"
-              >
-                <path
-                  d="M58 44C36 42 20 28 22 10"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M14 16l8-8 10 5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <p className="success-hand-accent mt-4 -ml-1 rotate-[-8deg] text-[1.05rem] leading-none text-primary">
-                {shareYourWay}
-              </p>
-            </div>
-
-            <div className="mt-2 border-t border-gray-200 pt-5 sm:mt-1 sm:pt-5 dark:border-gray-800">
-              {deliverySent && recipientLinkDelivery ? (
-                <div className="text-sm text-emerald-800 dark:text-emerald-200" role="status">
-                  <p className="m-0 inline-flex items-center gap-1.5 font-medium">
-                    <Mail className="h-4 w-4 shrink-0" aria-hidden />
-                    {t.recipientLinkDeliverySentTitle ?? "Link emailed"}
-                  </p>
-                  <p className="mt-1 m-0 text-xs leading-snug opacity-90">
-                    {(t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
-                      "{email}",
-                      recipientLinkDelivery.email,
-                    )}
-                  </p>
-                </div>
-              ) : (
-                <form
-                  id="success-private-note-delivery"
-                  className="space-y-2.5"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    submitRecipientLinkDelivery();
-                  }}
-                >
-                  <p className="m-0 text-center text-sm text-gray-500 dark:text-gray-400">
-                    {orSendDirectly}
-                  </p>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                    <label htmlFor="success-deliver-recipient-email" className="sr-only">
-                      {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
-                    </label>
-                    <input
-                      id="success-deliver-recipient-email"
-                      type="email"
-                      autoComplete="off"
-                      inputMode="email"
-                      value={deliverEmailInput}
-                      onChange={(event) => setDeliverEmailInput(event.target.value)}
-                      disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
-                      placeholder={
-                        t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
-                      }
-                      className="success-plain-field h-[45px] min-w-0 flex-1 rounded-[13px] border border-gray-200 bg-[#f7faff] px-3 text-sm text-gray-950 placeholder:text-gray-500 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:placeholder:text-gray-400"
-                    />
-                    <button
-                      type="submit"
-                      disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
-                      className="success-primary-btn inline-flex h-[45px] shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {recipientLinkDeliveryRetrying
-                        ? t.recipientLinkDeliveryRetrying ?? "Sending…"
-                        : deliveryFailed
-                          ? t.recipientLinkDeliveryRetry ?? "Try again"
-                          : t.successSendLink ?? "Send link"}
-                    </button>
-                  </div>
-                  <p className="m-0 flex items-start gap-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                    <span className="min-w-0 flex-1">
-                      {t.successDeliveryLinkOnly ??
-                        "PrivateNote sends only the secure link — never your note contents."}
-                    </span>
-                    <button
-                      type="button"
-                      className="success-quiet-btn inline-flex shrink-0 rounded-full p-0.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:text-gray-300"
-                      title={
-                        t.successDeliveryLinkOnlyHint ??
-                        "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
-                      }
-                      aria-label={
-                        t.successDeliveryLinkOnlyHint ??
-                        "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
-                      }
-                    >
-                      <CircleHelp className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  </p>
-                  {deliveryFailed && recipientLinkDelivery ? (
-                    <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
-                      {(
-                        t.recipientLinkDeliveryFailedBody ??
-                        "We could not send the link to {email}. You can still copy it above."
-                      ).replace("{email}", recipientLinkDelivery.email)}
-                    </p>
-                  ) : null}
-                  {recipientLinkDeliveryGate === "sign_in" ? (
-                    <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                      {t.recipientLinkDeliverySignInHint ??
-                        "Sign in with Starter or Business to email the link —"}{" "}
-                      <Link href={signInHref} className="font-medium text-primary hover:underline">
-                        {t.settingsEmailAlertsSignInLink ?? "Sign in"}
-                      </Link>
-                    </p>
-                  ) : null}
-                  {recipientLinkDeliveryGate === "upgrade" ? (
-                    <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                      {t.recipientLinkDeliveryUpgradeHint ??
-                        "Starter and Business can email the link —"}{" "}
-                      <Link
-                        href={premiumUpgradeHref}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
-                      </Link>
-                    </p>
-                  ) : null}
-                  {recipientLinkDeliveryGate === "verify_email" ? (
-                    <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
-                      {t.recipientLinkDeliveryVerifyEmailHint ??
-                        "Verify your account email before we can send the link for you."}
-                    </p>
-                  ) : null}
-                </form>
-              )}
-            </div>
+              <path
+                d="M58 44C36 42 20 28 22 10"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+              />
+              <path
+                d="M14 16l8-8 10 5"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <p className="success-hand-accent mt-7 -ml-1 rotate-[-7deg] text-primary">
+              {shareYourWay}
+            </p>
           </div>
         </div>
 
+        <div className="mx-auto mt-10 w-full max-w-[960px] px-4 sm:mt-12 sm:px-6">
+          {deliverySent && recipientLinkDelivery ? (
+            <div className="text-center text-sm text-emerald-800 dark:text-emerald-200" role="status">
+              <p className="m-0 inline-flex items-center justify-center gap-1.5 font-medium">
+                <Mail className="h-4 w-4 shrink-0" aria-hidden />
+                {t.recipientLinkDeliverySentTitle ?? "Link emailed"}
+              </p>
+              <p className="mt-1 m-0 text-xs leading-snug opacity-90">
+                {(t.recipientLinkDeliverySentBody ?? "Sent to {email}.").replace(
+                  "{email}",
+                  recipientLinkDelivery.email,
+                )}
+              </p>
+            </div>
+          ) : (
+            <form
+              id="success-private-note-delivery"
+              className="mx-auto max-w-xl space-y-2.5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitRecipientLinkDelivery();
+              }}
+            >
+              <p className="m-0 text-center text-sm font-medium text-gray-600 dark:text-gray-300">
+                {t.successLetPrivateNoteSend ?? "Let PrivateNote send it"}
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                <label htmlFor="success-deliver-recipient-email" className="sr-only">
+                  {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
+                </label>
+                <input
+                  id="success-deliver-recipient-email"
+                  type="email"
+                  autoComplete="off"
+                  inputMode="email"
+                  value={deliverEmailInput}
+                  onChange={(event) => setDeliverEmailInput(event.target.value)}
+                  disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                  placeholder={
+                    t.settingsDeliverRecipientEmailPlaceholder ?? "recipient@example.com"
+                  }
+                  className="success-plain-field h-11 min-w-0 flex-1 rounded-[13px] border border-gray-200 bg-white px-3 text-sm text-gray-950 placeholder:text-gray-500 focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:placeholder:text-gray-400"
+                />
+                <button
+                  type="submit"
+                  disabled={recipientLinkDeliveryRetrying || !canSubmitDelivery}
+                  className="success-primary-btn inline-flex h-11 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {recipientLinkDeliveryRetrying
+                    ? t.recipientLinkDeliveryRetrying ?? "Sending…"
+                    : deliveryFailed
+                      ? t.recipientLinkDeliveryRetry ?? "Try again"
+                      : t.successSendLink ?? "Send link"}
+                </button>
+              </div>
+              <p className="m-0 flex items-start gap-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                <span className="min-w-0 flex-1">
+                  {t.successDeliveryLinkOnly ??
+                    "PrivateNote sends only the secure link — never your note contents."}
+                </span>
+                <button
+                  type="button"
+                  className="success-quiet-btn inline-flex shrink-0 rounded-full p-0.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:text-gray-300"
+                  title={
+                    t.successDeliveryLinkOnlyHint ??
+                    "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
+                  }
+                  aria-label={
+                    t.successDeliveryLinkOnlyHint ??
+                    "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
+                  }
+                >
+                  <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </p>
+              {deliveryFailed && recipientLinkDelivery ? (
+                <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
+                  {(
+                    t.recipientLinkDeliveryFailedBody ??
+                    "We could not send the link to {email}. You can still copy it above."
+                  ).replace("{email}", recipientLinkDelivery.email)}
+                </p>
+              ) : null}
+              {recipientLinkDeliveryGate === "sign_in" ? (
+                <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  {t.recipientLinkDeliverySignInHint ??
+                    "Sign in with Starter or Business to email the link —"}{" "}
+                  <Link href={signInHref} className="font-medium text-primary hover:underline">
+                    {t.settingsEmailAlertsSignInLink ?? "Sign in"}
+                  </Link>
+                </p>
+              ) : null}
+              {recipientLinkDeliveryGate === "upgrade" ? (
+                <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                  {t.recipientLinkDeliveryUpgradeHint ??
+                    "Starter and Business can email the link —"}{" "}
+                  <Link
+                    href={premiumUpgradeHref}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {t.settingsDeliveryUpgradeLink ?? "Upgrade to unlock delivery controls"}
+                  </Link>
+                </p>
+              ) : null}
+              {recipientLinkDeliveryGate === "verify_email" ? (
+                <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
+                  {t.recipientLinkDeliveryVerifyEmailHint ??
+                    "Verify your account email before we can send the link for you."}
+                </p>
+              ) : null}
+            </form>
+          )}
+        </div>
+
         {showPasswordShare ? (
-          <div className="mx-4 mt-12 overflow-hidden rounded-xl border border-gray-200 sm:mx-6 sm:mt-14 dark:border-gray-700">
+          <div className="mx-4 mt-6 overflow-hidden rounded-xl border border-gray-200 sm:mx-6 dark:border-gray-700">
             <div className="flex items-center justify-between gap-2 bg-gray-100 px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wide text-gray-800 dark:bg-gray-800 dark:text-gray-100">
               <span className="inline-flex items-center gap-1.5">
                 <Key className="h-3.5 w-3.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden />
@@ -770,7 +938,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         ) : null}
 
         {createdPasswordProtected && !showPasswordShare ? (
-          <div className="mx-4 mt-12 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 sm:mx-6 sm:mt-14 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          <div className="mx-4 mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 sm:mx-6 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
             <p>
               <strong>{t.passwordProtectionEnabledTitle}</strong> {t.passwordProtectionEnabledBody}
             </p>
@@ -778,11 +946,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
         ) : null}
 
-        <div
-          className={`px-4 sm:px-6 ${
-            showPasswordShare || createdPasswordProtected ? "mt-6" : "mt-12 sm:mt-14"
-          }`}
-        >
+        <div className="mt-6 px-4 sm:px-6">
           <ChromeExtensionOnboardingBanner />
         </div>
 
@@ -863,6 +1027,130 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
         </section>
       </div>
+
+      <Dialog open={showShareMore} onOpenChange={setShowShareMore}>
+        <DialogContent className="max-w-md gap-4 p-5 sm:rounded-2xl">
+          <DialogTitle className="text-base">
+            {t.successOrganizeShortcuts ?? "Organize shortcuts"}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+            {t.successOrganizeShortcutsHint ??
+              "Drag to choose which four appear on the card. Tap a shortcut to share now."}
+          </DialogDescription>
+          <ol className="m-0 flex list-none flex-col gap-1 p-0">
+            {shareOrder.map((id, index) => {
+              const kind = shareChannelKind(id);
+              const href = shareChannelHref(id, successUrl);
+              const label = shareChannelLabel(id);
+              const pinned = index < PINNED_SUCCESS_SHARE_COUNT;
+              const shareInner = (
+                <>
+                  <span className={`${shareIconClass} h-9 w-9 ${shareChannelIconClass(id)}`}>
+                    <ShareChannelGlyph id={id} />
+                  </span>
+                  <span className="min-w-0 flex-1 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {label}
+                    {pinned ? (
+                      <span className="ml-2 text-xs font-normal text-gray-400">
+                        {t.successShortcutOnCard ?? "On card"}
+                      </span>
+                    ) : null}
+                  </span>
+                </>
+              );
+              return (
+                <li
+                  key={id}
+                  draggable
+                  onDragStart={(event) => {
+                    setDraggingShareId(id);
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", id);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const fromId = (event.dataTransfer.getData("text/plain") ||
+                      draggingShareId) as SuccessShareChannelId | null;
+                    if (!fromId || fromId === id) return;
+                    commitShareOrder(moveShareShortcut(shareOrder, fromId, index));
+                    setDraggingShareId(null);
+                  }}
+                  onDragEnd={() => setDraggingShareId(null)}
+                  className={`flex items-center gap-1 rounded-xl border px-1.5 py-1 ${
+                    draggingShareId === id
+                      ? "border-primary/40 bg-primary/[0.06]"
+                      : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-950"
+                  }`}
+                >
+                  <span
+                    className="inline-flex h-9 w-7 shrink-0 cursor-grab items-center justify-center text-gray-400 active:cursor-grabbing"
+                    aria-hidden
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </span>
+                  {kind === "link" && href ? (
+                    <a
+                      href={href}
+                      target={id !== "email" && id !== "sms" && id !== "signal" ? "_blank" : undefined}
+                      rel={
+                        id !== "email" && id !== "sms" && id !== "signal"
+                          ? "noopener noreferrer"
+                          : undefined
+                      }
+                      onClick={id === "signal" ? () => void copyLinkForApp(label) : undefined}
+                      className="success-share-action flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-inherit no-underline"
+                    >
+                      {shareInner}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => activateShareChannel(id)}
+                      className="success-quiet-btn flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1"
+                    >
+                      {shareInner}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="success-quiet-btn inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 disabled:opacity-30"
+                    disabled={index === 0}
+                    aria-label={t.successMoveShortcutUp ?? "Move up"}
+                    onClick={() =>
+                      commitShareOrder(moveShareShortcut(shareOrder, id, index - 1))
+                    }
+                  >
+                    <ChevronUp className="h-4 w-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="success-quiet-btn inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 disabled:opacity-30"
+                    disabled={index === shareOrder.length - 1}
+                    aria-label={t.successMoveShortcutDown ?? "Move down"}
+                    onClick={() =>
+                      commitShareOrder(moveShareShortcut(shareOrder, id, index + 1))
+                    }
+                  >
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <button
+            type="button"
+            onClick={() => void nativeShare()}
+            className={`${ghostBtn} w-full`}
+          >
+            <Share2 className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
+            {t.successSystemShare ?? "Share from this device"}
+          </button>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showSuccessQr} onOpenChange={setShowSuccessQr}>
         <DialogContent className="max-w-xs gap-4 p-5 sm:rounded-2xl">
