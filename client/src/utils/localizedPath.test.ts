@@ -42,6 +42,7 @@ describe("localizedPath", () => {
     assert.equal(localizedPath("/one-time-link", "pt"), "/pt/one-time-link");
     assert.equal(localizedPath("/one-time-link", "hr"), "/hr/one-time-link");
     assert.equal(localizedPath("/one-time-link", "sr"), "/sr/one-time-link");
+    assert.equal(localizedPath("/one-time-link", "tr"), "/tr/one-time-link");
     assert.equal(switchLanguagePath("/de/one-time-link", "en"), "/one-time-link");
     assert.equal(switchLanguagePath("/one-time-link", "fr"), "/fr/one-time-link");
   });

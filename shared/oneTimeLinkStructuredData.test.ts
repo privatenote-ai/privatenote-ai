@@ -32,6 +32,7 @@ test("getOneTimeLinkCopy returns native copy for every supported language", () =
   assert.match(getOneTimeLinkCopy("pt").heroTitle, /uso único/);
   assert.match(getOneTimeLinkCopy("hr").heroTitle, /jednokratn/);
   assert.match(getOneTimeLinkCopy("sr").heroTitle, /jednokratn/);
+  assert.match(getOneTimeLinkCopy("tr").heroTitle, /tek kullanımlık/i);
 
   for (const language of SUPPORTED_LANGUAGES) {
     const copy = getOneTimeLinkCopy(language);

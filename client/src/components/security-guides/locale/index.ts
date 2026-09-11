@@ -9,6 +9,7 @@ import { vpnGuideNl } from "./vpnGuide.nl";
 import { vpnGuidePt } from "./vpnGuide.pt";
 import { vpnGuideSr } from "./vpnGuide.sr";
 import { vpnGuideHr } from "./vpnGuide.hr";
+import { vpnGuideTr } from "./vpnGuide.tr";
 import { passwordManagersGuideEn } from "./passwordManagersGuide.en";
 import { passwordManagersGuideDe } from "./passwordManagersGuide.de";
 import { passwordManagersGuideFr } from "./passwordManagersGuide.fr";
@@ -18,6 +19,7 @@ import { passwordManagersGuideNl } from "./passwordManagersGuide.nl";
 import { passwordManagersGuidePt } from "./passwordManagersGuide.pt";
 import { passwordManagersGuideSr } from "./passwordManagersGuide.sr";
 import { passwordManagersGuideHr } from "./passwordManagersGuide.hr";
+import { passwordManagersGuideTr } from "./passwordManagersGuide.tr";
 
 const VPN_GUIDE_BY_LANGUAGE: Record<SupportedLanguage, VpnGuideCopy> = {
   en: vpnGuideEn,
@@ -29,6 +31,7 @@ const VPN_GUIDE_BY_LANGUAGE: Record<SupportedLanguage, VpnGuideCopy> = {
   pt: vpnGuidePt,
   sr: vpnGuideSr,
   hr: vpnGuideHr,
+  tr: vpnGuideTr,
 };
 
 const PASSWORD_MANAGERS_GUIDE_BY_LANGUAGE: Record<SupportedLanguage, PasswordManagersGuideCopy> = {
@@ -41,6 +44,7 @@ const PASSWORD_MANAGERS_GUIDE_BY_LANGUAGE: Record<SupportedLanguage, PasswordMan
   pt: passwordManagersGuidePt,
   sr: passwordManagersGuideSr,
   hr: passwordManagersGuideHr,
+  tr: passwordManagersGuideTr,
 };
 
 export function vpnGuideCopy(language: SupportedLanguage): VpnGuideCopy {

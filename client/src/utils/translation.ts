@@ -29,6 +29,7 @@ const localeLoaders: Record<Exclude<SupportedLanguage, "en">, () => Promise<Tran
   pt: () => import("./translations/pt").then((m) => ({ ...en, ...m.pt })),
   sr: () => import("./translations/sr").then((m) => ({ ...en, ...m.sr })),
   hr: () => import("./translations/hr").then((m) => ({ ...en, ...m.hr })),
+  tr: () => import("./translations/tr").then((m) => ({ ...en, ...m.tr })),
 };
 
 const cache: Partial<Record<SupportedLanguage, Translations>> = { en };

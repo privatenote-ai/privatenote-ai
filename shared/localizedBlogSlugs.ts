@@ -71,6 +71,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "introducao-a-ia-privada",
     sr: "uvod-u-privatnu-ai",
     hr: "uvod-u-privatnu-ai",
+    tr: "introduction-to-private-ai",
   },
   "how-to-make-a-private-note": {
     en: "how-to-make-a-private-note",
@@ -82,6 +83,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-fazer-uma-nota-privada",
     sr: "kako-napraviti-privatnu-belezku",
     hr: "kako-napraviti-privatnu-biljesku",
+    tr: "how-to-make-a-private-note",
   },
   "crypto-seed-phrase-one-time-link": {
     en: "crypto-seed-phrase-one-time-link",
@@ -93,6 +95,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "frase-semente-crypto-link-unico",
     sr: "crypto-seed-fraza-jednokratna-veza",
     hr: "crypto-seed-fraza-jednokratna-poveznica",
+    tr: "crypto-seed-phrase-one-time-link",
   },
   "why-email-is-worst-for-secrets": {
     en: "why-email-is-worst-for-secrets",
@@ -104,6 +107,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "por-que-o-email-e-ruim-para-segredos",
     sr: "zasto-je-email-los-za-tajne",
     hr: "zasto-je-email-los-za-tajne",
+    tr: "why-email-is-worst-for-secrets",
   },
   "chat-control-1-0-vote-explained": {
     en: "chat-control-1-0-vote-explained",
@@ -115,6 +119,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "chat-control-1-0-votacao-explicada",
     sr: "chat-control-1-0-glasanje-objasnjeno",
     hr: "chat-control-1-0-glasanje-objasnjeno",
+    tr: "chat-control-1-0-vote-explained",
   },
   "chat-control-europe-cryptographers": {
     en: "chat-control-europe-cryptographers",
@@ -126,6 +131,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "chat-control-europa-criptografos",
     sr: "chat-control-evropa-kriptografi",
     hr: "chat-control-europa-kriptografi",
+    tr: "chat-control-europe-cryptographers",
   },
   "how-to-share-api-key-securely": {
     en: "how-to-share-api-key-securely",
@@ -137,6 +143,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "compartilhar-chave-api-com-seguranca",
     sr: "bezbedno-deljenje-api-kljuca",
     hr: "sigurno-dijeljenje-api-kljuca",
+    tr: "how-to-share-api-key-securely",
   },
   "what-is-end-to-end-encryption": {
     en: "what-is-end-to-end-encryption",
@@ -148,6 +155,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "o-que-e-criptografia-de-ponta-a-ponta",
     sr: "sta-je-end-to-end-sifrovanje",
     hr: "sto-je-end-to-end-sifriranje",
+    tr: "what-is-end-to-end-encryption",
   },
   "secrets-never-send-in-chat": {
     en: "secrets-never-send-in-chat",
@@ -159,6 +167,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "10-segredos-para-nunca-enviar-no-chat",
     sr: "10-tajni-koje-nikada-ne-slati-u-chat",
     hr: "10-tajni-koje-nikada-ne-slati-u-chat",
+    tr: "secrets-never-send-in-chat",
   },
   "send-secret-message-without-account": {
     en: "send-secret-message-without-account",
@@ -170,6 +179,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "mensagem-secreta-sem-conta",
     sr: "tajna-poruka-bez-naloga",
     hr: "tajna-poruka-bez-racuna",
+    tr: "send-secret-message-without-account",
   },
   "encrypted-vs-secure-file-sharing": {
     en: "encrypted-vs-secure-file-sharing",
@@ -181,6 +191,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "compartilhamento-criptografado-vs-seguro",
     sr: "sifrovano-vs-bezbedno-deljenje-datoteka",
     hr: "sifrirano-vs-sigurno-dijeljenje-datoteka",
+    tr: "encrypted-vs-secure-file-sharing",
   },
   "one-time-secret-links": {
     en: "one-time-secret-links",
@@ -192,6 +203,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "links-secretos-unicos",
     sr: "jednokratni-tajni-linkovi",
     hr: "jednokratne-tajne-poveznice",
+    tr: "one-time-secret-links",
   },
   "securing-ai-agents-like-employees": {
     en: "securing-ai-agents-like-employees",
@@ -203,6 +215,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "proteger-agentes-de-ia-como-funcionarios",
     sr: "obezbedivanje-ai-agensata-kao-zaposlenih",
     hr: "osiguravanje-ai-agents-poput-zaposlenika",
+    tr: "securing-ai-agents-like-employees",
   },
   "privatenote-codex": {
     en: "privatenote-codex",
@@ -214,6 +227,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "privatenote-com-openai-codex",
     sr: "privatenote-sa-openai-codexom",
     hr: "privatenote-s-openai-codexom",
+    tr: "privatenote-codex",
   },
   "privatenote-for-developers": {
     en: "privatenote-for-developers",
@@ -225,6 +239,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "privatenote-para-desenvolvedores",
     sr: "privatenote-za-programere",
     hr: "privatenote-za-programere",
+    tr: "privatenote-for-developers",
   },
   "privacy-tools": {
     en: "privacy-tools",
@@ -236,6 +251,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "ferramentas-de-privacidade",
     sr: "alati-za-privatnost",
     hr: "alati-za-privatnost",
+    tr: "privacy-tools",
   },
   "myth-good-enough-security": {
     en: "myth-good-enough-security",
@@ -247,6 +263,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "mito-seguranca-boa-o-suficiente",
     sr: "mit-dovoljno-dobrog-obezbedenja",
     hr: "mit-dovoljno-dobre-sigurnosti",
+    tr: "myth-good-enough-security",
   },
   "how-we-generate-passwords": {
     en: "how-we-generate-passwords",
@@ -258,6 +275,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-geramos-senhas-seguras",
     sr: "kako-generisemo-sigurne-lozinke",
     hr: "kako-generiramo-sigurne-lozinke",
+    tr: "how-we-generate-passwords",
   },
   "workplace-texts-private-note": {
     en: "workplace-texts-private-note",
@@ -269,6 +287,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "textos-de-trabalho-e-notas-efemer",
     sr: "tekstovi-na-radnom-mestu-i-efemerne-poruke",
     hr: "tekstovi-na-radnom-mjestu-i-efemerne-biljeske",
+    tr: "workplace-texts-private-note",
   },
   "social-media-bans-children-evidence": {
     en: "social-media-bans-children-evidence",
@@ -280,6 +299,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "proibicoes-redes-sociais-criancas-evidencia",
     sr: "zabrane-drustvenih-mreza-za-decu-dokazi",
     hr: "zabrane-drustvenih-mreza-za-djecu-dokazi",
+    tr: "social-media-bans-children-evidence",
   },
   "how-to-share-a-password-securely": {
     en: "how-to-share-a-password-securely",
@@ -291,6 +311,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-partilhar-uma-palavra-passe-com-seguranca",
     sr: "kako-bezbedno-podeliti-lozinku",
     hr: "kako-sigurno-podijeliti-lozinku",
+    tr: "how-to-share-a-password-securely",
   },
   "secrets-in-cicd-env-github-leaks": {
     en: "secrets-in-cicd-env-github-leaks",
@@ -302,6 +323,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "segredos-cicd-env-vazamentos-github",
     sr: "tajne-u-cicd-env-github-curenja",
     hr: "tajne-u-cicd-env-github-curenja",
+    tr: "secrets-in-cicd-env-github-leaks",
   },
   "send-sensitive-documents-securely": {
     en: "send-sensitive-documents-securely",
@@ -313,6 +335,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "enviar-documentos-sensiveis-com-seguranca",
     sr: "bezbedno-slanje-osetljivih-dokumenata",
     hr: "sigurno-slanje-osjetljivih-dokumenata",
+    tr: "send-sensitive-documents-securely",
   },
   "how-to-share-ssh-keys-securely": {
     en: "how-to-share-ssh-keys-securely",
@@ -324,6 +347,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "compartilhar-chaves-ssh-com-seguranca",
     sr: "bezbedno-deljenje-ssh-kljuceva",
     hr: "sigurno-dijeljenje-ssh-kljuceva",
+    tr: "how-to-share-ssh-keys-securely",
   },
   "google-drive-vs-one-time-encrypted-links": {
     en: "google-drive-vs-one-time-encrypted-links",
@@ -335,6 +359,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "google-drive-vs-links-criptografados-de-uso-unico",
     sr: "google-drive-vs-jednokratni-sifrovani-linkovi",
     hr: "google-drive-vs-jednokratni-sifrirani-linkovi",
+    tr: "google-drive-vs-one-time-encrypted-links",
   },
   "android-iphone-rcs-end-to-end-encryption": {
     en: "android-iphone-rcs-end-to-end-encryption",
@@ -346,6 +371,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "android-iphone-rcs-criptografia-ponta-a-ponta",
     sr: "android-iphone-rcs-enkripcija-od-kraja-do-kraja",
     hr: "android-iphone-rcs-enkripcija-od-kraja-do-kraja",
+    tr: "android-iphone-rcs-end-to-end-encryption",
   },
   "common-secret-handling-mistakes": {
     en: "common-secret-handling-mistakes",
@@ -357,6 +383,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "erros-comuns-ao-lidar-com-segredos",
     sr: "ceste-greske-pri-rukovanju-tajnama",
     hr: "ceste-greske-pri-rukovanju-tajnama",
+    tr: "common-secret-handling-mistakes",
   },
   "mythos-ai-cryptanalysis-hawk": {
     en: "mythos-ai-cryptanalysis-hawk",
@@ -368,6 +395,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "mythos-ia-criptoanalise-hawk",
     sr: "mythos-ai-kriptoanaliza-hawk",
     hr: "mythos-ai-kriptoanaliza-hawk",
+    tr: "mythos-ai-cryptanalysis-hawk",
   },
   "how-to-share-photos-securely": {
     en: "how-to-share-photos-securely",
@@ -379,6 +407,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-compartilhar-fotos-com-seguranca",
     sr: "kako-bezbedno-deliti-fotografije",
     hr: "kako-sigurno-dijeliti-fotografije",
+    tr: "how-to-share-photos-securely",
   },
   "how-to-send-encrypted-voice-message": {
     en: "how-to-send-encrypted-voice-message",
@@ -390,6 +419,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-enviar-uma-mensagem-de-voz-criptografada",
     sr: "kako-poslati-sifrovanu-glasovnu-poruku",
     hr: "kako-poslati-sifriranu-glasovnu-poruku",
+    tr: "how-to-send-encrypted-voice-message",
   },
   "recipient-verification-code-before-reveal": {
     en: "recipient-verification-code-before-reveal",
@@ -401,6 +431,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "codigo-de-verificacao-do-destinatario-antes-de-revelar",
     sr: "verifikacioni-kod-primaoca-pre-otkrivanja",
     hr: "verifikacijski-kod-primatelja-prije-otkrivanja",
+    tr: "recipient-verification-code-before-reveal",
   },
   "click-to-reveal-private-notes": {
     en: "click-to-reveal-private-notes",
@@ -412,6 +443,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "clique-para-revelar-notas-privadas",
     sr: "kliknite-da-otkrijete-privatne-beleske",
     hr: "kliknite-za-otkrivanje-privatnih-biljeski",
+    tr: "click-to-reveal-private-notes",
   },
   "know-when-secret-link-opened": {
     en: "know-when-secret-link-opened",
@@ -423,6 +455,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "saber-quando-um-link-secreto-foi-aberto",
     sr: "znati-kada-je-tajni-link-otvoren",
     hr: "znati-kada-je-tajni-link-otvoren",
+    tr: "know-when-secret-link-opened",
   },
   "revoke-unopened-note-proof-of-access": {
     en: "revoke-unopened-note-proof-of-access",
@@ -434,6 +467,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "revogar-nota-nao-aberta-prova-de-acesso",
     sr: "opozovi-neotvorenu-belesku-dokaz-pristupa",
     hr: "opozovi-neotvorenu-biljesku-dokaz-pristupa",
+    tr: "revoke-unopened-note-proof-of-access",
   },
   "delayed-reveal-scheduled-secret-links": {
     en: "delayed-reveal-scheduled-secret-links",
@@ -445,6 +479,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "revelacao-adiada-links-secretos-agendados",
     sr: "odlozeno-otkrivanje-zakazani-tajni-linkovi",
     hr: "odgodeno-otkrivanje-zakazani-tajni-linkovi",
+    tr: "delayed-reveal-scheduled-secret-links",
   },
   "how-to-send-nudes-safely": {
     en: "how-to-send-nudes-safely",
@@ -456,6 +491,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "como-enviar-nudes-com-seguranca",
     sr: "kako-bezbedno-poslati-intimne-fotografije",
     hr: "kako-sigurno-poslati-intimne-fotografije",
+    tr: "how-to-send-nudes-safely",
   },
   "secure-client-delivery-for-lawyers": {
     en: "secure-client-delivery-for-lawyers",
@@ -467,6 +503,7 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     pt: "entrega-confidencial-para-advogados",
     sr: "bezbedna-dostava-klijentima-za-advokate",
     hr: "sigurna-dostava-klijentima-za-odvjetnike",
+    tr: "secure-client-delivery-for-lawyers",
   },
 
 };

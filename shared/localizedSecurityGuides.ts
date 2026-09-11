@@ -1,4 +1,4 @@
-import type { SupportedLanguage } from "./supportedLanguages.ts";
+import { NON_ENGLISH_LANGUAGE_CODES, type SupportedLanguage } from "./supportedLanguages.ts";
 
 /** Security guides mirrored under every locale (full translated pages). */
 export const LOCALIZED_SECURITY_GUIDE_TOPICS = ["vpn", "password"] as const;
@@ -26,7 +26,7 @@ export function localizedSecurityGuidePath(
 
 export const LOCALIZED_SECURITY_GUIDE_MARKETING_PATHS = LOCALIZED_SECURITY_GUIDE_TOPICS.flatMap((topic) => {
   const en = `/security-guides/${topic}`;
-  const localized = (["de", "fr", "es", "it", "nl", "pt", "sr", "hr"] as const).map(
+  const localized = NON_ENGLISH_LANGUAGE_CODES.map(
     (language) => `/${language}/security-guides/${topic}`,
   );
   return [en, ...localized];
