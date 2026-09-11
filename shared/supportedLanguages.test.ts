@@ -10,9 +10,9 @@ import {
   SUPPORTED_LANGUAGES,
 } from "./supportedLanguages.ts";
 
-test("supported languages include pt, sr, hr, tr", () => {
-  assert.deepEqual(SUPPORTED_LANGUAGES, ["en", "de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr"]);
-  assert.equal(NON_ENGLISH_LANGUAGE_CODES.length, 9);
+test("supported languages include pt, sr, hr, tr, pl", () => {
+  assert.deepEqual(SUPPORTED_LANGUAGES, ["en", "de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr", "pl"]);
+  assert.equal(NON_ENGLISH_LANGUAGE_CODES.length, 10);
 });
 
 test("normalizeLanguageCode maps regional tags", () => {
@@ -20,6 +20,7 @@ test("normalizeLanguageCode maps regional tags", () => {
   assert.equal(normalizeLanguageCode("sr-Latn"), "sr");
   assert.equal(normalizeLanguageCode("hr-HR"), "hr");
   assert.equal(normalizeLanguageCode("tr-TR"), "tr");
+  assert.equal(normalizeLanguageCode("pl-PL"), "pl");
   assert.equal(normalizeLanguageCode("xx"), "en");
 });
 
@@ -28,6 +29,7 @@ test("locale home pattern matches marketing locale codes", () => {
   assert.equal(isLocaleHomeSegment("hr"), true);
   assert.equal(isSupportedLanguage("sr"), true);
   assert.equal(isSupportedLanguage("tr"), true);
+  assert.equal(isSupportedLanguage("pl"), true);
 });
 
 test("intlLocaleForLanguage keeps Serbian on Latin script", () => {

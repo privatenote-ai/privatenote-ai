@@ -38,7 +38,7 @@ export function regionFromLocaleTag(tag: string | null | undefined): string | nu
 }
 
 /** European UI languages that imply EUR when no region/timezone signal exists. */
-const EUROPE_UI_LANGUAGES = new Set(["de", "fr", "es", "it", "nl", "hr", "sr", "tr"]);
+const EUROPE_UI_LANGUAGES = new Set(["de", "fr", "es", "it", "nl", "hr", "sr", "tr", "pl"]);
 
 /**
  * Best-effort display currency for marketing/pricing UI before checkout.

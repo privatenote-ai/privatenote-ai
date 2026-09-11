@@ -32,6 +32,7 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: "sr", nativeName: "Srpski", englishName: "Serbian" },
   { code: "hr", nativeName: "Hrvatski", englishName: "Croatian" },
   { code: "tr", nativeName: "Türkçe", englishName: "Turkish" },
+  { code: "pl", nativeName: "Polski", englishName: "Polish" },
 ];
 
 export function getUserLanguage(): SupportedLanguage {

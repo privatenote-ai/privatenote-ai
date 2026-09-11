@@ -647,11 +647,12 @@ const SENTENCE_SUFFIX: Localized<(label: string) => string> = {
   it: (label) => ` Scrivi (${label}) frasi.`,
   nl: (label) => ` Schrijf (${label}) zinnen.`,
   tr: (label) => ` Yazın (${label}) cümle.`,
+  pl: (label) => ` Napisz (${label}) zdań.`,
 };
 
 /** Matches any supported locale’s sentence-length suffix at end of prompt. */
 export const SENTENCE_LENGTH_USER_SUFFIX_ANY_LOCALE =
-  /\s*(?:Write|Schreibe|Écris|Escribe|Napišite|Scrivi|Schrijf|Escreva|Yazın) \([^)]+\) (?:of sentences|Sätze|phrases|frases|frasi|zinnen|rečenice|cümle)\.$/;
+  /\s*(?:Write|Schreibe|Écris|Escribe|Napišite|Scrivi|Schrijf|Escreva|Yazın|Napisz) \([^)]+\) (?:of sentences|Sätze|phrases|frases|frasi|zinnen|rečenice|cümle|zdań)\.$/;
 
 const LEGACY_EN_ONLY = /\s*Use the sentence length I selected\.$/;
 
@@ -687,6 +688,7 @@ const USER_REQUEST_LABEL: Localized<string> = {
   it: "Richiesta dell'utente:",
   nl: "Verzoek van gebruiker:",
   tr: "Kullanıcı isteği:",
+  pl: "Prośba użytkownika:",
 };
 
 export function getLocalizedUserRequestLabel(language: SupportedLanguage): string {
@@ -754,6 +756,12 @@ Klişelerden, doldurmadan ve genel cümlelerden kaçının.
 Mümkün olduğunca somut olun.
 Mesajın önüne veya arkasına açıklama eklemeyin.
 Aşağıdaki uzunluk yönergesini izleyin.`,
+  pl: `Pisz jak prawdziwa osoba.
+Bądź zwięzły, jasny i naturalny.
+Unikaj frazesów, wypełniaczy i ogólników.
+Bądź konkretny, gdy to możliwe.
+Nie dodawaj wyjaśnień przed ani po wiadomości.
+Trzymaj się instrukcji długości poniżej.`,
 };
 
 const BASE_INSTRUCTION_SMALL_LOC: Localized<string> = {
@@ -837,6 +845,14 @@ const BASE_INSTRUCTION_SMALL_LOC: Localized<string> = {
     "Ana metnin önüne veya arkasına açıklama eklemeyin.",
     "Aşağıdaki uzunluk yönergesini izleyin.",
   ].join("\n"),
+  pl: [
+    "Używaj prostego, naturalnego języka.",
+    "Bądź krótki i jasny.",
+    "Korzystaj tylko z faktów z prośby użytkownika.",
+    "Nie wymyślaj imion, dat, linków ani szczegółów.",
+    "Nie dodawaj wyjaśnień przed ani po tekście głównym.",
+    "Trzymaj się instrukcji długości poniżej.",
+  ].join("\n"),
 };
 
 const PLACEHOLDER_BRACE_RULE_LOC: Localized<string> = {
@@ -850,6 +866,7 @@ const PLACEHOLDER_BRACE_RULE_LOC: Localized<string> = {
   it: "Regola rigida: non scrivere mai {{ o }} nella risposta. Usa solo nomi e fatti reali dalla RICHIESTA e dagli indizi analizzati.",
   nl: "Strikte regel: geef nooit {{ of }} in je antwoord. Gebruik alleen echte namen en feiten uit het VERZOEK en geparste aanwijzingen.",
   tr: "Katı kural: yanıtta asla {{ veya }} yazmayın. Yalnızca KULLANICI İSTEĞİ ve ayrıştırılmış ipuçlarındaki gerçek isimleri ve olguları kullanın.",
+  pl: "Twarda zasada: nigdy nie zapisuj {{ ani }} w odpowiedzi. Używaj tylko prawdziwych imion i faktów z PROŚBY UŻYTKOWNIKA i sparsowanych wskazówek.",
 };
 
 const GROUNDING_RULES_SMALL_LOC: Localized<string> = {
@@ -943,6 +960,15 @@ const GROUNDING_RULES_SMALL_LOC: Localized<string> = {
     "- Nihai yanıtta şablon sözdizimi, köşeli parantez veya yer tutucu sözcük bırakmayın.",
     "- Asla {{ veya }} karakterlerini yazmayın.",
   ].join("\n"),
+  pl: [
+    "Ugruntowanie (obowiązkowe):",
+    "- Używaj TYLKO imion, tytułów, organizacji, dat, tematów i faktów z PROŚBY UŻYTKOWNIKA poniżej.",
+    "- NIE wymyślaj osób ani faktów.",
+    "- Jeśli użytkownik podał imię lub tytuł, użyj dokładnie tego sformułowania.",
+    "- Pisz tylko zwykły, skończony tekst.",
+    "- Nie zostawiaj składni szablonu, nawiasów ani słów-wypełniaczy w odpowiedzi końcowej.",
+    "- Nigdy nie wypisuj znaków {{ ani }}.",
+  ].join("\n"),
 };
 
 const EXAMPLE_SHAPE_PREFIX: Localized<string> = {
@@ -956,6 +982,7 @@ const EXAMPLE_SHAPE_PREFIX: Localized<string> = {
   it: "Solo forma di esempio. Nomi e dettagli sono fittizi. Usa solo fatti dalla RICHIESTA; non copiare gli esempi:",
   nl: "Alleen voorbeeldvorm. Namen en details zijn fictief. Gebruik alleen feiten uit het VERZOEK; kopieer de voorbeelden niet:",
   tr: "Yalnızca örnek biçim. İsimler ve ayrıntılar kurgusaldır. Yalnızca KULLANICI İSTEĞİndeki olguları kullanın; örnekleri kopyalamayın:",
+  pl: "Tylko kształt przykładu. Imiona i szczegóły są fikcyjne. Używaj wyłącznie faktów z PROŚBY UŻYTKOWNIKA; nie kopiuj przykładów:",
 };
 
 const ULTRA_SMALL_NOTE: Localized<string> = {
@@ -969,6 +996,7 @@ const ULTRA_SMALL_NOTE: Localized<string> = {
   it: "Il modello locale è molto piccolo: un paragrafo compatto se possibile. Nessun preambolo (« Certo », « Ecco »). Vai dritto al testo richiesto.",
   nl: "Het lokale model is zeer klein: één compacte alinea indien mogelijk. Geen inleiding (« Natuurlijk », « Hier is »). Ga direct naar de gevraagde tekst.",
   tr: "Yerel model çok küçük: mümkünse tek sıkı bir paragraf. Giriş yok (« Tabii », « İşte »). Doğrudan istenen metne geçin.",
+  pl: "Lokalny model jest bardzo mały: w miarę możliwości jeden zwarty akapit. Bez wstępu (« Jasne », « Oto »). Przejdź od razu do żądanego tekstu.",
 };
 
 const EXTRA_SMALL_LINES: Localized<[string, string]> = {
@@ -982,6 +1010,7 @@ const EXTRA_SMALL_LINES: Localized<[string, string]> = {
   it: ["Parole semplici.", "Nessun titolo."],
   nl: ["Eenvoudige woorden.", "Geen titel toevoegen."],
   tr: ["Basit sözcükler.", "Başlık eklemeyin."],
+  pl: ["Proste słowa.", "Nie dodawaj tytułu."],
 };
 
 export function getLocalizedBaseInstruction(
@@ -1025,6 +1054,7 @@ export function buildOutputRepairAdditionLocalized(
     es: "---\nREGENERA (tu última respuesta no pasó las comprobaciones). Usa la misma SOLICITUD de arriba.\nReglas para este intento:",
     it: "---\nRIGENERA (l'ultima risposta non ha superato i controlli). Usa la stessa RICHIESTA UTENTE di sopra.\nRegole per questo tentativo:",
     tr: "---\nYENİDEN ÜRET (son yanıtınız kontrolleri geçmedi). Yukarıdaki aynı KULLANICI İSTEĞİNİ kullanın.\nBu deneme için kurallar:",
+    pl: "---\nWYGENERUJ PONOWNIE (ostatnia odpowiedź nie przeszła kontroli). Użyj tej samej PROŚBY UŻYTKOWNIKA powyżej.\nZasady tej próby:",
   };
   const lines: Localized<string[]> = {
     en: [
@@ -1057,6 +1087,11 @@ export function buildOutputRepairAdditionLocalized(
       "- {{ veya }} ve yer tutucu belirteç yok.",
       "- « Son not: » ve düşünme etiketleri yok.",
     ],
+    pl: [
+      "- Wypisz tylko tekst końcowy. Bez wstępu w stylu « Oto » lub « Jasne ».",
+      "- Bez {{ ani }} i bez tokenów-wypełniaczy.",
+      "- Bez « Notatka końcowa: » i tagów rozumowania.",
+    ],
   };
   const meeting: Localized<string> = {
     en: "- Greet or address the person using the exact name or title from the USER REQUEST.",
@@ -1065,6 +1100,7 @@ export function buildOutputRepairAdditionLocalized(
     es: "- Saluda a la persona con el nombre o cargo exacto de la SOLICITUD.",
     it: "- Saluta o rivolgiti alla persona usando il nome o titolo esatto dalla RICHIESTA UTENTE.",
     tr: "- Kişiye KULLANICI İSTEĞİndeki tam isim veya unvanla hitap edin.",
+    pl: "- Powitaj lub zwracaj się do osoby dokładnym imieniem lub tytułem z PROŚBY UŻYTKOWNIKA.",
   };
   const bullets: Localized<string> = {
     en: "- Use at most 4 bullet points. One idea per bullet.",
@@ -1073,6 +1109,7 @@ export function buildOutputRepairAdditionLocalized(
     es: "- Como máximo 4 viñetas. Una idea por viñeta.",
     it: "- Usa al massimo 4 punti elenco. Un'idea per punto.",
     tr: "- En fazla 4 madde işareti kullanın. Her maddede bir fikir.",
+    pl: "- Użyj co najwyżej 4 punktów. Jedna myśl na punkt.",
   };
   const thinking: Localized<string> = {
     en: "- Do not output <think>, <think>, or any XML-style reasoning tags.",
@@ -1081,6 +1118,7 @@ export function buildOutputRepairAdditionLocalized(
     es: "- No emitas <think> ni etiquetas XML de razonamiento.",
     it: "- Non emettere <think> né tag di ragionamento in stile XML.",
     tr: "- <think> veya XML tarzı akıl yürütme etiketleri yazmayın.",
+    pl: "- Nie wypisuj <think> ani XML-owych tagów rozumowania.",
   };
   const end: Localized<string> = {
     en: "Throw away the bad patterns above and write the correct version now.",
@@ -1089,6 +1127,7 @@ export function buildOutputRepairAdditionLocalized(
     es: "Descarta los patrones incorrectos de arriba y escribe la versión correcta ahora.",
     it: "Ignora gli schemi errati sopra e scrivi ora la versione corretta.",
     tr: "Yukarıdaki hatalı kalıpları bırakın ve şimdi doğru sürümü yazın.",
+    pl: "Odrzuć powyższe błędne wzorce i napisz teraz poprawną wersję.",
   };
 
   const L = lines[language] ?? lines.en;

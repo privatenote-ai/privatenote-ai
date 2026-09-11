@@ -67,6 +67,12 @@
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
+  <url>
+    <loc>https://privatenote.ai/pl/</loc>
+    <lastmod>2026-09-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
   <url><loc>https://privatenote.ai/de/password-generator</loc><lastmod>2026-05-07</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/de/one-time-link</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://privatenote.ai/de/secure-file-transfer</loc><lastmod>2026-07-01</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -851,6 +857,73 @@
   </url>
   <url>
     <loc>https://privatenote.ai/tr/security-guides/password</loc>
+    <lastmod>2026-09-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+<url><loc>https://privatenote.ai/pl/password-generator</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+<url><loc>https://privatenote.ai/pl/one-time-link</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+<url><loc>https://privatenote.ai/pl/secure-file-transfer</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+<url><loc>https://privatenote.ai/pl/privacy-tools</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/security-resources</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/how-it-works</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+<url><loc>https://privatenote.ai/pl/premium</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+<url><loc>https://privatenote.ai/pl/developers</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/about</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+<url><loc>https://privatenote.ai/pl/contact</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+<url><loc>https://privatenote.ai/pl/blog</loc><lastmod>2026-09-10</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/introduction-to-private-ai</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-make-a-private-note</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/crypto-seed-phrase-one-time-link</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/why-email-is-worst-for-secrets</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/chat-control-1-0-vote-explained</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/chat-control-europe-cryptographers</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-share-api-key-securely</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/what-is-end-to-end-encryption</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/secrets-never-send-in-chat</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/send-secret-message-without-account</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/encrypted-vs-secure-file-sharing</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/one-time-secret-links</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/securing-ai-agents-like-employees</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/privatenote-codex</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/privatenote-for-developers</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/privacy-tools</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/myth-good-enough-security</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-we-generate-passwords</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/workplace-texts-private-note</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/social-media-bans-children-evidence</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-share-a-password-securely</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/secrets-in-cicd-env-github-leaks</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/send-sensitive-documents-securely</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-share-ssh-keys-securely</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/google-drive-vs-one-time-encrypted-links</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/android-iphone-rcs-end-to-end-encryption</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/common-secret-handling-mistakes</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/mythos-ai-cryptanalysis-hawk</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-share-photos-securely</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-send-encrypted-voice-message</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/recipient-verification-code-before-reveal</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/click-to-reveal-private-notes</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/know-when-secret-link-opened</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/revoke-unopened-note-proof-of-access</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/delayed-reveal-scheduled-secret-links</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/how-to-send-nudes-safely</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/secure-client-delivery-for-lawyers</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/privacy</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+<url><loc>https://privatenote.ai/pl/terms</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/category/ai</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/category/developers</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/category/encryption</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/category/privacy</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url><loc>https://privatenote.ai/pl/blog/category/secrets</loc><lastmod>2026-09-10</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+<url>
+    <loc>https://privatenote.ai/pl/security-guides/vpn</loc>
+    <lastmod>2026-09-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+<url>
+    <loc>https://privatenote.ai/pl/security-guides/password</loc>
     <lastmod>2026-09-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

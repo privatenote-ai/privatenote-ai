@@ -1,5 +1,5 @@
 /** Canonical UI / marketing language codes (single source of truth). */
-export const SUPPORTED_LANGUAGES = ["en", "de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr"] as const;
+export const SUPPORTED_LANGUAGES = ["en", "de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr", "pl"] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 

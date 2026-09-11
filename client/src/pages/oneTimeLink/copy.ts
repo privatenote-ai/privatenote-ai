@@ -10,6 +10,7 @@ import { oneTimeLinkNl } from "./copy.nl";
 import { oneTimeLinkPt } from "./copy.pt";
 import { oneTimeLinkSr } from "./copy.sr";
 import { oneTimeLinkTr } from "./copy.tr";
+import { oneTimeLinkPl } from "./copy.pl";
 
 const oneTimeLinkCopy: Record<SupportedLanguage, OneTimeLinkCopy> = {
   en: oneTimeLinkEn,
@@ -22,6 +23,7 @@ const oneTimeLinkCopy: Record<SupportedLanguage, OneTimeLinkCopy> = {
   hr: oneTimeLinkHr,
   sr: oneTimeLinkSr,
   tr: oneTimeLinkTr,
+  pl: oneTimeLinkPl,
 };
 
 export function getOneTimeLinkCopy(language: SupportedLanguage): OneTimeLinkCopy {
