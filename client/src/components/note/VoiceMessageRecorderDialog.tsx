@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, Video, Square, RotateCcw, Check, SwitchCamera } from "lucide-react";
 import {
   Dialog,
@@ -26,7 +26,11 @@ import {
   type VoiceRecordingStrategy,
 } from "@/utils/voiceMessageRecording";
 import type { CameraFacing } from "@/utils/photoCapture";
-import { toggleCameraFacing } from "@/utils/photoCapture";
+import {
+  attachStreamToVideoElement,
+  shouldFallbackToBasicVideoConstraints,
+  toggleCameraFacing,
+} from "@/utils/photoCapture";
 import {
   createVideoMessageFile,
   isVideoRecordingSupported,
@@ -51,6 +55,10 @@ type VoiceMessageRecorderDialogProps = {
   formatPreference?: VoiceRecordingFormatPreference;
   initialMode?: RecordCaptureMode;
 };
+
+const LIVE_VIDEO_FRAME_CLASS =
+  "relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-[min(68vh,32rem)]";
+const PERMISSION_DISMISS_GRACE_MS = 1000;
 
 function stopMediaStream(stream: MediaStream | null): void {
   if (!stream) return;
@@ -101,6 +109,8 @@ export function VoiceMessageRecorderDialog({
   const startedAtRef = useRef<number>(0);
   const discardOnStopRef = useRef(false);
   const previewGenerationRef = useRef(0);
+  const previewInFlightRef = useRef(false);
+  const suppressDismissUntilRef = useRef(0);
 
   const clearTimer = () => {
     if (timerRef.current != null) {
@@ -137,12 +147,27 @@ export function VoiceMessageRecorderDialog({
     setLiveStream(stream);
     const video = videoRef.current;
     if (!video) return;
-    video.srcObject = stream;
-    video.muted = true;
-    video.playsInline = true;
-    void video.play().catch(() => {
-      // Autoplay can fail if the tab is backgrounded.
-    });
+    void attachStreamToVideoElement(video, stream);
+  };
+
+  const bindLiveVideoElement = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (!node) return;
+    const stream = streamRef.current;
+    if (!stream?.getVideoTracks().length) return;
+    if (node.srcObject === stream) return;
+    void attachStreamToVideoElement(node, stream);
+  }, []);
+
+  const armDismissSuppression = () => {
+    suppressDismissUntilRef.current = Date.now() + PERMISSION_DISMISS_GRACE_MS;
+  };
+
+  const shouldSuppressDismiss = () =>
+    isStarting || Date.now() < suppressDismissUntilRef.current;
+
+  const handleDismissAttempt = (event: { preventDefault: () => void }) => {
+    if (shouldSuppressDismiss()) event.preventDefault();
   };
 
   const finalizeRecordingBlob = (blob: Blob) => {
@@ -196,6 +221,7 @@ export function VoiceMessageRecorderDialog({
     }
     mediaRecorderRef.current = null;
     void stopWavGraph();
+    previewInFlightRef.current = false;
     stopMediaStream(streamRef.current);
     streamRef.current = null;
     setLiveStream(null);
@@ -242,7 +268,8 @@ export function VoiceMessageRecorderDialog({
   const startVideoStream = async (nextFacing: CameraFacing): Promise<MediaStream> => {
     try {
       return await navigator.mediaDevices.getUserMedia(videoAndAudioConstraints(nextFacing));
-    } catch {
+    } catch (error) {
+      if (!shouldFallbackToBasicVideoConstraints(error)) throw error;
       return await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: true,
@@ -261,12 +288,15 @@ export function VoiceMessageRecorderDialog({
       attachLiveVideo(streamRef.current);
       return;
     }
+    if (previewInFlightRef.current) return;
 
     const generation = ++previewGenerationRef.current;
+    previewInFlightRef.current = true;
     setIsStarting(true);
     setErrorMessage(null);
     try {
       const stream = await startVideoStream(facingRef.current);
+      armDismissSuppression();
       if (generation !== previewGenerationRef.current) {
         stopMediaStream(stream);
         return;
@@ -274,6 +304,7 @@ export function VoiceMessageRecorderDialog({
       streamRef.current = stream;
       attachLiveVideo(stream);
     } catch {
+      armDismissSuppression();
       if (generation !== previewGenerationRef.current) return;
       setErrorMessage(
         t.recordVideoDenied ??
@@ -281,6 +312,7 @@ export function VoiceMessageRecorderDialog({
       );
     } finally {
       if (generation === previewGenerationRef.current) {
+        previewInFlightRef.current = false;
         setIsStarting(false);
       }
     }
@@ -302,6 +334,7 @@ export function VoiceMessageRecorderDialog({
     streamRef.current = null;
     try {
       const stream = await startVideoStream(nextFacing);
+      armDismissSuppression();
       if (generation !== previewGenerationRef.current) {
         stopMediaStream(stream);
         return;
@@ -311,6 +344,7 @@ export function VoiceMessageRecorderDialog({
       setFacing(nextFacing);
       attachLiveVideo(stream);
     } catch {
+      armDismissSuppression();
       if (generation !== previewGenerationRef.current) return;
       setErrorMessage(
         t.recordVideoDenied ??
@@ -324,8 +358,9 @@ export function VoiceMessageRecorderDialog({
   };
 
   const selectMode = (nextMode: RecordCaptureMode) => {
-    if (phase !== "idle" || isStarting || nextMode === recordMode) return;
+    if (phase !== "idle" || nextMode === recordMode) return;
     previewGenerationRef.current += 1;
+    previewInFlightRef.current = false;
     stopMediaStream(streamRef.current);
     streamRef.current = null;
     setLiveStream(null);
@@ -335,6 +370,11 @@ export function VoiceMessageRecorderDialog({
     setRecordMode(nextMode);
     setErrorMessage(null);
     setElapsedSeconds(0);
+    if (nextMode === "video") {
+      void ensureVideoPreview();
+    } else {
+      setIsStarting(false);
+    }
   };
 
   const finishRecording = () => {
@@ -403,9 +443,10 @@ export function VoiceMessageRecorderDialog({
     let stream = streamRef.current;
     if (!stream?.getVideoTracks().length) {
       stream = await startVideoStream(facingRef.current);
+      armDismissSuppression();
       streamRef.current = stream;
-      attachLiveVideo(stream);
     }
+    attachLiveVideo(stream);
 
     const recorder = strategy.mimeType
       ? new MediaRecorder(stream, {
@@ -561,7 +602,7 @@ export function VoiceMessageRecorderDialog({
     onOpenChange(next);
   };
 
-  const modeLocked = phase !== "idle" || isStarting;
+  const modeLocked = phase !== "idle";
   const showLiveVideo = recordMode === "video" && phase !== "preview";
   const statusLabel =
     phase === "recording"
@@ -580,7 +621,12 @@ export function VoiceMessageRecorderDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={dialogShellClass}>
+      <DialogContent
+        className={dialogShellClass}
+        onPointerDownOutside={handleDismissAttempt}
+        onInteractOutside={handleDismissAttempt}
+        onFocusOutside={handleDismissAttempt}
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle>{t.recordMessageTitle ?? "Record a message"}</DialogTitle>
           <DialogDescription className={recordMode === "video" ? "line-clamp-2 sm:line-clamp-none" : undefined}>
@@ -637,9 +683,9 @@ export function VoiceMessageRecorderDialog({
           }`}
         >
           {showLiveVideo ? (
-            <div className="relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full shrink-0 aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-full sm:max-h-full sm:min-h-0 sm:flex-1">
+            <div className={LIVE_VIDEO_FRAME_CLASS}>
               <video
-                ref={videoRef}
+                ref={bindLiveVideoElement}
                 className={`h-full w-full object-cover${facing === "user" ? " -scale-x-100" : ""}`}
                 playsInline
                 muted
@@ -723,7 +769,7 @@ export function VoiceMessageRecorderDialog({
 
           {phase === "preview" && previewUrl ? (
             previewIsVideo ? (
-              <div className="relative mx-auto h-[min(56svh,24rem)] w-auto max-w-full shrink-0 aspect-[3/4] overflow-hidden rounded-lg bg-black sm:h-full sm:max-h-full sm:min-h-0 sm:flex-1">
+              <div className={LIVE_VIDEO_FRAME_CLASS}>
                 <video
                   controls
                   playsInline

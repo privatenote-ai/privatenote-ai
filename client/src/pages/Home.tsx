@@ -126,7 +126,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-16 sm:pb-32">
+    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-16 sm:pb-32 h-short:!pt-0">
       <div
         className={
           isCreateSuccessView
@@ -135,7 +135,7 @@ const Home: React.FC = () => {
         }
       >
         {!isCreateSuccessView && (
-          <section className="relative mx-auto max-w-4xl px-4 pt-12 sm:px-6 sm:pt-5 lg:px-8">
+          <section className="relative mx-auto max-w-4xl px-4 pt-12 sm:px-6 sm:pt-5 lg:px-8 h-short:pt-3 h-short:sm:pt-2">
             <div className="text-center">
               <h1 className="page-title text-gray-900 dark:text-white">
                 <span className="md:hidden">
@@ -158,7 +158,7 @@ const Home: React.FC = () => {
               <p className="mx-auto mt-5 max-w-4xl text-base leading-snug text-gray-500 dark:text-gray-400 md:hidden">
                 {t.homeHeroMobileSubtitle ?? t.homeHeroSubtitle}
               </p>
-              <p className="mx-auto mt-6 hidden max-w-4xl text-xl leading-normal text-gray-500 dark:text-gray-400 md:block md:max-w-5xl md:text-[1.375rem]">
+              <p className="mx-auto mt-6 hidden max-w-4xl text-xl leading-normal text-gray-500 dark:text-gray-400 md:block md:max-w-5xl md:text-[1.375rem] h-short:mt-3 h-short:md:text-lg">
                 {t.homeHeroSubtitle}
               </p>
             </div>
@@ -166,7 +166,7 @@ const Home: React.FC = () => {
         )}
 
         <div
-          className={`${isCreateSuccessView ? "mt-0" : "mt-8 sm:mt-6 md:mt-10 lg:mt-12"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
+          className={`${isCreateSuccessView ? "mt-0" : "mt-8 sm:mt-6 md:mt-10 lg:mt-12 h-short:mt-4 h-short:md:mt-5 h-short:lg:mt-5"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
         >
           <div className="mx-auto min-w-0 max-w-4xl">
             {showCreateNote ? (

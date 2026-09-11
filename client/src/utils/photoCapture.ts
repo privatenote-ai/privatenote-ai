@@ -22,6 +22,66 @@ export function videoConstraintsForFacing(facing: CameraFacing): MediaTrackConst
   };
 }
 
+const CAMERA_CONSTRAINT_FALLBACK_ERRORS = new Set([
+  "OverconstrainedError",
+  "ConstraintNotSatisfiedError",
+]);
+
+/** Retry getUserMedia without facing/size hints only when constraints were the problem. */
+export function shouldFallbackToBasicVideoConstraints(error: unknown): boolean {
+  const name =
+    error && typeof error === "object" && "name" in error
+      ? String((error as { name: unknown }).name)
+      : "";
+  return CAMERA_CONSTRAINT_FALLBACK_ERRORS.has(name);
+}
+
+const HAVE_METADATA = 1;
+
+function waitForVideoMetadata(video: HTMLVideoElement, timeoutMs: number): Promise<void> {
+  if (video.readyState >= HAVE_METADATA) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener("loadedmetadata", finish);
+      globalThis.clearTimeout(timer);
+      resolve();
+    };
+    const timer = globalThis.setTimeout(finish, timeoutMs);
+    video.addEventListener("loadedmetadata", finish);
+  });
+}
+
+/** Bind a live camera stream and start playback once metadata is available. */
+export async function attachStreamToVideoElement(
+  video: HTMLVideoElement,
+  stream: MediaStream,
+  options?: { metadataTimeoutMs?: number },
+): Promise<void> {
+  if (video.srcObject !== stream) {
+    video.srcObject = stream;
+  }
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+  video.autoplay = true;
+  video.setAttribute("muted", "");
+  video.setAttribute("playsinline", "");
+  video.setAttribute("autoplay", "");
+
+  if (video.readyState < HAVE_METADATA) {
+    await waitForVideoMetadata(video, options?.metadataTimeoutMs ?? 2500);
+  }
+
+  try {
+    await video.play();
+  } catch {
+    // Autoplay can fail if the tab is backgrounded; the stream stays attached.
+  }
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }

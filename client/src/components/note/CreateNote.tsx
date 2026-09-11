@@ -2261,7 +2261,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     try {
       await navigator.clipboard.writeText(noteUrl);
       setSuccessLinkCopied(true);
-      toast({ title: t.copied, description: t.secretLinkCopied });
     } catch {
       toast({
         title: t.toastCouldNotCopyLinkTitle,
@@ -3140,9 +3139,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   // ── Create form ───────────────────────────────────────────────────────────
   return (
     <section className="mx-auto w-full min-w-0 max-w-full">
-      <div className={isFileTransferMode ? "pt-0" : "pt-0 sm:pt-4"}>
+      <div className={isFileTransferMode ? "pt-0" : "pt-0 sm:pt-4 h-short:sm:pt-2"}>
         {!isFileTransferMode ? (
-        <div className="mb-3 sm:mb-6">
+        <div className="mb-3 sm:mb-6 h-short:sm:mb-4">
           <div className="flex border-b border-gray-200 dark:border-gray-700 mb-3">
             <button
               type="button"

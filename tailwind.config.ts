@@ -12,6 +12,10 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        /** 13.3" Mac default (1440×900). 13.6" Air is 1470×956 and should stay unchanged. */
+        "h-short": { raw: "(max-height: 900px)" },
+      },
       fontFamily: {
         sans: ["Inter", ...defaultTheme.fontFamily.sans],
         mono: ["JetBrains Mono", ...defaultTheme.fontFamily.mono],
