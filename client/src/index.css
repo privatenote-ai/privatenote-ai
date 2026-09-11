@@ -203,6 +203,11 @@
   .page-title {
     @apply text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight;
   }
+
+  .success-hand-accent {
+    font-family: "Snell Roundhand", "Segoe Script", "Bradley Hand ITC", "Bradley Hand", "Apple Chancery", cursive;
+    font-weight: 500;
+  }
   /* 13.3" laptop height: pull the two-line hero down so compose actions stay on-screen. */
   @media (min-width: 768px) and (max-height: 900px) {
     .page-title {

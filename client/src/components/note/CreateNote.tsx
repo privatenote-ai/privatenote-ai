@@ -3123,7 +3123,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         }
         noteLabel={noteLabel}
         onNoteLabelChange={
-          createdNote.meta?.tracksDelivery && createdNote.meta.noteId
+          createdNote.meta?.noteId
             ? (value) => {
                 setNoteLabel(value);
                 saveNoteLabel(createdNote.meta!.noteId!, value);
