@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const ORIGIN = "https://privatenote.ai";
-const LOCALE_CODES = ["de", "fr", "es", "it", "nl", "pt", "sr", "hr"];
+const LOCALE_CODES = ["de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr"];
 
 const HOME_FILES = [
   { file: "index.html", language: "en" },

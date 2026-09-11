@@ -42,6 +42,7 @@ test("isPublicMarketingPath matches sitemap marketing URLs", () => {
   assert.equal(isPublicMarketingPath("/de/one-time-link"), true);
   assert.equal(isPublicMarketingPath("/fr/one-time-link"), true);
   assert.equal(isPublicMarketingPath("/hr/one-time-link"), true);
+  assert.equal(isPublicMarketingPath("/tr/one-time-link"), true);
   assert.equal(isPublicMarketingPath("/blog/encrypted-vs-secure-file-sharing"), true);
   assert.equal(isPublicMarketingPath("/blog/category/secrets"), true);
   assert.equal(isPublicMarketingPath("/de/blog/category/encryption"), true);

@@ -16,6 +16,7 @@ import { nl } from "../client/src/utils/translations/nl.ts";
 import { pt } from "../client/src/utils/translations/pt.ts";
 import { sr } from "../client/src/utils/translations/sr.ts";
 import { hr } from "../client/src/utils/translations/hr.ts";
+import { tr } from "../client/src/utils/translations/tr.ts";
 import type { Translations } from "../client/src/utils/translations/types.ts";
 import { buildBlogArticleStructuredData } from "./blogStructuredData.ts";
 import {
@@ -52,6 +53,7 @@ const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations
   pt: { ...en, ...pt },
   sr: { ...en, ...sr },
   hr: { ...en, ...hr },
+  tr: { ...en, ...tr },
 };
 
 const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
@@ -81,6 +83,7 @@ const OG_LOCALE_BY_LANG: Record<string, string> = {
   pt: "pt_PT",
   sr: "sr_RS",
   hr: "hr_HR",
+  tr: "tr_TR",
 };
 
 function translationsForRoute(route: string): Translations {

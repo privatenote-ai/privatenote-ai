@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const LOCALE_CODES = ["de", "fr", "es", "it", "nl", "pt", "sr", "hr"];
+const LOCALE_CODES = ["de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr"];
 
 /** <a href="/de"> or <a href="https://privatenote.ai/de"> — not /de/ or /de/about */
 export const BAD_SLASHLESS_LOCALE_HOME_ANCHOR_RE = new RegExp(

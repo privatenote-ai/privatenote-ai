@@ -257,9 +257,6 @@ async function readJsonBody(request: Request): Promise<any> {
   }
 }
 
-/** BCP-47 primary subtag only — must match client `SUPPORTED_LANGUAGES`. */
-const ACCOUNT_PREFERRED_LANGUAGE_CODES = new Set(["en", "de", "fr", "es"]);
-
 function normalizeAccountPreferredLanguageInput(
   raw: unknown
 ): { ok: true; value: string | null } | { ok: false; message: string } {
@@ -269,13 +266,13 @@ function normalizeAccountPreferredLanguageInput(
     return { ok: false, message: "preferredLanguage must be a string or null" };
   }
   const primary = raw.trim().toLowerCase().split("-")[0];
-  if (ACCOUNT_PREFERRED_LANGUAGE_CODES.has(primary)) {
+  if (isSupportedLanguage(primary)) {
     return { ok: true, value: primary };
   }
   return {
     ok: false,
     message:
-      "preferredLanguage must be one of en, de, fr, es (or a regional tag such as en-US), or null",
+      "preferredLanguage must be a supported language code (or a regional tag such as en-US), or null",
   };
 }
 

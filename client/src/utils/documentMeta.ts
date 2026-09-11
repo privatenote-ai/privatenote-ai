@@ -16,6 +16,7 @@ const OG_LOCALE_BY_LANG: Record<string, string> = {
   pt: "pt_PT",
   sr: "sr_RS",
   hr: "hr_HR",
+  tr: "tr_TR",
 };
 
 export type DocumentMetaOptions = {
