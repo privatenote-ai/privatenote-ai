@@ -21,14 +21,18 @@ export default function AuthDevice() {
     return client === "chrome" || client === "vscode" ? client : "mcp";
   }, []);
 
+  const clientLabel =
+    pluginClient === "chrome"
+      ? "the Chrome extension"
+      : pluginClient === "vscode"
+        ? "VS Code or Cursor"
+        : "Cursor (MCP)";
+
   const userCodeFromUrl = useMemo(() => {
     if (typeof window === "undefined") return null;
     return normalizeMcpUserCode(new URLSearchParams(window.location.search).get("user_code"));
   }, []);
 
-  const displayCode = userCodeFromUrl
-    ? formatMcpUserCode(userCodeFromUrl)
-    : formatMcpUserCode(codeInput) || codeInput;
   const resolvedCode = userCodeFromUrl || normalizeMcpUserCode(codeInput);
 
   const deviceReturnPath = resolvedCode
@@ -74,22 +78,25 @@ export default function AuthDevice() {
         <div className="space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
-              Authorize this app
+              Approve {clientLabel}
             </h1>
             <p className="text-base text-gray-600 dark:text-gray-300">
               {pluginClient === "chrome"
                 ? "Link the Chrome extension to the PrivateNote account you already have so it can attach encrypted files without using the website cookie."
                 : pluginClient === "vscode"
                   ? "Link VS Code or Cursor to the PrivateNote account you already have."
-                  : "Link Cursor or another MCP client to the PrivateNote account you already have so encrypted file transfer and signed-in note limits work locally."}
+                  : "Link Cursor to the PrivateNote account you already have so encrypted file transfer and signed-in note limits work locally."}
             </p>
           </div>
           <Card className="border-2">
             <CardHeader>
-              <CardTitle className="text-xl">Device code</CardTitle>
+              <CardTitle className="text-xl">
+                {userCodeFromUrl ? "Confirm this connection" : "Enter the code from the app"}
+              </CardTitle>
               <CardDescription>
-                This authorizes a first-party app on your machine. Only approve codes you just
-                generated.
+                {userCodeFromUrl
+                  ? "This page was opened from the app on your machine. You do not need to type a code — approve only if you started this sign-in."
+                  : "Type the 8-character code shown in the app, then approve. Only approve a code you just generated."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -105,7 +112,8 @@ export default function AuthDevice() {
               ) : !user ? (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                    Sign in first, then you will return here to approve the app.
+                    Sign in first, then you will return here to approve. You will not need to type a
+                    code if this page already came from the app.
                   </p>
                   <Button asChild>
                     <a href={signInHref}>Sign in</a>
@@ -113,9 +121,7 @@ export default function AuthDevice() {
                 </div>
               ) : (
                 <>
-                  {userCodeFromUrl ? (
-                    <p className="font-mono text-2xl tracking-widest text-center">{displayCode}</p>
-                  ) : (
+                  {userCodeFromUrl ? null : (
                     <div className="space-y-2">
                       <label htmlFor="mcp-user-code" className="text-sm font-medium">
                         Code from the app
