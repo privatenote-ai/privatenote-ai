@@ -1,6 +1,9 @@
 import {
+  mayChooseRevealBodyFont,
   REVEAL_BODY_FONT_CATALOG,
+  revealBodyFontUpgradePlan,
   type RevealBodyFont,
+  type RevealBodyFontAccess,
 } from "@shared/revealBodyFont";
 
 const SAMPLE = "The access code is 7G-K4m.";
@@ -9,9 +12,8 @@ type RevealBodyFontPickerProps = {
   value: RevealBodyFont;
   onChange: (id: RevealBodyFont) => void;
   disabled?: boolean;
-  /** Free plan: paid faces open the upgrade prompt instead of applying. */
-  locked?: boolean;
-  onLockedSelect?: () => void;
+  access: RevealBodyFontAccess;
+  onLockedSelect?: (plan: "starter" | "business") => void;
   labels?: Partial<Record<RevealBodyFont, string>>;
   hints?: Partial<Record<RevealBodyFont, string>>;
 };
@@ -20,7 +22,7 @@ export function RevealBodyFontPicker({
   value,
   onChange,
   disabled = false,
-  locked = false,
+  access,
   onLockedSelect,
   labels,
   hints,
@@ -29,7 +31,9 @@ export function RevealBodyFontPicker({
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" role="group" id="reveal-body-font">
       {REVEAL_BODY_FONT_CATALOG.map((font) => {
         const selected = value === font.id;
-        const paid = !font.free;
+        const lockedPlan = mayChooseRevealBodyFont(font.id, access)
+          ? null
+          : revealBodyFontUpgradePlan(font.id);
         return (
           <button
             key={font.id}
@@ -37,8 +41,8 @@ export function RevealBodyFontPicker({
             disabled={disabled}
             aria-pressed={selected}
             onClick={() => {
-              if (locked && paid) {
-                onLockedSelect?.();
+              if (lockedPlan) {
+                onLockedSelect?.(lockedPlan);
                 return;
               }
               onChange(font.id);
@@ -51,7 +55,7 @@ export function RevealBodyFontPicker({
           >
             <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
               {labels?.[font.id] ?? font.label}
-              {locked && paid ? " — Starter" : ""}
+              {lockedPlan === "starter" ? " — Starter" : lockedPlan === "business" ? " — Business" : ""}
             </span>
             <span
               className="mt-1.5 block text-[0.95rem] leading-snug text-gray-800 dark:text-gray-200"
