@@ -9570,7 +9570,13 @@ export async function registerRoutes(
 
     if (requestBody?.bodyFont != null) {
       const parsedBodyFont = parseRevealBodyFont(requestBody.bodyFont);
-      if (parsedBodyFont && mayStoreRevealBodyFont(parsedBodyFont, noteCreationFeatures.revealBodyFont)) {
+      if (
+        parsedBodyFont &&
+        mayStoreRevealBodyFont(parsedBodyFont, {
+          starter: noteCreationFeatures.revealBodyFont,
+          business: noteCreationAccount === "business_premium",
+        })
+      ) {
         requestBody.bodyFont = parsedBodyFont;
       } else {
         delete requestBody.bodyFont;

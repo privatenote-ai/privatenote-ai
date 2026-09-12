@@ -1131,6 +1131,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   }, [isPremiumUser, readerLanguage, bodyFont, recipientEmail, requireRecipientVerification]);
 
   useEffect(() => {
+    if (accountType === "business_premium" || entitlements.configuredAccountType === "business_premium") {
+      return;
+    }
+    if (bodyFont === "ibm-plex-serif") setBodyFont("system");
+  }, [accountType, bodyFont, entitlements.configuredAccountType]);
+
+  useEffect(() => {
     if (canChooseAttachmentPermission) return;
     if (attachmentPermission !== "download") setAttachmentPermission("download");
   }, [attachmentPermission, canChooseAttachmentPermission]);
@@ -1638,7 +1645,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       isPremiumUser && readerLanguage !== "auto" ? readerLanguage : undefined;
     const parsedBodyFont = parseRevealBodyFont(bodyFont);
     const applyBodyFont =
-      parsedBodyFont && mayStoreRevealBodyFont(parsedBodyFont, planCapabilities.revealBodyFont)
+      parsedBodyFont &&
+      mayStoreRevealBodyFont(parsedBodyFont, {
+        starter: planCapabilities.revealBodyFont,
+        business:
+          accountType === "business_premium" ||
+          entitlements.configuredAccountType === "business_premium",
+      })
         ? parsedBodyFont
         : undefined;
     const applyAttachmentPermission =

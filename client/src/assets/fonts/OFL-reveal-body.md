@@ -1,6 +1,9 @@
 Source Serif 4 — SIL Open Font License 1.1
 https://github.com/adobe-fonts/source-serif
 
+IBM Plex Serif — SIL Open Font License 1.1
+https://github.com/IBM/plex
+
 Fraunces — SIL Open Font License 1.1
 https://github.com/undercasetype/fraunces
 

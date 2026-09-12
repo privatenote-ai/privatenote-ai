@@ -10,6 +10,7 @@ export const REVEAL_BODY_FONT_IDS = [
   "system",
   "satoshi",
   "source-serif",
+  "ibm-plex-serif",
   "fraunces",
   "jetbrains-mono",
 ] as const;
@@ -18,6 +19,13 @@ export type RevealBodyFont = (typeof REVEAL_BODY_FONT_IDS)[number];
 
 /** Stored on the note when the sender picked a non-default face. */
 export type StoredRevealBodyFont = Exclude<RevealBodyFont, "system">;
+
+export type RevealBodyFontPlan = "free" | "starter" | "business";
+
+export type RevealBodyFontAccess = {
+  starter: boolean;
+  business: boolean;
+};
 
 export type RevealBodyFontCatalogEntry = {
   id: RevealBodyFont;
@@ -29,8 +37,10 @@ export type RevealBodyFontCatalogEntry = {
   cssFamily: string;
   /** Tailwind-safe class applied to `.note-read-content`. */
   className: string;
-  /** Free plan may pick these; others need Starter+. */
+  /** Free plan may pick these; others need Starter unless `plan` is business. */
   free: boolean;
+  /** Paid faces: Starter+ unless `"business"`. */
+  plan: RevealBodyFontPlan;
 };
 
 export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
@@ -41,6 +51,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     cssFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
     className: "note-body-font-system",
     free: true,
+    plan: "free",
   },
   {
     id: "satoshi",
@@ -49,6 +60,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     cssFamily: 'Satoshi, Inter, ui-sans-serif, system-ui, sans-serif',
     className: "note-body-font-satoshi",
     free: true,
+    plan: "free",
   },
   {
     id: "source-serif",
@@ -57,6 +69,16 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     cssFamily: '"Source Serif 4", Georgia, "Times New Roman", serif',
     className: "note-body-font-source-serif",
     free: false,
+    plan: "starter",
+  },
+  {
+    id: "ibm-plex-serif",
+    label: "IBM Plex Serif",
+    hint: "Client letter and contract",
+    cssFamily: '"IBM Plex Serif", Georgia, "Times New Roman", serif',
+    className: "note-body-font-ibm-plex-serif",
+    free: false,
+    plan: "business",
   },
   {
     id: "fraunces",
@@ -65,6 +87,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     cssFamily: 'Fraunces, Georgia, "Times New Roman", serif',
     className: "note-body-font-fraunces",
     free: false,
+    plan: "starter",
   },
   {
     id: "jetbrains-mono",
@@ -73,6 +96,7 @@ export const REVEAL_BODY_FONT_CATALOG: readonly RevealBodyFontCatalogEntry[] = [
     cssFamily: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     className: "note-body-font-jetbrains-mono",
     free: false,
+    plan: "starter",
   },
 ] as const;
 
@@ -100,11 +124,28 @@ export function parseRevealBodyFont(raw: unknown): StoredRevealBodyFont | undefi
   return trimmed;
 }
 
+export function mayChooseRevealBodyFont(
+  id: RevealBodyFont,
+  access: RevealBodyFontAccess,
+): boolean {
+  const plan = revealBodyFontEntry(id).plan;
+  if (plan === "free") return true;
+  if (plan === "business") return access.business;
+  return access.starter;
+}
+
 export function mayStoreRevealBodyFont(
   id: StoredRevealBodyFont,
-  canChoosePaidFonts: boolean,
+  access: RevealBodyFontAccess,
 ): boolean {
-  return isFreeRevealBodyFont(id) || canChoosePaidFonts;
+  return mayChooseRevealBodyFont(id, access);
+}
+
+export function revealBodyFontUpgradePlan(
+  id: RevealBodyFont,
+): Exclude<RevealBodyFontPlan, "free"> | null {
+  const plan = revealBodyFontEntry(id).plan;
+  return plan === "free" ? null : plan;
 }
 
 export function revealBodyFontEntry(

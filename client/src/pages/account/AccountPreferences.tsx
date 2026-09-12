@@ -747,6 +747,10 @@ export default function AccountPreferences() {
                       </Label>
                       <RevealBodyFontPicker
                         value={noteDefaults.bodyFont}
+                        access={{
+                          starter: planCapabilities.revealBodyFont,
+                          business: accountType === "business_premium",
+                        }}
                         onChange={(next) =>
                           setNoteDefaults((current) => ({ ...current, bodyFont: next }))
                         }
