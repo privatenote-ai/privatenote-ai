@@ -10,35 +10,22 @@ import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityP
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-/** After production build, point the index.html font preload at the hashed asset URL from CSS. */
-function htmlFontPreloadPlugin(): Plugin {
+/**
+ * Drop the Inter TTF preload if a stale index.html still has one. Preloading
+ * ~850KB of truetype on the critical path delays CSS on mobile (field LCP).
+ */
+function htmlStripFontPreloadPlugin(): Plugin {
   return {
-    name: "html-font-preload",
+    name: "html-strip-font-preload",
     apply: "build",
     closeBundle() {
       const distDir = path.resolve(__dirname, "dist");
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
-
-      let fontHref: string | null = null;
-      for (const name of fs.readdirSync(distDir)) {
-        if (!name.endsWith(".css")) continue;
-        const css = fs.readFileSync(path.join(distDir, name), "utf8");
-        const match = css.match(
-          /url\((["']?)([^"')]*Inter-VariableFont_opsz,wght[^"')]*)\1\)/,
-        );
-        if (match?.[2]) {
-          fontHref = match[2].startsWith("/") ? match[2] : `/${match[2]}`;
-          break;
-        }
-      }
-      if (!fontHref) return;
-
       const html = fs.readFileSync(indexPath, "utf8");
-      const prodTag = `<link rel="preload" href="${fontHref}" as="font" type="font/ttf" crossorigin />`;
       const next = html.replace(
-        /<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/,
-        prodTag,
+        /\s*<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/g,
+        "",
       );
       if (next !== html) fs.writeFileSync(indexPath, next);
     },
@@ -126,7 +113,7 @@ const devContentSecurityPolicy = buildDevPageContentSecurityPolicy();
 
 export default defineConfig({
   plugins: [
-    htmlFontPreloadPlugin(),
+    htmlStripFontPreloadPlugin(),
     spaShellCopyPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]

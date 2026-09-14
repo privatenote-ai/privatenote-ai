@@ -19,14 +19,20 @@ function CreateNoteMountPlaceholder() {
   return <div className="min-h-[28rem] w-full" aria-hidden />;
 }
 
+function prerenderedHomeComposer(): boolean {
+  if (typeof document === 'undefined') return false;
+  return Boolean(document.querySelector('#root textarea'));
+}
+
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-  const [mountCreateNote, setMountCreateNote] = useState(false);
+  const [mountCreateNote, setMountCreateNote] = useState(prerenderedHomeComposer);
   const { t, language } = useLanguage();
 
   useEffect(() => {
+    if (mountCreateNote) return;
     let cancelled = false;
     const mount = () => {
       if (!cancelled) setMountCreateNote(true);
@@ -45,7 +51,7 @@ const Home: React.FC = () => {
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, []);
+  }, [mountCreateNote]);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
@@ -137,20 +143,20 @@ const Home: React.FC = () => {
         {!isCreateSuccessView && (
           <section className="relative mx-auto max-w-4xl px-4 pt-16 sm:px-6 sm:pt-8 lg:px-8 h-short:pt-6 h-short:sm:pt-5">
             <div className="text-center">
-              <h1 className="page-title text-gray-900 dark:text-white">
+              <h1 data-lcp-element="true" className="page-title text-gray-900 dark:text-white">
                 <span className="md:hidden">
-                  <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                  <span className="block">
                     {t.homeHeroMobileLine1 ?? t.homeHeroLine1}
                   </span>
-                  <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                  <span className="mt-0.5 block text-primary">
                     {t.homeHeroMobileLine2 ?? t.homeHeroLine2}
                   </span>
                 </span>
                 <span className="hidden md:block">
-                  <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                  <span className="block">
                     {t.homeHeroLine1}
                   </span>
-                  <span className="mt-1 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                  <span className="mt-1 block text-primary">
                     {t.homeHeroLine2}
                   </span>
                 </span>

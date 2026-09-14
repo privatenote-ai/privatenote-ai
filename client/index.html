@@ -82,17 +82,20 @@
     }
   </script>
 
-  <link rel="preload" href="/src/assets/fonts/Inter-VariableFont_opsz,wght.ttf" as="font" type="font/ttf" crossorigin />
-
-  <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading. -->
+  <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading.
+       Do not preload Inter TTF (~850KB): font-display:optional already skips a late
+       face, and a high-priority preload starves CSS/JS on mobile. -->
   <style id="pn-critical">
     body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
     html.dark body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}
     html.light body{background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
-    .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+    .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1;color:hsl(222.2 84% 4.9%)}
     @media (min-width:640px){.page-title{font-size:3rem}}
     @media (min-width:768px){.page-title{font-size:3.75rem}}
+    @media (prefers-color-scheme:dark){html:not(.light) .page-title{color:hsl(210 40% 98%)}}
+    html.dark .page-title{color:hsl(210 40% 98%)}
+    html.light .page-title{color:hsl(222.2 84% 4.9%)}
   </style>
   <style id="pn-home-hero-critical">
     #pn-home-prerender[hidden]{display:none!important}
