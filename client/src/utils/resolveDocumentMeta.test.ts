@@ -61,20 +61,37 @@ test("resolveDocumentMeta keeps public marketing meta descriptions within SEO le
   assert.deepEqual(over, [], `Trim meta descriptions for: ${over.join(", ")}`);
 });
 
-const META_TITLE_MAX = 60;
+const META_TITLE_MAX_EN = 60;
+const META_TITLE_MAX_LOCALE = 70;
+/** Ahrefs flags `<title>` tags shorter than 30 characters. */
+const META_TITLE_MIN = 30;
+
+function translationsForRoute(route: string) {
+  const [maybeLang] = route.split("/").filter(Boolean);
+  const pack = maybeLang && maybeLang in localePacks ? localePacks[maybeLang as keyof typeof localePacks] : en;
+  return maybeLang && maybeLang in localePacks ? { ...en, ...pack } : en;
+}
 
 test("resolveDocumentMeta keeps public marketing titles within SEO length", () => {
   const over: string[] = [];
+  const under: string[] = [];
+  const shortTitlePages = new Set(["about", "blog", "contact", "premium", "terms"]);
   for (const route of PUBLIC_MARKETING_PATHS) {
-    const [maybeLang] = route.split("/").filter(Boolean);
-    const pack = maybeLang && maybeLang in localePacks ? localePacks[maybeLang as keyof typeof localePacks] : en;
-    const t = maybeLang && maybeLang in localePacks ? { ...en, ...pack } : en;
-    const { title } = resolveDocumentMeta(route, t);
-    if (title.length > META_TITLE_MAX) {
+    const segments = route.split("/").filter(Boolean);
+    const [maybeLang] = segments;
+    const isLocale = Boolean(maybeLang && maybeLang in localePacks && maybeLang !== "en");
+    const { title } = resolveDocumentMeta(route, translationsForRoute(route));
+    const max = isLocale ? META_TITLE_MAX_LOCALE : META_TITLE_MAX_EN;
+    if (title.length > max) {
       over.push(`${route} title (${title.length})`);
+    }
+    const page = isLocale ? segments[1] : segments[0];
+    if (page && shortTitlePages.has(page) && segments.length === (isLocale ? 2 : 1) && title.length < META_TITLE_MIN) {
+      under.push(`${route} title (${title.length})`);
     }
   }
   assert.deepEqual(over, [], `Trim document titles for: ${over.join(", ")}`);
+  assert.deepEqual(under, [], `Lengthen document titles for: ${under.join(", ")}`);
 });
 
 

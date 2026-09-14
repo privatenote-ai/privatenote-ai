@@ -2144,6 +2144,7 @@ export const en: Translations = {
   blogAgentSecurityMetaDescription:
     "Why agentic AI changes the security playbook: context boundaries, memory risk, permissions, and trust architecture beyond prompt injection.",
   aboutPageTitle: "About",
+  documentMetaAboutTitle: "About Us: Privacy-First Encrypted Notes",
   aboutPageSubtitle:
     "Learn why PrivateNote.ai exists, the privacy values behind the product, and how simple encrypted tools can make sensitive communication safer.",
   aboutRole: "Cryptography and Security Protocols",
@@ -2642,17 +2643,19 @@ export const en: Translations = {
   privacyToolsDirectoryNote:
     "This page is a curated directory of categories and third-party tools. It complements—not replaces—our long-form blog guides.",
   privacyToolsFeaturedCta: "Read the 2026 privacy tools guide",
-  documentMetaContactTitle: "Contact",
+  documentMetaContactTitle: "Contact Support for Encrypted Notes",
   documentMetaContactDescription:
     "Contact PrivateNote.ai for support, billing (cancel vs withdraw, invoices, VAT, failed cards), product questions, or help using encrypted one-time notes.",
   documentMetaPrivacyPolicyDescription:
     "Read how PrivateNote.ai handles personal data, encrypted note retention, cookies, analytics, security logs, and your privacy rights.",
+  documentMetaTermsTitle: "Terms of Use for Encrypted Notes",
   documentMetaTermsDescription:
     "Review the PrivateNote.ai terms of use, acceptable use rules, service limitations, legal disclaimers, and responsibilities when using the site.",
   documentMetaNotFoundTitle: "Page not found",
   documentMetaNotFoundDescription: "This URL does not exist on PrivateNote.ai.",
   documentMetaViewNoteDescription:
     "Open a one-time encrypted note in your browser. Your decryption key stays in the URL fragment.",
+  documentMetaBlogTitle: "Blog on Encrypted Notes & Secure Sharing",
   documentMetaBlogLoadingDescription:
     "Browse PrivateNote.ai articles about encryption, private communication, password safety, secure sharing, and practical digital security habits.",
   documentMetaRecoveryTitle: "Account recovery",
@@ -2971,7 +2974,7 @@ export const en: Translations = {
   chromeExtensionConnectedSignIn: "Sign in",
   chromeExtensionConnectedHome: "Back to PrivateNote",
 
-  documentMetaPremiumTitle: "Pricing",
+  documentMetaPremiumTitle: "Pricing for Encrypted Notes & Files",
   documentMetaPremiumDescription:
     "Compare Free, Starter, and Business. Encrypted notes and files, higher limits, and a billing FAQ for checkout, invoices, and VAT.",
   pricingHeroTitle: "Simple plans for secure sharing.",
