@@ -54,4 +54,5 @@ if (typeof window !== "undefined") {
   });
 }
 
+document.documentElement.classList.add("pn-app");
 createRoot(document.getElementById("root")!).render(<App />);

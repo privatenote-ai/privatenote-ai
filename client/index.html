@@ -96,6 +96,10 @@
     @media (prefers-color-scheme:dark){html:not(.light) .page-title{color:hsl(210 40% 98%)}}
     html.dark .page-title{color:hsl(210 40% 98%)}
     html.light .page-title{color:hsl(222.2 84% 4.9%)}
+    .pn-hero-narrow{display:block}
+    .pn-hero-wide{display:none}
+    @media (min-width:768px){.pn-hero-narrow{display:none}.pn-hero-wide{display:block}}
+    html.pn-app #pn-home-prerender{display:none!important}
   </style>
   <style id="pn-home-hero-critical">
     #pn-home-prerender[hidden]{display:none!important}
