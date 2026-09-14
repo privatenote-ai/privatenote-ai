@@ -183,7 +183,7 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "Enthüllung ist bewusst: Entschlüsselung wartet auf einen bestätigten Klick.",
-    "Diese Pause ist praktische verzögerte Enthüllung—kein Kalender-Timer.",
+    "Diese Pause verringert versehentliches Öffnen; sie ist kein Kalender-Timer.",
     "Mit Lebensdauer, Öffnungslimits und Verifizierung kombinieren.",
     "Versehentliches Öffnen bei Einmal-Notizen verbraucht den Zugriff—Empfänger warnen.",
   ],
@@ -200,7 +200,7 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Business-Branding hilft Empfängern, eine legitime Enthüllungsseite zu erkennen.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -402,7 +402,7 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "La révélation est intentionnelle : le déchiffrement attend un clic confirmé.",
-    "Cette pause est une révélation différée pratique—pas une minuterie calendaire.",
+    "Cette pause réduit les révélations accidentelles ; ce n’est pas une minuterie calendaire.",
     "Combinez durée de vie, limites d’ouverture et vérification pour des transferts plus sûrs.",
     "Une ouverture accidentelle sur une note à usage unique brûle l’accès—prévenez le destinataire.",
   ],
@@ -419,7 +419,7 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Le branding Business aide les destinataires à reconnaître une page de révélation légitime.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -621,7 +621,7 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "La revelación es intencional: el descifrado espera un clic confirmado.",
-    "Esa pausa es una revelación diferida práctica—no un temporizador de calendario.",
+    "Esa pausa reduce las revelaciones accidentales; no es un temporizador de calendario.",
     "Combina vida útil, límites de apertura y verificación para entregas más seguras.",
     "Una apertura accidental en notas de un solo uso quema el acceso—avisa al destinatario.",
   ],
@@ -638,7 +638,7 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "La marca Business ayuda a reconocer una página de revelación legítima.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -840,7 +840,7 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "La rivelazione è intenzionale: la decifratura attende un clic confermato.",
-    "Quella pausa è una rivelazione ritardata pratica—non un timer di calendario.",
+    "Quella pausa riduce le rivelazioni accidentali; non è un timer di calendario.",
     "Combina durata, limiti di apertura e verifica per consegne più sicure.",
     "Un’apertura accidentale su note monouso brucia l’accesso—avvisa il destinatario.",
   ],
@@ -857,7 +857,7 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "Il branding Business aiuta a riconoscere una pagina di rivelazione legittima.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -1059,7 +1059,7 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "Onthulling is bewust: ontsleuteling wacht op een bevestigde klik.",
-    "Die pauze is praktische vertraagde onthulling—geen kalender-timer.",
+    "Die pauze vermindert onbedoelde onthullingen; het is geen kalender-timer.",
     "Combineer levensduur, openingslimieten en verificatie voor veiligere overdracht.",
     "Per ongeluk openen bij eenmalige notities verbrandt toegang—waarschuw de ontvanger.",
   ],
@@ -1076,7 +1076,7 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Business-branding helpt ontvangers een legitieme onthullingspagina te herkennen.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -1278,7 +1278,7 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "A revelação é intencional: a desencriptação espera um clique confirmado.",
-    "Essa pausa é uma revelação adiada prática—não um temporizador de calendário.",
+    "Essa pausa reduz revelações acidentais; não é um temporizador de calendário.",
     "Combine duração, limites de abertura e verificação para entregas mais seguras.",
     "Uma abertura acidental em notas de uso único queima o acesso—avise o destinatário.",
   ],
@@ -1295,7 +1295,7 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "A marca Business ajuda a reconhecer uma página de revelação legítima.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -1497,7 +1497,7 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "Otkrivanje je namerno: dešifrovanje čeka potvrđen klik.",
-    "Ta pauza je praktično odloženo otkrivanje—ne kalendarski tajmer.",
+    "Ta pauza smanjuje slučajna otkrivanja; to nije kalendarski tajmer.",
     "Kombinujte životni vek, limite otvaranja i verifikaciju za bezbednije predaje.",
     "Slučajno otvaranje jednokratne beleške troši pristup—upozorite primaoca.",
   ],
@@ -1514,7 +1514,7 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Business brendiranje pomaže primaocima da prepoznaju legitimnu stranicu otkrivanja.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",
@@ -1716,7 +1716,7 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
   ],
   "click-to-reveal-private-notes": [
     "Otkrivanje je namjerno: dešifriranje čeka potvrđeni klik.",
-    "Ta pauza je praktično odgođeno otkrivanje—ne kalendarski tajmer.",
+    "Ta pauza smanjuje slučajna otkrivanja; to nije kalendarski tajmer.",
     "Kombinirajte životni vijek, limite otvaranja i verifikaciju za sigurnije predaje.",
     "Slučajno otvaranje jednokratne bilješke troši pristup—upozorite primatelja.",
   ],
@@ -1733,7 +1733,7 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Business branding pomaže primateljima prepoznati legitimnu stranicu otkrivanja.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",

@@ -9446,7 +9446,7 @@ export async function registerRoutes(
         return jsonResponse(
           {
             error: "premium_required",
-            message: "Delayed reveal requires Starter or Business.",
+            message: "Scheduled reveal requires Starter or Business.",
           },
           403,
           request,
@@ -9485,7 +9485,7 @@ export async function registerRoutes(
       }
     }
 
-    // Rejected up front like delayed reveal and receipt confirmation above.
+    // Rejected up front like scheduled reveal and receipt confirmation above.
     // Registration happens after the note is stored, so without this check an
     // ineligible or malformed request produced a live link with no gate on it.
     const requireRecipientVerification =

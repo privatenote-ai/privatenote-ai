@@ -112,7 +112,7 @@ export const clickToRevealPrivateNotesIt: BlogGuideArticleCopy = {
         "Rivelare è un'azione consapevole, non una conseguenza automatica del caricamento di un link.",
       paragraphs: [
         "Il clic-per-rivelare consente di inviare un link in anticipo senza decrittare la nota solo perché si è caricata la pagina di destinazione.",
-        "Abbinalo a durate brevi, verifica quando i canali sono deboli e istruzioni chiare al destinatario—e ottieni una rivelazione ritardata pratica senza fingere che il prodotto possa eliminare uno screenshot da remoto.",
+        "Abbinalo a durate brevi, verifica quando i canali sono deboli e istruzioni chiare al destinatario—e ottieni una pausa pratica prima della visualizzazione, senza fingere che il prodotto possa eliminare uno screenshot da remoto.",
       ],
     },
   ],

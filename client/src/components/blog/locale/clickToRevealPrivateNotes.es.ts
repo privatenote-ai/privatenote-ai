@@ -113,7 +113,7 @@ export const clickToRevealPrivateNotesEs: BlogGuideArticleCopy = {
         "Revelar es una acción consciente, no una consecuencia automática de cargar un enlace.",
       paragraphs: [
         "El clic para revelar le permite enviar un enlace pronto sin descifrar la nota solo porque se cargó la página de destino.",
-        "Combínelo con vidas útiles cortas, verificación cuando los canales son débiles e instrucciones claras al destinatario—y obtiene una revelación diferida práctica sin pretender que el producto pueda borrar una captura de pantalla a distancia.",
+        "Combínelo con vidas útiles cortas, verificación cuando los canales son débiles e instrucciones claras al destinatario—y obtiene una pausa práctica antes de mostrar el secreto, sin pretender que el producto pueda borrar una captura de pantalla a distancia.",
       ],
     },
   ],

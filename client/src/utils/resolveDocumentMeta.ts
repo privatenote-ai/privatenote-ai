@@ -288,6 +288,11 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
         title: buildDocumentTitle(t.documentMetaOneTimeLinkTitle),
         description: t.documentMetaOneTimeLinkDescription,
       };
+    case "privnote-alternative":
+      return {
+        title: buildDocumentTitle(t.documentMetaPrivnoteAlternativeTitle),
+        description: t.documentMetaPrivnoteAlternativeDescription,
+      };
     case "secure-file-transfer":
       return {
         title: buildDocumentTitle(t.documentMetaSecureFileTransferTitle),

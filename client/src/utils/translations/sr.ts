@@ -1560,6 +1560,10 @@ export const sr: Translations = {
   documentMetaOneTimeLinkDescription:
     "Napravite šifrovani jednokratni link za lozinke, privatne poruke i datoteke — bez otvorenog teksta u imejlu ili četu.",
   otlFooterLabel: "Jednokratni link",
+  privnoteAlternativeFooterLabel: "Alternativa Privnote-u",
+  documentMetaPrivnoteAlternativeTitle: "Alternativa Privnote-u: poruke i datoteke",
+  documentMetaPrivnoteAlternativeDescription:
+    "Tražite alternativu Privnote-u? PrivateNote deli šifrovane poruke, lozinke i datoteke koje nestaju — s opcionom kontrolom pristupa.",
   devBadge: "Integracije programera",
   devHeroTitle: "Delite tajne iz alata gde se posao zapravo dešava",
   devHeroSubtitle: "__PN_0__ je koristan kao veb lokacija, ali timovima programera obično je potrebna ista šifrovana predaja unutar uređivača, lokalnih AI agenata, skripti i kontrolisanih implementacija. Ova stranica mapira te ulazne tačke i granicu poverenja iza njih.",
@@ -2425,7 +2429,7 @@ export const sr: Translations = {
   pricingRowProofOfAccess: "Dokaz pristupa",
   pricingRowRecipientVerification: "Verifikacija primaoca",
   pricingRowRecipientLinkDelivery: "Slanje linka e-poštom",
-  pricingRowDelayedReveal: "Odloženo otkrivanje",
+  pricingRowDelayedReveal: "Zakazano otkrivanje",
   pricingRowReceiptAcknowledgment: "Potvrda prijema",
   pricingRowSentNotesDashboard: "Pregled poslatih beleški",
   pricingRowRevokeUnopened: "Opoziv pre otvaranja",
@@ -2454,7 +2458,7 @@ export const sr: Translations = {
   pricingFaqEncryptionQ: "Da li plaćeni planovi menjaju šifrovanje?",
   pricingFaqEncryptionA: "Ne. Svaki plan šifruje tekst beleške u pregledaču pre slanja. Starter i Business dodaju kontrole dostave, veća ograničenja i prilagođavanje — nikad pristup čitljivom sadržaju za PrivateNote.",
   pricingFaqDifferenceQ: "U čemu je razlika između Startera i Businessa?",
-  pricingFaqDifferenceA: "Starter ({starterMonthly}/mesečno) otključava dokaz pristupa, verifikaciju primaoca, odloženo otkrivanje, opoziv, pregled poslatih beleški, fontove na stranici otvaranja i veća ograničenja. Business ({businessMonthly}/mesečno) dodaje stranice otvaranja u vašem vizuelnom identitetu, view-only pristup fajlovima, sopstvene AI šablone sačuvane u pregledaču, fajlove do 1 GB i 50 GB šifrovanih podataka — i dalje jedan profesionalni nalog, bez timskih licenci.",
+  pricingFaqDifferenceA: "Starter ({starterMonthly}/mesečno) otključava dokaz pristupa, verifikaciju primaoca, zakazano otkrivanje, opoziv, pregled poslatih beleški, fontove na stranici otvaranja i veća ograničenja. Business ({businessMonthly}/mesečno) dodaje stranice otvaranja u vašem vizuelnom identitetu, view-only pristup fajlovima, sopstvene AI šablone sačuvane u pregledaču, fajlove do 1 GB i 50 GB šifrovanih podataka — i dalje jedan profesionalni nalog, bez timskih licenci.",
   pricingFaqAnnualQ: "Kako funkcioniše godišnja naplata?",
   pricingFaqAnnualA: "Godišnji se planovi naplaćuju jednom godišnje: {starterYearly} za Starter i {businessYearly} za Business — dva meseca besplatno u odnosu na mesečno plaćanje. Stripe naplaćuje USD ili EUR zavisno od vaše regije pri naplati.",
   pricingFaqPayOnlineQ: "Mogu li da platim online odmah?",

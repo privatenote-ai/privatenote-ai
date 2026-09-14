@@ -48,6 +48,15 @@ describe("localizedPath", () => {
     assert.equal(switchLanguagePath("/one-time-link", "fr"), "/fr/one-time-link");
   });
 
+  it("localizes privnote alternative for all locales", () => {
+    assert.equal(localizedPath("/privnote-alternative", "en"), "/privnote-alternative");
+    assert.equal(localizedPath("/privnote-alternative", "de"), "/de/privnote-alternative");
+    assert.equal(localizedPath("/privnote-alternative", "fr"), "/fr/privnote-alternative");
+    assert.equal(localizedPath("/privnote-alternative", "es"), "/es/privnote-alternative");
+    assert.equal(localizedPath("/privnote-alternative", "it"), "/it/privnote-alternative");
+    assert.equal(switchLanguagePath("/privnote-alternative", "de"), "/de/privnote-alternative");
+  });
+
   it("translates blog slugs per locale", () => {
     assert.equal(
       localizedPath("/blog/secrets-never-send-in-chat", "nl"),
