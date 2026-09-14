@@ -17,7 +17,7 @@ export default {
         "h-short": { raw: "(min-width: 768px) and (max-height: 900px)" },
       },
       fontFamily: {
-        sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        sans: [...defaultTheme.fontFamily.sans],
         mono: ["JetBrains Mono", ...defaultTheme.fontFamily.mono],
       },
       borderRadius: {

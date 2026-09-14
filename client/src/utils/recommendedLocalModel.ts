@@ -24,7 +24,6 @@
  *
  * Fallback remains Qwen 0.6 when the larger model cannot run.
  */
-import { prebuiltAppConfig } from "@mlc-ai/web-llm";
 import { USE_CUSTOM_WEBLLM_HOST, OUR_WEBLLM_MODEL_RECORDS } from "./webllm-host-config";
 import { requestWebGpuAdapterWithRetries } from "./webgpu-diagnostics";
 import {
@@ -290,7 +289,9 @@ function isModelInCatalog(modelId: string): boolean {
   if (USE_CUSTOM_WEBLLM_HOST) {
     return OUR_WEBLLM_MODEL_RECORDS.some((r) => r.model_id === modelId);
   }
-  return prebuiltAppConfig.model_list.some((m) => m.model_id === modelId);
+  // Do not import @mlc-ai/web-llm here: Vite merged this module into homepage
+  // chunks (promptTemplates) and downloaded ~1.7MB on first paint.
+  return modelId === MODEL_QWEN_0_6 || modelId === MODEL_GEMMA_2_2B;
 }
 
 export function pickFirstAvailableModel(candidates: readonly string[]): string {

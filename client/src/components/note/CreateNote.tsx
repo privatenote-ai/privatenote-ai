@@ -57,7 +57,6 @@ import {
 } from "@shared/noteFileAccess";
 import { normalizeUrlFragmentKey } from "@shared/urlFragmentKey";
 import { isLocalAiSupported, getLocalAiSupportHint } from "@/utils/localAiCapability";
-import { loadClientLLM } from "@/utils/loadClientLLM";
 import { MODEL_GEMMA_2_2B, MODEL_QWEN_0_6 } from "@/utils/localAiModelIds";
 import { isWebLlmGpuOrDisposeFailure } from "@/utils/webLlmGpuErrors";
 import type { ModelLoadProgress } from "@/utils/clientLLM";
@@ -159,6 +158,10 @@ function loadPromptTemplatesModule(): Promise<PromptTemplatesModule> {
     promptTemplatesModulePromise = import("@/components/note/promptTemplates");
   }
   return promptTemplatesModulePromise;
+}
+
+async function loadClientLLM() {
+  return (await import("@/utils/loadClientLLM")).loadClientLLM();
 }
 
 async function uploadEncryptedAttachmentBlob(
@@ -611,10 +614,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   const attachFileSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=file_attach&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
   const cloudAssistSignInHref = `${localizedPath("/auth/sign-in", language)}?purpose=cloud_assist&returnTo=${encodeURIComponent(attachFileReturnTo)}`;
 
-  // Prefetch sign-in chunk for signed-out attach/AI flows so /auth/sign-in is not a blank Suspense gap.
+  // Prefetch sign-in after idle so signed-out homepage TBT is not paying for Auth.
   useEffect(() => {
     if (canAttachFiles) return;
-    void import("@/pages/AuthSignIn");
+    const prefetch = () => {
+      void import("@/pages/AuthSignIn");
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(prefetch, { timeout: 4000 });
+      return () => cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(prefetch, 2500);
+    return () => window.clearTimeout(timer);
   }, [canAttachFiles]);
 
   const { toast } = useToast();
@@ -943,13 +954,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   }, [prefillText]);
 
   useEffect(() => {
+    if (!isAiMode) return;
     if (planCapabilities.premiumTemplatePacks || !selectedTemplateId) return;
     void loadPromptTemplatesModule().then((m) => {
       if (m.isPremiumPromptTemplateId(selectedTemplateId)) {
         setSelectedTemplateId("ask-anything");
       }
     });
-  }, [planCapabilities.premiumTemplatePacks, selectedTemplateId]);
+  }, [isAiMode, planCapabilities.premiumTemplatePacks, selectedTemplateId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1305,8 +1317,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         ? { templateName: selectedTemplate.name, templateDescription: selectedTemplate.description }
         : undefined;
       const llm = await loadClientLLM();
-      const { getLoadedModelIdWebLLM } = await import("@/utils/webllm-engine");
-      const modelId = getLoadedModelIdWebLLM() ?? (await llm.getRecommendedLocalModelId());
+      const modelId = llm.getLoadedLocalModelId() ?? (await llm.getRecommendedLocalModelId());
       if (!modelId) {
         throw new Error(getLocalAiSupportHint() ?? "On-device AI is not available on this device.");
       }
@@ -3722,7 +3733,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         </form>
       </div>
 
-      {customizeSheetExperiment && (!isAiMode || aiDraftAccepted) && (!isFileTransferMode || hasAttachments) ? (
+      {customizeSheetExperiment &&
+      customizeSheetOpen &&
+      (!isAiMode || aiDraftAccepted) &&
+      (!isFileTransferMode || hasAttachments) ? (
         <Suspense fallback={null}>
           <CustomizeSettingsOverlay
             open={customizeSheetOpen}

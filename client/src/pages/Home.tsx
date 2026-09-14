@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useLayoutEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
@@ -14,7 +14,6 @@ const SecurityFeatures = lazy(() =>
 );
 const HomeBelowFold = lazy(() => import('@/pages/HomeBelowFold'));
 
-/** Reserve editor layout without a skeleton flash while the CreateNote chunk loads. */
 function CreateNoteMountPlaceholder() {
   return <div className="min-h-[28rem] w-full" aria-hidden />;
 }
@@ -23,28 +22,11 @@ const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-  const [mountCreateNote, setMountCreateNote] = useState(false);
   const { t, language } = useLanguage();
 
-  useEffect(() => {
-    let cancelled = false;
-    const mount = () => {
-      if (!cancelled) setMountCreateNote(true);
-    };
-    if (typeof requestIdleCallback === 'function') {
-      const id = requestIdleCallback(mount, { timeout: 800 });
-      return () => {
-        cancelled = true;
-        cancelIdleCallback(id);
-      };
-    }
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(mount);
-    });
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(id);
-    };
+  useLayoutEffect(() => {
+    const shell = document.getElementById('pn-home-prerender');
+    if (shell) shell.hidden = true;
   }, []);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
@@ -126,7 +108,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
+    <div className="pn-home min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
       <div
         className={
           isCreateSuccessView
@@ -137,28 +119,28 @@ const Home: React.FC = () => {
         {!isCreateSuccessView && (
           <section className="relative mx-auto max-w-4xl px-4 pt-16 sm:px-6 sm:pt-8 lg:px-8 h-short:pt-6 h-short:sm:pt-5">
             <div className="text-center">
-              <h1 className="page-title text-gray-900 dark:text-white">
-                <span className="md:hidden">
-                  <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+              <h1 data-lcp-element="true" className="page-title text-gray-900 dark:text-white">
+                <span className="pn-hero-narrow md:hidden">
+                  <span className="block">
                     {t.homeHeroMobileLine1 ?? t.homeHeroLine1}
                   </span>
-                  <span className="mt-0.5 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                  <span className="pn-hero-l2 mt-0.5 block text-primary">
                     {t.homeHeroMobileLine2 ?? t.homeHeroLine2}
                   </span>
                 </span>
-                <span className="hidden md:block">
-                  <span className="block animate-in fade-in-0 duration-500 fill-mode-both">
+                <span className="pn-hero-wide hidden md:block">
+                  <span className="block">
                     {t.homeHeroLine1}
                   </span>
-                  <span className="mt-1 block animate-in fade-in-0 text-primary duration-500 fill-mode-both [animation-delay:120ms]">
+                  <span className="pn-hero-l2 mt-1 block text-primary">
                     {t.homeHeroLine2}
                   </span>
                 </span>
               </h1>
-              <p className="mx-auto mt-5 max-w-4xl text-base leading-snug text-gray-500 dark:text-gray-400 md:hidden">
+              <p className="pn-hero-narrow pn-hero-sub mx-auto mt-5 max-w-4xl text-base leading-snug text-gray-500 dark:text-gray-400 md:hidden">
                 {t.homeHeroMobileSubtitle ?? t.homeHeroSubtitle}
               </p>
-              <p className="mx-auto mt-6 hidden max-w-4xl text-xl leading-normal text-gray-500 dark:text-gray-400 md:block md:max-w-5xl md:text-[1.375rem] h-short:mt-3 h-short:md:text-lg">
+              <p className="pn-hero-wide pn-hero-sub mx-auto mt-6 hidden max-w-4xl text-xl leading-normal text-gray-500 dark:text-gray-400 md:block md:max-w-5xl md:text-[1.375rem] h-short:mt-3 h-short:md:text-lg">
                 {t.homeHeroSubtitle}
               </p>
             </div>
@@ -170,13 +152,9 @@ const Home: React.FC = () => {
         >
           <div className="mx-auto min-w-0 max-w-4xl">
             {showCreateNote ? (
-              mountCreateNote ? (
-                <Suspense fallback={<CreateNoteMountPlaceholder />}>
-                  <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
-                </Suspense>
-              ) : (
-                <CreateNoteMountPlaceholder />
-              )
+              <Suspense fallback={<CreateNoteMountPlaceholder />}>
+                <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+              </Suspense>
             ) : (
               <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
             )}

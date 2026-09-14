@@ -53,18 +53,21 @@
 
   function isHomePath() {
     var p = location.pathname || "/";
+    if (p === "/") return true;
+    var seg = p.split("/").filter(Boolean)[0];
+    var rest = p.split("/").filter(Boolean).slice(1);
+    if (!seg || rest.length > 0) return false;
     return (
-      p === "/" ||
-      p === "/de" ||
-      p === "/de/" ||
-      p === "/fr" ||
-      p === "/fr/" ||
-      p === "/es" ||
-      p === "/es/" ||
-      p === "/it" ||
-      p === "/it/" ||
-      p === "/nl" ||
-      p === "/nl/"
+      seg === "de" ||
+      seg === "fr" ||
+      seg === "es" ||
+      seg === "it" ||
+      seg === "nl" ||
+      seg === "pt" ||
+      seg === "sr" ||
+      seg === "hr" ||
+      seg === "tr" ||
+      seg === "pl"
     );
   }
 
@@ -75,13 +78,15 @@
       shell.remove();
       return;
     }
-    var copy = HOME_HERO[pathHomeLocale()] || HOME_HERO.en;
-    var l1 = document.getElementById("pn-hero-l1");
-    var l2 = document.getElementById("pn-hero-l2");
-    var sub = document.getElementById("pn-hero-sub");
-    if (l1) l1.textContent = copy.l1;
-    if (l2) l2.textContent = copy.l2;
-    if (sub) sub.textContent = copy.sub;
+    var copy = HOME_HERO[pathHomeLocale()];
+    if (copy && pathHomeLocale() !== "en") {
+      var l1 = document.getElementById("pn-hero-l1");
+      var l2 = document.getElementById("pn-hero-l2");
+      var sub = document.getElementById("pn-hero-sub");
+      if (l1) l1.textContent = copy.l1;
+      if (l2) l2.textContent = copy.l2;
+      if (sub) sub.textContent = copy.sub;
+    }
     shell.removeAttribute("hidden");
   }
 
