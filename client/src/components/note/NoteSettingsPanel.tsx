@@ -1735,14 +1735,17 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                 <RevealBodyFontPicker
                   value={bodyFont}
                   disabled={premiumStatusLoading}
-                  locked={!canChooseBodyFont && !isPremiumUser}
-                  onLockedSelect={() =>
+                  access={{
+                    starter: Boolean(canChooseBodyFont || isPremiumUser),
+                    business: isConfiguredBusiness,
+                  }}
+                  onLockedSelect={(plan) =>
                     setSelectedPremiumFeature({
                       title: t.settingsRevealBodyFont ?? "Message typeface",
                       description:
                         t.settingsRevealBodyFontInfo ??
                         "Choose the typeface used for the opened note. Recipients see this after they reveal the message.",
-                      plan: "starter",
+                      plan,
                     })
                   }
                   onChange={setBodyFont}
@@ -1750,6 +1753,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     system: t.settingsRevealBodyFontSystem ?? "Inter",
                     satoshi: t.settingsRevealBodyFontSatoshi ?? "Satoshi",
                     "source-serif": t.settingsRevealBodyFontSourceSerif ?? "Source Serif 4",
+                    "ibm-plex-serif": t.settingsRevealBodyFontIbmPlex ?? "IBM Plex Serif",
                     fraunces: t.settingsRevealBodyFontFraunces ?? "Fraunces",
                     "jetbrains-mono": t.settingsRevealBodyFontMono ?? "JetBrains Mono",
                   }}
@@ -1757,14 +1761,15 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
                     system: t.settingsRevealBodyFontSystemHint ?? "Default — clear and professional",
                     satoshi: t.settingsRevealBodyFontSatoshiHint ?? "Modern geometric sans",
                     "source-serif": t.settingsRevealBodyFontSourceSerifHint ?? "Letter and document",
+                    "ibm-plex-serif":
+                      t.settingsRevealBodyFontIbmPlexHint ?? "Client letter and contract",
                     fraunces: t.settingsRevealBodyFontFrauncesHint ?? "Warm editorial",
                     "jetbrains-mono": t.settingsRevealBodyFontMonoHint ?? "Passwords, keys, and code",
                   }}
-                  sample={t.settingsRevealBodyFontSample ?? "The access code is 7G-K4m."}
                 />
                 <SettingsFieldHelper>
                   {t.settingsRevealBodyFontHint ??
-                    "Inter and Satoshi are free. Starter and Business unlock more typefaces."}
+                    "Inter and Satoshi are free. Starter unlocks more typefaces. IBM Plex Serif is Business."}
                 </SettingsFieldHelper>
               </div>
               {!isPremiumUser ? (
