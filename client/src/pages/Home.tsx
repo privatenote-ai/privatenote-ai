@@ -19,26 +19,20 @@ function CreateNoteMountPlaceholder() {
   return <div className="min-h-[28rem] w-full" aria-hidden />;
 }
 
-function prerenderedHomeComposer(): boolean {
-  if (typeof document === 'undefined') return false;
-  return Boolean(document.querySelector('#root textarea'));
-}
-
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-  const [mountCreateNote, setMountCreateNote] = useState(prerenderedHomeComposer);
+  const [mountCreateNote, setMountCreateNote] = useState(false);
   const { t, language } = useLanguage();
 
   useEffect(() => {
-    if (mountCreateNote) return;
     let cancelled = false;
     const mount = () => {
       if (!cancelled) setMountCreateNote(true);
     };
     if (typeof requestIdleCallback === 'function') {
-      const id = requestIdleCallback(mount, { timeout: 800 });
+      const id = requestIdleCallback(mount, { timeout: 2500 });
       return () => {
         cancelled = true;
         cancelIdleCallback(id);
@@ -51,7 +45,7 @@ const Home: React.FC = () => {
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [mountCreateNote]);
+  }, []);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });

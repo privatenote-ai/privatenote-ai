@@ -1,5 +1,4 @@
-import { createRoot, hydrateRoot } from "react-dom/client";
-import type { ReactElement } from "react";
+import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { isWebLlmGpuOrDisposeFailure } from "./utils/webLlmGpuErrors";
@@ -55,22 +54,4 @@ if (typeof window !== "undefined") {
   });
 }
 
-/**
- * Prerendered marketing HTML is already the LCP paint. createRoot() would throw it
- * away and retimestamp LCP after JS on slow mobiles. Hydrate instead. Empty SPA
- * shells (/auth, /account, …) still client-render.
- */
-function mountRoot(tree: ReactElement) {
-  const rootEl = document.getElementById("root");
-  if (!rootEl) {
-    console.error("[PrivateNote] #root element not found");
-    return;
-  }
-  if (rootEl.firstElementChild) {
-    hydrateRoot(rootEl, tree);
-  } else {
-    createRoot(rootEl).render(tree);
-  }
-}
-
-mountRoot(<App />);
+createRoot(document.getElementById("root")!).render(<App />);

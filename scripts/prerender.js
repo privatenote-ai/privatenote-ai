@@ -35,6 +35,7 @@ import {
   selectRoutesToPrerender,
 } from "./prerenderIncremental.js";
 import { fixSlashlessLocaleHomeAnchorHrefs } from "./check-locale-home-anchor-hrefs.js";
+import { deferEntryStylesheet } from "./deferEntryStylesheet.js";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const HTML_CACHE_DIR = process.env.PRERENDER_HTML_CACHE_DIR || "";
@@ -321,6 +322,7 @@ function postProcessHTML(html, route) {
   // Keeps vendor-react, vendor-query, and the entry chunk; removes everything else.
   out = stripStaleModulePreloads(out);
   out = stripInterFontPreload(out);
+  out = deferEntryStylesheet(out);
 
   // Never ship sitemap marketing HTML with 404-shell noindex (historical /* → /404.html deploys).
   out = out.replace(/<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["'][^>]*>/gi, "");

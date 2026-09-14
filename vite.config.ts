@@ -7,27 +7,29 @@ import fs from "node:fs";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
 import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityPolicy";
+import { deferEntryStylesheet } from "./scripts/deferEntryStylesheet.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 /**
- * Drop the Inter TTF preload if a stale index.html still has one. Preloading
- * ~850KB of truetype on the critical path delays CSS on mobile (field LCP).
+ * After production build: drop the Inter TTF preload and make the Tailwind
+ * stylesheet non-render-blocking so LCP can paint from inline critical CSS.
  */
-function htmlStripFontPreloadPlugin(): Plugin {
+function htmlCriticalPathPlugin(): Plugin {
   return {
-    name: "html-strip-font-preload",
+    name: "html-critical-path",
     apply: "build",
     closeBundle() {
       const distDir = path.resolve(__dirname, "dist");
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
-      const html = fs.readFileSync(indexPath, "utf8");
-      const next = html.replace(
+      let html = fs.readFileSync(indexPath, "utf8");
+      html = html.replace(
         /\s*<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/g,
         "",
       );
-      if (next !== html) fs.writeFileSync(indexPath, next);
+      html = deferEntryStylesheet(html);
+      fs.writeFileSync(indexPath, html);
     },
   };
 }
@@ -113,7 +115,7 @@ const devContentSecurityPolicy = buildDevPageContentSecurityPolicy();
 
 export default defineConfig({
   plugins: [
-    htmlStripFontPreloadPlugin(),
+    htmlCriticalPathPlugin(),
     spaShellCopyPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
