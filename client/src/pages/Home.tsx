@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
@@ -6,54 +6,31 @@ import { useMountWhenInView } from '@/hooks/useMountWhenInView';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 
+const CreateNote = lazy(() =>
+  import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
+);
 const SecurityFeatures = lazy(() =>
   import('@/components/features/SecurityFeatures').then((m) => ({ default: m.SecurityFeatures })),
 );
 const HomeBelowFold = lazy(() => import('@/pages/HomeBelowFold'));
 
-type CreateNoteComponent = React.ComponentType<{
-  onSuccessStateChange?: (isSuccess: boolean) => void;
-}>;
+function CreateNoteMountPlaceholder() {
+  return <div className="min-h-[28rem] w-full" aria-hidden />;
+}
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-  const [CreateNoteComp, setCreateNoteComp] = useState<CreateNoteComponent | null>(null);
   const { t, language } = useLanguage();
   const [useStaticHero] = useState(
     () => typeof document !== 'undefined' && Boolean(document.getElementById('pn-home-prerender')),
   );
 
-  const loadCreateNote = useCallback(() => {
-    void import('@/components/note/CreateNote').then((m) => {
-      setCreateNoteComp(() => m.CreateNote);
-    });
-  }, []);
-
   useEffect(() => {
     const shell = document.getElementById('pn-home-prerender');
     if (shell) shell.hidden = isCreateSuccessView;
   }, [isCreateSuccessView]);
-
-  useEffect(() => {
-    const composer = document.getElementById('pn-home-composer');
-    if (composer) composer.hidden = Boolean(CreateNoteComp);
-  }, [CreateNoteComp]);
-
-  useEffect(() => {
-    if (CreateNoteComp) return;
-    const composer = document.getElementById('pn-home-composer');
-    const onInteract = () => {
-      loadCreateNote();
-    };
-    composer?.addEventListener('pointerdown', onInteract, { once: true, passive: true });
-    composer?.addEventListener('focusin', onInteract, { once: true });
-    return () => {
-      composer?.removeEventListener('pointerdown', onInteract);
-      composer?.removeEventListener('focusin', onInteract);
-    };
-  }, [CreateNoteComp, loadCreateNote]);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
@@ -137,7 +114,7 @@ const Home: React.FC = () => {
     <div className={`min-w-0 max-w-full overflow-x-clip pb-28 sm:pb-32 ${useStaticHero ? "pt-0" : "pt-0 sm:pt-20 h-short:!pt-4"}`}>
       <div
         className={
-          isCreateSuccessView || (useStaticHero && !CreateNoteComp)
+          isCreateSuccessView
             ? undefined
             : "lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col"
         }
@@ -173,23 +150,19 @@ const Home: React.FC = () => {
           </section>
         )}
 
-        {(CreateNoteComp || !useStaticHero || !showCreateNote) && (
         <div
           className={`${isCreateSuccessView ? "mt-0" : "mt-8 sm:mt-6 md:mt-10 lg:mt-12 h-short:mt-4 h-short:md:mt-5 h-short:lg:mt-5"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
         >
           <div className="mx-auto min-w-0 max-w-4xl">
             {showCreateNote ? (
-              CreateNoteComp ? (
-                <CreateNoteComp onSuccessStateChange={setIsCreateSuccessView} />
-              ) : (
-                <div className="min-h-[12rem] w-full" aria-hidden />
-              )
+              <Suspense fallback={<CreateNoteMountPlaceholder />}>
+                <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
+              </Suspense>
             ) : (
               <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
             )}
           </div>
         </div>
-        )}
       </div>
 
       <div

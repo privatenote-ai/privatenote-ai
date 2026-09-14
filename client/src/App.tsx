@@ -13,6 +13,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
 import { AccountEntitlementsProvider } from "@/context/AccountEntitlementsContext";
+import Home from "@/pages/Home";
 import AccountBranding from "@/pages/account/AccountBranding";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
@@ -34,7 +35,6 @@ import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 import { PREMIUM_PAGE_PUBLIC } from "@shared/premiumPagePublic";
 import { NativePageAnalytics } from "@/components/NativePageAnalytics";
 
-const Home = lazy(() => import("@/pages/Home"));
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
 const OneTimeLink = lazy(() => import("@/pages/OneTimeLink"));
@@ -237,11 +237,7 @@ function HomeRoute({ language = "en" }: { language?: SupportedLanguage }) {
     }
   }, [activeLanguage, language, setLanguage]);
 
-  return (
-    <Suspense fallback={null}>
-      <Home />
-    </Suspense>
-  );
+  return <Home />;
 }
 
 function LocalizedRoute({
