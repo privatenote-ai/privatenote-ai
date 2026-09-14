@@ -1,9 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { en } from "./translations/en.ts";
+import { de } from "./translations/de.ts";
 import { fr } from "./translations/fr.ts";
-import { isNoindexPath } from "./documentMeta.ts";
+import { descriptionWithLocaleTag, isNoindexPath, titleWithLocaleTag } from "./documentMeta.ts";
 import { resolveDocumentMeta } from "./resolveDocumentMeta.ts";
+
+test("titleWithLocaleTag leaves English titles unchanged and tags locale URLs", () => {
+  assert.equal(
+    titleWithLocaleTag("About · PrivateNote.ai", "en"),
+    "About · PrivateNote.ai",
+  );
+  assert.equal(
+    titleWithLocaleTag("About · PrivateNote.ai", "sr"),
+    "About (SR) · PrivateNote.ai",
+  );
+  assert.equal(
+    titleWithLocaleTag("About (SR) · PrivateNote.ai", "sr"),
+    "About (SR) · PrivateNote.ai",
+  );
+});
+
+test("descriptionWithLocaleTag leaves English copy unchanged and tags locale URLs", () => {
+  const english =
+    "Common mistakes with passwords, API keys, contracts, and recovery codes—and how to avoid leaving confidential information exposed.";
+  assert.equal(descriptionWithLocaleTag(english, "en"), english);
+  assert.equal(
+    descriptionWithLocaleTag(english, "de"),
+    `${english} (DE)`,
+  );
+  assert.equal(
+    descriptionWithLocaleTag(`${english} (HR)`, "hr"),
+    `${english} (HR)`,
+  );
+  const tagged = descriptionWithLocaleTag(`${"A".repeat(200)} extra words for truncation.`, "fr");
+  assert.equal(tagged.endsWith(" (FR)"), true);
+  assert.equal(tagged.length <= 160, true);
+});
 
 test("resolveDocumentMeta titles the branding account page separately from preferences", () => {
   const branding = resolveDocumentMeta("/account/branding", en);
@@ -65,11 +98,11 @@ test("resolveDocumentMeta returns unique titles for reported duplicate-title URL
   );
   assert.equal(
     resolveDocumentMeta("/fr/contact", { ...en, ...fr }).title,
-    "Contacter le support des notes chiffrées · PrivateNote.ai",
+    "Contacter le support des notes chiffrées (FR) · PrivateNote.ai",
   );
   assert.equal(
     resolveDocumentMeta("/fr/privacy", { ...en, ...fr }).title,
-    "Politique de confidentialité · PrivateNote.ai",
+    "Politique de confidentialité (FR) · PrivateNote.ai",
   );
 });
 
@@ -84,7 +117,7 @@ test("resolveDocumentMeta returns unique descriptions for reported duplicate-des
     ["/security-guides/messenger", en],
   ] as const;
   const defaultShellDescription =
-    "Send encrypted messages, photos, audio, video, and files via a one-time link that disappears after opening. Recipients don't need an account.";
+    "Send encrypted notes, photos, audio, video and files with a one-time link that disappears after opening. Recipients don't need an account.";
 
   const descriptions = cases.map(([path, t]) => resolveDocumentMeta(path, t).description);
   assert.equal(descriptions.includes(defaultShellDescription), false);
@@ -96,4 +129,8 @@ test("resolveDocumentMeta returns unique descriptions for reported duplicate-des
     assert.equal(description.length >= 150, true);
     assert.equal(description.length <= 160, true);
   }
+  assert.equal(
+    resolveDocumentMeta("/de/blog/common-secret-handling-mistakes", { ...en, ...de }).description.endsWith(" (DE)"),
+    true,
+  );
 });
