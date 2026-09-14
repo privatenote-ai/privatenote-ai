@@ -82,27 +82,39 @@
     }
   </script>
 
-  <link rel="preload" href="/src/assets/fonts/Inter-VariableFont_opsz,wght.ttf" as="font" type="font/ttf" crossorigin />
-
-  <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading. -->
+  <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading.
+       Do not preload Inter TTF (~850KB): font-display:optional already skips a late
+       face, and a high-priority preload starves CSS/JS on mobile. -->
   <style id="pn-critical">
     body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
     html.dark body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}
     html.light body{background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
-    .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+    .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1;text-align:center;color:hsl(222.2 84% 4.9%)}
     @media (min-width:640px){.page-title{font-size:3rem}}
     @media (min-width:768px){.page-title{font-size:3.75rem}}
+    @media (min-width:768px) and (max-height:900px){.page-title{font-size:3rem;line-height:1.15}}
+    @media (prefers-color-scheme:dark){html:not(.light) .page-title{color:hsl(210 40% 98%)}}
+    html.dark .page-title{color:hsl(210 40% 98%)}
+    html.light .page-title{color:hsl(222.2 84% 4.9%)}
+    .pn-hero-narrow{display:block}
+    .pn-hero-wide{display:none}
+    @media (min-width:768px){.pn-hero-narrow{display:none}.pn-hero-wide{display:block}}
+    html.pn-app #pn-home-prerender{display:none!important}
+    @media (min-width:768px){#pn-home-prerender{display:none!important}}
+    @media (min-width:640px){.pn-home{padding-top:5rem}}
+    @media (min-width:768px) and (max-height:900px){.pn-home{padding-top:1rem}}
   </style>
   <style id="pn-home-hero-critical">
     #pn-home-prerender[hidden]{display:none!important}
-    .pn-home-prerender{padding-top:6rem;padding-bottom:0}
+    .pn-home-prerender{position:absolute;left:0;right:0;top:0;z-index:1;padding-top:6rem;padding-bottom:0;pointer-events:none}
     .pn-hero-wrap{position:relative;max-width:56rem;margin:0 auto;padding:0 1rem}
     .pn-hero-title{text-align:center}
     .pn-hero-l1,.pn-hero-l2{display:block}
     .pn-hero-l2{margin-top:.25rem;color:hsl(240 100% 50%)}
     .pn-hero-sub{margin:.75rem auto 0;max-width:56rem;text-align:center;font-size:1.125rem;line-height:1.75rem;color:hsl(220 9% 46%)}
     @media (min-width:768px){.pn-hero-sub{margin-top:1.25rem;font-size:1.375rem;line-height:2rem;max-width:64rem}}
+    @media (min-width:768px) and (max-height:900px){.pn-hero-sub{margin-top:.75rem;font-size:1.125rem;line-height:1.75rem}}
     @media (prefers-color-scheme:dark){html:not(.light) .pn-hero-l1{color:hsl(210 40% 98%)}html:not(.light) .pn-hero-sub{color:hsl(220 9% 65%)}}
     html.dark .pn-hero-l1{color:hsl(210 40% 98%)}
     html.dark .pn-hero-sub{color:hsl(220 9% 65%)}
@@ -115,19 +127,19 @@
   <script defer src="/prefill-guard.js"></script>
 </head>
 <body>
-  <div id="root">
-    <div id="pn-home-prerender" class="pn-home-prerender" hidden>
-      <section class="pn-hero-wrap" aria-label="PrivateNote">
-        <div class="pn-hero-title">
-          <h1 class="page-title">
-            <span class="pn-hero-l1" id="pn-hero-l1">Your Messages,</span>
-            <span class="pn-hero-l2" id="pn-hero-l2">Your Privacy</span>
-          </h1>
-          <p class="pn-hero-sub" id="pn-hero-sub">Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.</p>
-        </div>
-      </section>
-    </div>
+  <!-- LCP hero lives outside #root so createRoot() cannot retimestamp LCP. -->
+  <div id="pn-home-prerender" class="pn-home-prerender">
+    <section class="pn-hero-wrap" aria-label="PrivateNote">
+      <div class="pn-hero-title">
+        <h1 class="page-title">
+          <span class="pn-hero-l1" id="pn-hero-l1">Your Messages,</span>
+          <span class="pn-hero-l2" id="pn-hero-l2">Your Privacy</span>
+        </h1>
+        <p class="pn-hero-sub" id="pn-hero-sub">Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.</p>
+      </div>
+    </section>
   </div>
+  <div id="root"></div>
   <noscript>
     <nav aria-label="Primary site links">
       <a href="/">Home</a>

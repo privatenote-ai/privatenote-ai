@@ -7,40 +7,33 @@ import fs from "node:fs";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
 import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityPolicy";
+import {
+  deferEntryStylesheet,
+  stripStaleModulePreloads,
+} from "./scripts/deferEntryStylesheet.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-/** After production build, point the index.html font preload at the hashed asset URL from CSS. */
-function htmlFontPreloadPlugin(): Plugin {
+/**
+ * After production build: drop the Inter TTF preload and make the Tailwind
+ * stylesheet non-render-blocking so LCP can paint from inline critical CSS.
+ */
+function htmlCriticalPathPlugin(): Plugin {
   return {
-    name: "html-font-preload",
+    name: "html-critical-path",
     apply: "build",
     closeBundle() {
       const distDir = path.resolve(__dirname, "dist");
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
-
-      let fontHref: string | null = null;
-      for (const name of fs.readdirSync(distDir)) {
-        if (!name.endsWith(".css")) continue;
-        const css = fs.readFileSync(path.join(distDir, name), "utf8");
-        const match = css.match(
-          /url\((["']?)([^"')]*Inter-VariableFont_opsz,wght[^"')]*)\1\)/,
-        );
-        if (match?.[2]) {
-          fontHref = match[2].startsWith("/") ? match[2] : `/${match[2]}`;
-          break;
-        }
-      }
-      if (!fontHref) return;
-
-      const html = fs.readFileSync(indexPath, "utf8");
-      const prodTag = `<link rel="preload" href="${fontHref}" as="font" type="font/ttf" crossorigin />`;
-      const next = html.replace(
-        /<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/,
-        prodTag,
+      let html = fs.readFileSync(indexPath, "utf8");
+      html = html.replace(
+        /\s*<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/g,
+        "",
       );
-      if (next !== html) fs.writeFileSync(indexPath, next);
+      html = deferEntryStylesheet(html);
+      html = stripStaleModulePreloads(html);
+      fs.writeFileSync(indexPath, html);
     },
   };
 }
@@ -58,7 +51,12 @@ function spaShellCopyPlugin(): Plugin {
       const distDir = path.resolve(__dirname, "dist");
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
-      fs.copyFileSync(indexPath, path.join(distDir, "spa-shell.html"));
+      const html = fs.readFileSync(indexPath, "utf8");
+      const spa = html.replace(
+        /<div id="pn-home-prerender"[\s\S]*?<div id="root">/,
+        '<div id="root">',
+      );
+      fs.writeFileSync(path.join(distDir, "spa-shell.html"), spa);
     },
   };
 }
@@ -126,7 +124,7 @@ const devContentSecurityPolicy = buildDevPageContentSecurityPolicy();
 
 export default defineConfig({
   plugins: [
-    htmlFontPreloadPlugin(),
+    htmlCriticalPathPlugin(),
     spaShellCopyPlugin(),
     ...(useDevHttps && !useMkcert
       ? [basicSsl({ domains: ["localhost", "127.0.0.1"] })]
@@ -157,6 +155,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
+    modulePreload: {
+      resolveDependencies: (_filename, deps, { hostId }) => {
+        const filtered = deps.filter(
+          (d) =>
+            !/vendor-web-llm|vendor-transformers|client-llm|clientLLM|webllm-engine/.test(
+              d,
+            ),
+        );
+        // Homepage + composer must not preload AI/feature splits (WebLLM is 1.7MB).
+        if (/index-|Home|App|CreateNote/.test(hostId)) return [];
+        return filtered;
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

@@ -35,6 +35,7 @@ import {
   selectRoutesToPrerender,
 } from "./prerenderIncremental.js";
 import { fixSlashlessLocaleHomeAnchorHrefs } from "./check-locale-home-anchor-hrefs.js";
+import { deferEntryStylesheet } from "./deferEntryStylesheet.js";
 
 const OUTPUT_DIR = process.env.OUTPUT_DIR || "prerender";
 const HTML_CACHE_DIR = process.env.PRERENDER_HTML_CACHE_DIR || "";
@@ -240,13 +241,21 @@ function routeOutDir(route) {
  *  • the Vite entry script (<script type="module" src="/assets/index-*.js">)
  *  • stylesheet <link rel="stylesheet"> tags
  *  • vendor-react and vendor-query shared chunks (nearly always needed)
- *  • font preloads
+ *
+ * Inter TTF must not be preloaded (~850KB starves mobile CSS).
  *
  * Everything else (<link rel="modulepreload"> for feature chunks) is removed.
  */
 function stripStaleModulePreloads(html) {
   return html.replace(
     /<link\s+rel="modulepreload"[^>]*href="\/assets\/(?!vendor-react-|vendor-query-|index-)[^"]*\.js"[^>]*\/?>/gi,
+    "",
+  );
+}
+
+function stripInterFontPreload(html) {
+  return html.replace(
+    /\s*<link[^>]*rel=["']preload["'][^>]*Inter-VariableFont[^>]*>/gi,
     "",
   );
 }
@@ -312,6 +321,8 @@ function postProcessHTML(html, route) {
   // Strip feature-chunk modulepreload hints baked in by Vite's polyfill at render time.
   // Keeps vendor-react, vendor-query, and the entry chunk; removes everything else.
   out = stripStaleModulePreloads(out);
+  out = stripInterFontPreload(out);
+  out = deferEntryStylesheet(out);
 
   // Never ship sitemap marketing HTML with 404-shell noindex (historical /* → /404.html deploys).
   out = out.replace(/<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["'][^>]*>/gi, "");

@@ -5763,7 +5763,13 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     if (bodyFontRaw != null && !bodyFont) {
       return jsonResponse({ error: "invalid_body_font" }, 400, request);
     }
-    if (bodyFont && !mayStoreRevealBodyFont(bodyFont, capabilities.revealBodyFont)) {
+    if (
+      bodyFont &&
+      !mayStoreRevealBodyFont(bodyFont, {
+        starter: capabilities.revealBodyFont,
+        business: accountType === "business_premium",
+      })
+    ) {
       return jsonResponse({ error: "premium_required" }, 403, request);
     }
     const requireRecipientVerification = body.requireRecipientVerification === true;
