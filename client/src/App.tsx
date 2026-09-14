@@ -308,7 +308,6 @@ function Router() {
   }, [location]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
   const isNoteRoute = location.startsWith("/note/");
-  const onLocaleHome = isLocaleHomeRoute(pathWithoutQueryOrHash(location));
   const showNavbar =
     !isNoteRoute &&
     (!isAuthRoute ||
@@ -322,7 +321,7 @@ function Router() {
   return (
     <div className="flex min-h-screen min-w-0 flex-col">
       {showNavbar && <Navbar />}
-      <main className={`min-w-0 flex-grow ${isNoteRoute ? "pt-0" : isAuthRoute ? "pt-6" : onLocaleHome ? "pt-0" : "pt-16"}`}>
+      <main className={`min-w-0 flex-grow ${isNoteRoute ? "pt-0" : isAuthRoute ? "pt-6" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
           {/*

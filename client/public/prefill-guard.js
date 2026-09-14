@@ -78,13 +78,15 @@
       shell.remove();
       return;
     }
-    var copy = HOME_HERO[pathHomeLocale()] || HOME_HERO.en;
-    var l1 = document.getElementById("pn-hero-l1");
-    var l2 = document.getElementById("pn-hero-l2");
-    var sub = document.getElementById("pn-hero-sub");
-    if (l1) l1.textContent = copy.l1;
-    if (l2) l2.textContent = copy.l2;
-    if (sub) sub.textContent = copy.sub;
+    var copy = HOME_HERO[pathHomeLocale()];
+    if (copy && pathHomeLocale() !== "en") {
+      var l1 = document.getElementById("pn-hero-l1");
+      var l2 = document.getElementById("pn-hero-l2");
+      var sub = document.getElementById("pn-hero-sub");
+      if (l1) l1.textContent = copy.l1;
+      if (l2) l2.textContent = copy.l2;
+      if (sub) sub.textContent = copy.sub;
+    }
     shell.removeAttribute("hidden");
   }
 

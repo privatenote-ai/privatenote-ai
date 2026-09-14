@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useLayoutEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
@@ -23,14 +23,11 @@ const Home: React.FC = () => {
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
   const { t, language } = useLanguage();
-  const [useStaticHero] = useState(
-    () => typeof document !== 'undefined' && Boolean(document.getElementById('pn-home-prerender')),
-  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const shell = document.getElementById('pn-home-prerender');
-    if (shell) shell.hidden = isCreateSuccessView;
-  }, [isCreateSuccessView]);
+    if (shell) shell.hidden = true;
+  }, []);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
@@ -111,7 +108,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className={`min-w-0 max-w-full overflow-x-clip pb-28 sm:pb-32 ${useStaticHero ? "pt-0" : "pt-0 sm:pt-20 h-short:!pt-4"}`}>
+    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
       <div
         className={
           isCreateSuccessView
@@ -119,7 +116,7 @@ const Home: React.FC = () => {
             : "lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col"
         }
       >
-        {!isCreateSuccessView && !useStaticHero && (
+        {!isCreateSuccessView && (
           <section className="relative mx-auto max-w-4xl px-4 pt-16 sm:px-6 sm:pt-8 lg:px-8 h-short:pt-6 h-short:sm:pt-5">
             <div className="text-center">
               <h1 data-lcp-element="true" className="page-title text-gray-900 dark:text-white">
