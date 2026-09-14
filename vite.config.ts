@@ -7,7 +7,10 @@ import fs from "node:fs";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
 import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityPolicy";
-import { deferEntryStylesheet } from "./scripts/deferEntryStylesheet.js";
+import {
+  deferEntryStylesheet,
+  stripStaleModulePreloads,
+} from "./scripts/deferEntryStylesheet.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,6 +32,7 @@ function htmlCriticalPathPlugin(): Plugin {
         "",
       );
       html = deferEntryStylesheet(html);
+      html = stripStaleModulePreloads(html);
       fs.writeFileSync(indexPath, html);
     },
   };

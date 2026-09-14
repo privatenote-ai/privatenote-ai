@@ -1,26 +1,54 @@
 /**
- * Convert Vite's render-blocking entry CSS into a preload so first paint can
- * use the inline critical CSS (hero title) instead of waiting ~40KB of Tailwind.
+ * Convert Vite's render-blocking entry CSS into a preload + media="not all"
+ * stylesheet so first paint can use inline critical CSS (hero title).
+ *
+ * Do not use a <noscript> stylesheet fallback: Cloudflare unwraps noscript and
+ * the inner link becomes render-blocking again.
  */
 const ENTRY_CSS_HREF_RE = /\/assets\/index-[A-Za-z0-9_-]+\.css/;
-const BLOCKING_ENTRY_CSS_RE =
-  /<link\s+rel=["']stylesheet["']([^>]*href=["'](\/assets\/index-[A-Za-z0-9_-]+\.css)["'][^>]*)\/?>/i;
 
 export function deferEntryStylesheet(html) {
-  const match = html.match(BLOCKING_ENTRY_CSS_RE);
-  if (!match) return html;
+  const hrefMatch = html.match(/href=["'](\/assets\/index-[A-Za-z0-9_-]+\.css)["']/i);
+  if (!hrefMatch) return html;
 
-  const href = match[2];
+  const href = hrefMatch[1];
   if (!ENTRY_CSS_HREF_RE.test(href)) return html;
 
-  const extra = match[1];
-  const crossorigin = /crossorigin/i.test(extra) ? " crossorigin" : "";
-  const loader = html.includes("/load-stylesheet.js")
+  const escapedHref = href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const entryLinkRe = new RegExp(
+    `<link\\s+[^>]*href=["']${escapedHref}["'][^>]*>\\s*`,
+    "gi",
+  );
+  const existing = html.match(entryLinkRe) || [];
+  const crossorigin = existing.some((tag) => /crossorigin/i.test(tag))
+    ? " crossorigin"
+    : "";
+
+  entryLinkRe.lastIndex = 0;
+  let out = html.replace(entryLinkRe, "");
+  out = out.replace(
+    /<noscript>\s*<link\s+rel=["']stylesheet["'][^>]*\/assets\/index-[A-Za-z0-9_-]+\.css[^>]*>\s*<\/noscript>\s*/gi,
+    "",
+  );
+
+  const loader = out.includes("/load-stylesheet.js")
     ? ""
     : `<script defer src="/load-stylesheet.js"></script>\n`;
-  const replacement =
+  const tags =
     `<link rel="preload" href="${href}" as="style"${crossorigin} />\n` +
-    loader +
-    `<noscript><link rel="stylesheet" href="${href}"${crossorigin} /></noscript>`;
-  return html.replace(BLOCKING_ENTRY_CSS_RE, replacement);
+    `<link rel="stylesheet" href="${href}" media="not all" data-pn-defer-css${crossorigin} />\n` +
+    loader;
+
+  if (out.includes("</head>")) {
+    return out.replace("</head>", `${tags}</head>`);
+  }
+  return tags + out;
+}
+
+/** Keep vendor-react, vendor-query, and the entry chunk; drop other modulepreloads. */
+export function stripStaleModulePreloads(html) {
+  return html.replace(
+    /<link\s+rel="modulepreload"[^>]*href="\/assets\/(?!vendor-react-|vendor-query-|index-)[^"]*\.js"[^>]*\/?>/gi,
+    "",
+  );
 }
