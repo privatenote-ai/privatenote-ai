@@ -8,15 +8,16 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
 import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityPolicy";
 import {
-  deferEntryStylesheet,
+  ensureBlockingEntryStylesheet,
   stripStaleModulePreloads,
 } from "./scripts/deferEntryStylesheet.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 /**
- * After production build: drop the Inter TTF preload and make the Tailwind
- * stylesheet non-render-blocking so LCP can paint from inline critical CSS.
+ * After production build: drop the Inter TTF preload (it starves CSS on mobile)
+ * and keep the Tailwind stylesheet render-blocking so prerendered HTML does not
+ * flash unstyled.
  */
 function htmlCriticalPathPlugin(): Plugin {
   return {
@@ -31,7 +32,7 @@ function htmlCriticalPathPlugin(): Plugin {
         /\s*<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/g,
         "",
       );
-      html = deferEntryStylesheet(html);
+      html = ensureBlockingEntryStylesheet(html);
       html = stripStaleModulePreloads(html);
       fs.writeFileSync(indexPath, html);
     },
