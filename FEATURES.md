@@ -12,6 +12,8 @@ Baseline date: 2026-09-14.
 
 **Changed:** Account preferred language accepts every PrivateNote UI language (`en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `sr`, `hr`, `tr`, `pl`), not only English, German, French, and Spanish.
 
+**Changed:** IBM Plex Serif is a Business-only reveal typeface.
+
 Tagline: **Share secrets. Leave no trail.**
 
 Site: https://privatenote.ai
@@ -117,6 +119,7 @@ Requires signed-in verified email for alerts.
 - **Message typeface** (snapshotted on the note):
   - Free: Inter, Satoshi
   - Starter+: Source Serif 4, Fraunces, JetBrains Mono
+  - Business: IBM Plex Serif
 
 ### Recipient branding (Business)
 
@@ -326,7 +329,7 @@ These are web-runtime constraints, not missing product features. Native iOS can 
 | Open / destroy / download email alerts | Yes* | Yes | Yes |
 | Reader language lock | Auto only | Yes | Yes |
 | Inter / Satoshi typeface | Yes | Yes | Yes |
-| Extra typefaces | — | Yes | Yes |
+| Extra typefaces | — | Yes | Yes + IBM Plex Serif |
 | Recipient verification | — | Yes | Yes |
 | Email the link | — | Yes | Yes |
 | Scheduled reveal | — | Yes | Yes |
