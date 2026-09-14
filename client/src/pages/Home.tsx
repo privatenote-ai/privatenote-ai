@@ -108,7 +108,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
+    <div className="pn-home min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
       <div
         className={
           isCreateSuccessView
