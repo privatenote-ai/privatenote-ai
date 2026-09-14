@@ -58,7 +58,7 @@ const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations
   pl: { ...en, ...pl },
 };
 
-const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
+const DEFAULT_SHELL_TITLE = "Encrypted Notes, Photos & Files · PrivateNote.ai";
 
 /** Must match `client/index.html` and {@link DEFAULT_OG_IMAGE_PATH} in documentMeta.ts */
 export const PRERENDER_OG_IMAGE_PATH = "/og-image.png";

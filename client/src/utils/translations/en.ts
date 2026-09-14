@@ -631,9 +631,9 @@ export const en: Translations = {
     "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
   homeHeroMobileSubtitle: "Encrypted notes and files that disappear.",
   whyPrivateNote: "Why PrivateNote",
-  shareSensitiveHeading: "Share sensitive notes with confidence.",
+  shareSensitiveHeading: "Send encrypted messages, photos, audio, and files with a one-time link.",
   shareSensitiveBody:
-    "PrivateNote keeps your messages private by encrypting in the browser and letting the note disappear after it’s read. No accounts, no friction, and no ads following you around.",
+    "Everything is encrypted in the browser, then the note disappears after it’s opened. Recipients don’t need an account.",
   clientSideEncryption: "Client-side encryption means the server never sees your plaintext.",
   readOnceExposure: "Read-once and expiring notes reduce exposure over time.",
   noTrackingAds: "No ads, no ad-tracking pixels, and no third-party analytics.",
@@ -2228,8 +2228,9 @@ export const en: Translations = {
   homeFaq_sensitiveSecrets_question: "Can I use this for passwords, recovery codes, or private keys?",
   homeFaq_sensitiveSecrets_answer:
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
+  documentMetaHomeTitle: "Encrypted Notes, Photos & Files",
   documentMetaHomeDescription:
-    "End-to-end encrypted notes that self-destruct after reading. Browser encryption, read-once links, and short expirations keep private messages under control.",
+    "Send encrypted messages, photos, audio, video, and files via a one-time link that disappears after opening. Recipients don't need an account.",
   documentMetaHowItWorksDescription:
     "Learn how PrivateNote.ai uses browser encryption, short-lived secure notes, and optional on-device AI while keeping encryption keys under your control.",
   documentMetaDevelopersTitle: "Developer integrations",

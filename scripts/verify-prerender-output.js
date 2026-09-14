@@ -54,7 +54,7 @@ const BAD_CANONICAL_TRAILING_SLASH_RE =
     `<link\\s+[^>]*rel=["']canonical["'][^>]*href=["']https:\\/\\/privatenote\\.ai\\/(?!(${LOCALE_HOME_PATTERN})\\/["'])[^"']+\\/["']`,
     "i",
   );
-const DEFAULT_SHELL_TITLE = "PrivateNote.ai - Secure Encrypted Notes";
+const DEFAULT_SHELL_TITLE = "Encrypted Notes, Photos & Files · PrivateNote.ai";
 
 /** Routes that must not ship the index.html shell title (duplicate-title SEO issue). */
 const UNIQUE_TITLE_CHECKS = [

@@ -78,6 +78,16 @@ test("resolveDocumentMeta keeps public marketing titles within SEO length", () =
 });
 
 
+test("home document meta invites encrypted notes, photos, and files — not the hero slogan", () => {
+  const meta = resolveDocumentMeta("/", en);
+  assert.equal(meta.title, "Encrypted Notes, Photos & Files · PrivateNote.ai");
+  assert.match(meta.description, /photos, audio, video, and files/i);
+  assert.match(meta.description, /one-time link/i);
+  assert.match(meta.description, /disappears/i);
+  assert.doesNotMatch(meta.title, /Your Messages/);
+  assert.equal(resolveDocumentMeta("/de", { ...en, ...de }).title, "Verschlüsselte Notizen, Fotos & Dateien · PrivateNote.ai");
+});
+
 test("one-time landing has transactional metadata distinct from the guide", () => {
   const deMeta = resolveDocumentMeta("/de/one-time-link", { ...en, ...de });
   assert.match(deMeta.title, /Einmal-Link erstellen/);

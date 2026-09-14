@@ -575,7 +575,7 @@ async function main() {
       }
       try {
         await page.waitForFunction(
-          () => document.title !== "PrivateNote.ai - Secure Encrypted Notes",
+          () => document.title !== "Encrypted Notes, Photos & Files · PrivateNote.ai",
           { timeout: 4000 },
         );
       } catch {

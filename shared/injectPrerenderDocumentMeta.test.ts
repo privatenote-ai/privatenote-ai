@@ -135,8 +135,8 @@ test("injectPrerenderDocumentMeta injects complete Open Graph tags for locale ho
   ].join("");
 
   const out = injectPrerenderDocumentMeta(html, "/de/");
-  assert.match(out, /property="og:title" content="Ihre Nachrichten/);
-  assert.match(out, /property="og:description" content="Ende-zu-Ende/);
+  assert.match(out, /property="og:title" content="Verschlüsselte Notizen, Fotos &amp; Dateien/);
+  assert.match(out, /property="og:description" content="Senden Sie verschlüsselte/);
   assert.match(out, /property="og:image" content="https:\/\/privatenote\.ai\/og-image\.png"/);
   assert.match(out, /property="og:image:width" content="1200"/);
   assert.match(out, /property="og:image:height" content="630"/);

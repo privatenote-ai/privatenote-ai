@@ -63,9 +63,8 @@ export function normalizeDocumentPath(pathname: string): string {
 }
 
 function homeDocumentMeta(t: Translations): { title: string; description: string } {
-  const titlePart = `${t.homeHeroLine1.replace(/\s*,\s*$/, "")} — ${t.homeHeroLine2}`;
   return {
-    title: buildDocumentTitle(titlePart),
+    title: buildDocumentTitle(t.documentMetaHomeTitle),
     description: t.documentMetaHomeDescription,
   };
 }

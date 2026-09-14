@@ -52,6 +52,7 @@ test("resolveDocumentMeta returns unique titles for reported duplicate-title URL
   ] as const;
 
   const titles = cases.map(([path, t]) => resolveDocumentMeta(path, t).title);
+  assert.equal(titles.includes("Encrypted Notes, Photos & Files · PrivateNote.ai"), false);
   assert.equal(titles.includes("PrivateNote.ai - Secure Encrypted Notes"), false);
   assert.deepEqual(
     titles.filter((title, index) => titles.indexOf(title) !== index),
@@ -83,7 +84,7 @@ test("resolveDocumentMeta returns unique descriptions for reported duplicate-des
     ["/security-guides/messenger", en],
   ] as const;
   const defaultShellDescription =
-    "PrivateNote.ai - Create end-to-end encrypted notes that self-destruct after reading. Secure messaging with client-side encryption.";
+    "Send encrypted messages, photos, audio, video, and files via a one-time link that disappears after opening. Recipients don't need an account.";
 
   const descriptions = cases.map(([path, t]) => resolveDocumentMeta(path, t).description);
   assert.equal(descriptions.includes(defaultShellDescription), false);
