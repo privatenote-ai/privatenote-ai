@@ -121,6 +121,32 @@ test("injectPrerenderDocumentMeta injects password generator FAQ schema", () => 
   assert.equal(JSON.parse(match[1])["@type"], "FAQPage");
 });
 
+test("injectPrerenderDocumentMeta injects Privnote alternative schema and crawler article", () => {
+  const html = [
+    '<html lang="en"><head>',
+    "<title>PrivateNote.ai - Secure Encrypted Notes</title>",
+    '<meta name="description" content="old" />',
+    '<meta property="og:title" content="old" />',
+    '<meta property="og:description" content="old" />',
+    '<meta name="twitter:title" content="old" />',
+    '<meta name="twitter:description" content="old" />',
+    '<meta property="og:locale" content="en_US" />',
+    '</head><body><div id="root"></div></body></html>',
+  ].join("");
+
+  const out = injectPrerenderDocumentMeta(html, "/privnote-alternative");
+  assert.match(out, /<title>Privnote Alternative: Secure Notes &amp; Files/);
+  assert.match(out, /data-structured-data-id="privnote-alternative-faq"/);
+  assert.match(out, /data-structured-data-id="privnote-alternative-page"/);
+  assert.match(out, /A Private Privnote Alternative for Notes, Passwords &amp; Files/);
+  assert.match(out, /If you already know Privnote/);
+  assert.match(out, /If you are looking for a Privnote alternative/);
+  assert.match(out, /AES-256-GCM authenticated encryption/);
+  assert.match(out, /Built with cryptography in mind/);
+  assert.doesNotMatch(out, /Short fragment after/);
+  assert.doesNotMatch(out, /aggregateRating/);
+});
+
 test("injectPrerenderDocumentMeta injects complete Open Graph tags for locale homes", () => {
   const html = [
     '<html lang="en"><head>',

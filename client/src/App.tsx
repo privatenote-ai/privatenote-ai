@@ -38,6 +38,7 @@ import { NativePageAnalytics } from "@/components/NativePageAnalytics";
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
 const OneTimeLink = lazy(() => import("@/pages/OneTimeLink"));
+const PrivnoteAlternative = lazy(() => import("@/pages/PrivnoteAlternative"));
 const SecureFileTransfer = lazy(() => import("@/pages/SecureFileTransfer"));
 const SecurityResources = lazy(() => import("@/pages/SecurityResources"));
 const PrivacyTools = lazy(() => import("@/pages/PrivacyTools"));
@@ -334,6 +335,7 @@ function Router() {
             <Fragment key={language}>
               <Route path={`/${language}/password-generator`} component={() => <LocalizedRoute language={language} component={PasswordGenerator} />} />
               <Route path={`/${language}/one-time-link`} component={() => <LocalizedRoute language={language} component={OneTimeLink} />} />
+              <Route path={`/${language}/privnote-alternative`} component={() => <LocalizedRoute language={language} component={PrivnoteAlternative} />} />
               <Route path={`/${language}/secure-file-transfer`} component={() => <LocalizedRoute language={language} component={SecureFileTransfer} />} />
               <Route path={`/${language}/privacy-tools`} component={() => <LocalizedRoute language={language} component={PrivacyTools} />} />
               <Route path={`/${language}/security-resources`} component={() => <LocalizedRoute language={language} component={SecurityResources} />} />
@@ -360,6 +362,7 @@ function Router() {
           <Route path="/note/:id" component={ViewNoteRoute} />
           <Route path="/password-generator" component={() => <LazyRoute component={PasswordGenerator} />} />
           <Route path="/one-time-link" component={() => <LazyRoute component={OneTimeLink} />} />
+          <Route path="/privnote-alternative" component={() => <LazyRoute component={PrivnoteAlternative} />} />
           <Route path="/secure-file-transfer" component={() => <LazyRoute component={SecureFileTransfer} />} />
           <Route path="/privacy-tools" component={() => <LazyRoute component={PrivacyTools} />} />
           <Route path="/security-resources" component={() => <LazyRoute component={SecurityResources} />} />

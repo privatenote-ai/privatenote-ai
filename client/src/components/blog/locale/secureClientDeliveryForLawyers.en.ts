@@ -93,14 +93,14 @@ export const secureClientDeliveryForLawyersEn: SecureClientDeliveryForLawyersArt
         "Branding is not vanity. A client who has been warned about phishing should be able to recognise the firm’s identity on the page that asks them to open a sensitive message. A consumer chat thread cannot offer that assurance. Business adds company profile, logo, colours, and a Default or Custom reveal page so the delivery is clearly presented under the practice’s identity. That is a matter of recognition, not cryptographic proof of origin.",
       ],
       midCta: {
-        body: "Business is the plan built for professional delivery: recipient branding, view-only file access, attachments up to 1 GB, and the full set of delivery controls (proof of access, recipient verification, revoke, delayed reveal). It is €12 / $12 per month, or €120 / $120 per year—one professional account, not a seat licence.",
+        body: "Business is the plan built for professional delivery: recipient branding, view-only file access, attachments up to 1 GB, and the full set of delivery controls (proof of access, recipient verification, revoke, scheduled reveal). It is €12 / $12 per month, or €120 / $120 per year—one professional account, not a seat licence.",
         button: "See Business on the plans page",
       },
     },
     {
       title: "Additional controls for professional use",
       paragraphs: [
-        "Delayed reveal can hold a pack until a filing time or a prison-call window. Business adds view-only file access for exhibits that should be read, not casually saved, and larger attachment limits for bundles that do not belong in a chat. For larger packs, [encrypted file transfer](app:secure-file-transfer) uses the same model: sending a file requires a free account; opening a link never does.",
+        "Scheduled reveal can hold a pack until a filing time or a prison-call window. Business adds view-only file access for exhibits that should be read, not casually saved, and larger attachment limits for bundles that do not belong in a chat. For larger packs, [encrypted file transfer](app:secure-file-transfer) uses the same model: sending a file requires a free account; opening a link never does.",
       ],
     },
     {

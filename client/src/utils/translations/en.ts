@@ -865,7 +865,7 @@ export const en: Translations = {
   settingsRevealBodyFontMonoHint: "Passwords, keys, and code",
   revealNoteSheetLabel: "Note content",
   settingsDeliveryUpgradeLink: "Upgrade to unlock delivery controls",
-  settingsDelayedReveal: "Delayed reveal",
+  settingsDelayedReveal: "Scheduled reveal",
   settingsDelayedRevealInfo:
     "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.",
   settingsDelayedRevealBefore: "Do not allow opening before",
@@ -2003,12 +2003,12 @@ export const en: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revoke a private note before it is opened",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoke unopened PrivateNote links and view proof-of-access timelines for delivery events—without putting secrets into email.",
-  blogDelayedRevealTitle: "Delayed Reveal for One-Time Secret Links",
+  blogDelayedRevealTitle: "Scheduled Reveal for One-Time Secret Links",
   blogDelayedRevealSubtitle:
     "Schedule when a private note can first be opened — without giving up burn-after-read.",
   blogDelayedRevealExcerpt:
     "Schedule when a private note can first be opened — for credential handovers, HR packs, and embargoed documents.",
-  blogDelayedRevealMetaTitle: "Delayed reveal for one-time secret links",
+  blogDelayedRevealMetaTitle: "Scheduled reveal for one-time secret links",
   blogDelayedRevealMetaDescription:
     "Set Do not allow opening before a UTC time on PrivateNote. Share encrypted links early for handovers, HR, and embargoes.",
   blogHowToSendNudesSafelyTitle: "How to Send Nudes Safely",
@@ -2243,7 +2243,11 @@ export const en: Translations = {
   documentMetaOneTimeLinkTitle: "Create a One-Time Secret Link",
   documentMetaOneTimeLinkDescription:
     "Create an encrypted one-time link for passwords, private messages and files. Share sensitive information without leaving plaintext in email or chat.",
+  documentMetaPrivnoteAlternativeTitle: "Privnote Alternative: Secure Notes & Files",
+  documentMetaPrivnoteAlternativeDescription:
+    "Looking for a Privnote alternative? PrivateNote lets you share encrypted, self-destructing notes, passwords and files with optional access controls.",
   otlFooterLabel: "One-time link",
+  privnoteAlternativeFooterLabel: "Privnote alternative",
   devBadge: "Developer integrations",
   devHeroTitle: "Share secrets from the tools where work actually happens",
   devHeroSubtitle:
@@ -3118,7 +3122,7 @@ export const en: Translations = {
   pricingRowProofOfAccess: "Proof of access",
   pricingRowRecipientVerification: "Recipient verification",
   pricingRowRecipientLinkDelivery: "Email link to recipient",
-  pricingRowDelayedReveal: "Delayed reveal",
+  pricingRowDelayedReveal: "Scheduled reveal",
   pricingRowReceiptAcknowledgment: "Receipt confirmation",
   pricingRowSentNotesDashboard: "Sent-notes dashboard",
   pricingRowRevokeUnopened: "Revoke unopened notes",
@@ -3152,7 +3156,7 @@ export const en: Translations = {
     "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
   pricingFaqDifferenceQ: "What is the difference between Starter and Business?",
   pricingFaqDifferenceA:
-    "Starter ({starterMonthly}/month) unlocks proof of access, recipient verification, delayed reveal, revoke, the sent-notes overview, reveal-page typefaces, and higher limits. Business ({businessMonthly}/month) adds branded reveal pages, view-only file access, browser-saved custom AI prompt templates, files up to 1 GB, and 50 GB encrypted storage — still one professional account, not team seats.",
+    "Starter ({starterMonthly}/month) unlocks proof of access, recipient verification, scheduled reveal, revoke, the sent-notes overview, reveal-page typefaces, and higher limits. Business ({businessMonthly}/month) adds branded reveal pages, view-only file access, browser-saved custom AI prompt templates, files up to 1 GB, and 50 GB encrypted storage — still one professional account, not team seats.",
   pricingFaqAnnualQ: "How does annual billing work?",
   pricingFaqAnnualA:
     "Annual plans are charged once per year at {starterYearly} for Starter and {businessYearly} for Business — two months free versus paying monthly. Stripe charges USD or EUR based on your region at checkout.",

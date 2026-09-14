@@ -1160,7 +1160,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   );
 
   useEffect(() => {
-    // Delayed reveal is checked first: emailing a code while the note is still
+    // Scheduled reveal is checked first: emailing a code while the note is still
     // time-locked would burn the code's usefulness before it can be entered.
     if (
       !id ||

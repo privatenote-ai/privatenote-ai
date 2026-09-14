@@ -89,14 +89,14 @@ export const secureClientDeliveryForLawyersDe: SecureClientDeliveryForLawyersArt
         "Kanzlei-Branding ist keine Eitelkeit. Ein Mandant, der vor Phishing gewarnt wurde, sollte auf der Seite, über die er eine vertrauliche Nachricht öffnet, sofort erkennen können, von welcher Kanzlei sie stammt. Ein gängiger Messenger-Chat bietet diese Gewähr nicht. Business ergänzt Kanzleiprofil, Logo, Farben sowie eine standardisierte oder individuell gestaltete Abrufseite.",
       ],
       midCta: {
-        body: "Business ist der Tarif für die professionelle Übermittlung: Empfänger-Branding, Dateien nur zur Ansicht, Anhänge bis 1 GB und die vollständigen Kontrollen (Zugriffsnachweis, Empfängerprüfung, Widerruf, verzögerte Freigabe). 12 € / 12 $ im Monat oder 120 € / 120 $ im Jahr — ein professionelles Konto, keine Sitzlizenz.",
+        body: "Business ist der Tarif für die professionelle Übermittlung: Empfänger-Branding, Dateien nur zur Ansicht, Anhänge bis 1 GB und die vollständigen Kontrollen (Zugriffsnachweis, Empfängerprüfung, Widerruf, geplante Freigabe). 12 € / 12 $ im Monat oder 120 € / 120 $ im Jahr — ein professionelles Konto, keine Sitzlizenz.",
         button: "Kanzlei-Konto einrichten",
       },
     },
     {
       title: "Zusätzliche Kontrollen für Kanzleien",
       paragraphs: [
-        "Starter und Business ergänzen Funktionen, die Kanzleien sonst häufig telefonisch oder über getrennte Kanäle organisieren müssen. Die [Empfängerprüfung](blog:recipient-verification-code-before-reveal) legt einen notizspezifischen Code auf einen zweiten Kanal, sodass ein abgefangener Link nicht genügt. [Öffnungsbenachrichtigungen](blog:know-when-secret-link-opened) und der Zugriffsnachweis sagen, dass die Unterlagen geöffnet wurden — nur Status, niemals der Inhalt. Ein noch ungeöffneter Link lässt sich [widerrufen](blog:revoke-unopened-note-proof-of-access), wenn er an die falsche Nummer gesendet wurde. Mit der verzögerten Freigabe lässt sich ein verschlüsseltes Paket bis zu einem bestimmten Zeitpunkt oder etwa einem vereinbarten Anruf aus der JVA sperren. Business fügt die Ansicht ohne Download für Anlagen hinzu, die gelesen, aber nicht beiläufig gespeichert werden sollen, und die größten Anhangsgrenzen für Bündel, die nicht in den Chat gehören.",
+        "Starter und Business ergänzen Funktionen, die Kanzleien sonst häufig telefonisch oder über getrennte Kanäle organisieren müssen. Die [Empfängerprüfung](blog:recipient-verification-code-before-reveal) legt einen notizspezifischen Code auf einen zweiten Kanal, sodass ein abgefangener Link nicht genügt. [Öffnungsbenachrichtigungen](blog:know-when-secret-link-opened) und der Zugriffsnachweis sagen, dass die Unterlagen geöffnet wurden — nur Status, niemals der Inhalt. Ein noch ungeöffneter Link lässt sich [widerrufen](blog:revoke-unopened-note-proof-of-access), wenn er an die falsche Nummer gesendet wurde. Mit der geplanten Freigabe lässt sich ein verschlüsseltes Paket bis zu einem bestimmten Zeitpunkt oder etwa einem vereinbarten Anruf aus der JVA sperren. Business fügt die Ansicht ohne Download für Anlagen hinzu, die gelesen, aber nicht beiläufig gespeichert werden sollen, und die größten Anhangsgrenzen für Bündel, die nicht in den Chat gehören.",
       ],
       orderedIntro: "Ein praktikabler Ablauf in der Kanzlei ist kurz:",
       ordered: [

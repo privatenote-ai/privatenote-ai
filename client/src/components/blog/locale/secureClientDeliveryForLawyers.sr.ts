@@ -89,14 +89,14 @@ export const secureClientDeliveryForLawyersSr: SecureClientDeliveryForLawyersArt
         "Brendiranje nije sujeta. Klijent koji je navikao da bude oprezan sa nepoznatim linkovima treba odmah da prepozna kontekst poruke: naziv kancelarije, logo, identitet pošiljaoca i kratku prateću poruku. To nije kriptografska autentikacija pošiljaoca, ali dostavu čini prepoznatljivijom i profesionalnijom. Business dodaje profil kancelarije, logo, boje i prilagođenu stranicu za otvaranje, tako da klijent jasno vidi u kom kontekstu prima poverljivi sadržaj.",
       ],
       midCta: {
-        body: "Business paket je namenjen profesionalnoj dostavi: identitet kancelarije kod primaoca, režim pregleda bez preuzimanja, prilozi do 1 GB i puna kontrola dostave (dokaz pristupa, provera primaoca, opoziv, odloženo otvaranje). 12 € / 12 $ mesečno, ili 120 € / 120 $ godišnje — jedan profesionalni nalog, ne licenca po korisniku.",
+        body: "Business paket je namenjen profesionalnoj dostavi: identitet kancelarije kod primaoca, režim pregleda bez preuzimanja, prilozi do 1 GB i puna kontrola dostave (dokaz pristupa, provera primaoca, opoziv, zakazano otkrivanje). 12 € / 12 $ mesečno, ili 120 € / 120 $ godišnje — jedan profesionalni nalog, ne licenca po korisniku.",
         button: "Testirajte Business paket za kancelarije",
       },
     },
     {
       title: "Kontrole koje pripadaju profesionalnom nalogu",
       paragraphs: [
-        "Starter i Business dodaju funkcije koje bi kancelarija inače morala da usklađuje telefonom ili odvojenim kanalima. [Provera primaoca](blog:recipient-verification-code-before-reveal) stavlja kod specifičan za belešku na drugi kanal, tako da presretnuti link nije dovoljan. [Obaveštenja o otvaranju](blog:know-when-secret-link-opened) i dokaz pristupa kažu da su spisi preuzeti — samo status, nikad sadržaj. Još neotvoreni link može da se [opozove](blog:revoke-unopened-note-proof-of-access) ako je poslat na pogrešan broj. Odloženo otvaranje može da spreči pristup sadržaju do određenog roka ili dogovorenog termina, na primer do poziva iz zavoda. Business dodaje pregled bez preuzimanja za priloge koje treba čitati, ne usput čuvati, i najveće granice priloga za svežnjeve koji ne idu u čet.",
+        "Starter i Business dodaju funkcije koje bi kancelarija inače morala da usklađuje telefonom ili odvojenim kanalima. [Provera primaoca](blog:recipient-verification-code-before-reveal) stavlja kod specifičan za belešku na drugi kanal, tako da presretnuti link nije dovoljan. [Obaveštenja o otvaranju](blog:know-when-secret-link-opened) i dokaz pristupa kažu da su spisi preuzeti — samo status, nikad sadržaj. Još neotvoreni link može da se [opozove](blog:revoke-unopened-note-proof-of-access) ako je poslat na pogrešan broj. Zakazano otkrivanje može da spreči pristup sadržaju do određenog roka ili dogovorenog termina, na primer do poziva iz zavoda. Business dodaje pregled bez preuzimanja za priloge koje treba čitati, ne usput čuvati, i najveće granice priloga za svežnjeve koji ne idu u čet.",
       ],
       orderedIntro: "Praktičan tok u kancelariji je kratak:",
       ordered: [

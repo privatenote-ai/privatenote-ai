@@ -154,3 +154,13 @@ test("one-time landing has transactional metadata distinct from the guide", () =
   assert.match(enMeta.title, /Create a One-Time Secret Link/);
   assert.notEqual(enMeta.title, resolveDocumentMeta("/blog/one-time-secret-links", en).title);
 });
+
+test("privnote alternative landing has distinct metadata", () => {
+  const meta = resolveDocumentMeta("/privnote-alternative", en);
+  assert.match(meta.title, /Privnote Alternative: Secure Notes & Files/);
+  assert.match(meta.description, /Privnote alternative/);
+  assert.equal(meta.title.length <= 60, true);
+  const deTitle = resolveDocumentMeta("/de/privnote-alternative", { ...en, ...de }).title;
+  assert.match(deTitle, / \(DE\) · PrivateNote\.ai$/);
+  assert.notEqual(deTitle, meta.title);
+});

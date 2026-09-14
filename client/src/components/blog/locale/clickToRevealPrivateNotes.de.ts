@@ -112,7 +112,7 @@ export const clickToRevealPrivateNotesDe: BlogGuideArticleCopy = {
         "Anzeigen ist eine bewusste Handlung, nicht die automatische Folge des Ladens eines Links.",
       paragraphs: [
         "Klick-zum-Anzeigen lässt Sie einen Link früh senden, ohne die Notiz allein deshalb zu entschlüsseln, weil die Landingpage geladen hat.",
-        "Kombinieren Sie es mit kurzen Lebensdauern, Verifizierung bei schwachen Kanälen und klaren Anweisungen an den Empfänger—und Sie erhalten praktische verzögerte Anzeige, ohne vorzutäuschen, das Produkt könne einen Screenshot remote löschen.",
+        "Kombinieren Sie es mit kurzen Lebensdauern, Verifizierung bei schwachen Kanälen und klaren Anweisungen an den Empfänger—und Sie erhalten eine praktische Pause vor der Anzeige, ohne vorzutäuschen, das Produkt könne einen Screenshot remote löschen.",
       ],
     },
   ],

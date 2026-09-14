@@ -1799,6 +1799,10 @@ export const nl: Translations = {
   documentMetaOneTimeLinkDescription:
     "Maak een versleutelde eenmalige link voor wachtwoorden, privéberichten en bestanden, zonder plaintext in e-mail of chat achter te laten.",
   otlFooterLabel: "Eenmalige link",
+  privnoteAlternativeFooterLabel: "Privnote-alternatief",
+  documentMetaPrivnoteAlternativeTitle: "Privnote-alternatief: notities en bestanden",
+  documentMetaPrivnoteAlternativeDescription:
+    "Op zoek naar een alternatief voor Privnote? PrivateNote deelt versleutelde, zelfvernietigende notities, wachtwoorden en bestanden — met optionele toegangscontrole.",
   devBadge: "Integraties van ontwikkelaars",
   devHeroTitle: "Deel geheimen van de tools waar het werk daadwerkelijk gebeurt",
   devHeroSubtitle: "PrivateNote is handig als website, maar ontwikkelaarsteams hebben meestal dezelfde gecodeerde overdracht nodig binnen editors, lokale AI-agents, scripts en gecontroleerde implementaties. Deze pagina brengt die toegangspunten en de vertrouwensgrens daarachter in kaart.",
@@ -2414,7 +2418,7 @@ export const nl: Translations = {
   pricingRowProofOfAccess: "Toegangsbewijs",
   pricingRowRecipientVerification: "Ontvangersverificatie",
   pricingRowRecipientLinkDelivery: "Link per e-mail naar de ontvanger",
-  pricingRowDelayedReveal: "Uitgesteld openen",
+  pricingRowDelayedReveal: "Geplande onthulling",
   pricingRowReceiptAcknowledgment: "Ontvangstbevestiging",
   pricingRowSentNotesDashboard: "Overzicht verstuurde notities",
   pricingRowRevokeUnopened: "Intrekken vóór opening",
@@ -2443,7 +2447,7 @@ export const nl: Translations = {
   pricingFaqEncryptionQ: "Veranderen betaalde abonnementen de versleuteling?",
   pricingFaqEncryptionA: "Nee. Elk abonnement versleutelt de notitietekst in je browser vóór verzending. Starter en Business voegen bezorgcontroles, hogere limieten en personalisatie toe — nooit leesbare toegang voor PrivateNote.",
   pricingFaqDifferenceQ: "Wat is het verschil tussen Starter en Business?",
-  pricingFaqDifferenceA: "Starter ({starterMonthly}/maand) ontgrendelt toegangsbewijs, ontvangersverificatie, uitgestelde onthulling, intrekken, het overzicht van verstuurde notities, lettertypen op de openingspagina en hogere limieten. Business ({businessMonthly}/maand) voegt openingspagina’s in jouw huisstijl toe, view-only-bestandstoegang, eigen AI-promptsjablonen in de browser, bestanden tot 1 GB en 50 GB versleutelde opslag — nog steeds één professioneel account, geen teamlicenties.",
+  pricingFaqDifferenceA: "Starter ({starterMonthly}/maand) ontgrendelt toegangsbewijs, ontvangersverificatie, geplande onthulling, intrekken, het overzicht van verstuurde notities, lettertypen op de openingspagina en hogere limieten. Business ({businessMonthly}/maand) voegt openingspagina’s in jouw huisstijl toe, view-only-bestandstoegang, eigen AI-promptsjablonen in de browser, bestanden tot 1 GB en 50 GB versleutelde opslag — nog steeds één professioneel account, geen teamlicenties.",
   pricingFaqAnnualQ: "Hoe werkt jaarlijkse facturering?",
   pricingFaqAnnualA: "Jaarplannen worden één keer per jaar in rekening gebracht: {starterYearly} voor Starter en {businessYearly} voor Business — twee maanden cadeau ten opzichte van maandelijks. Stripe schrijft USD of EUR af op basis van je regio bij het afrekenen.",
   pricingFaqPayOnlineQ: "Kan ik vandaag online betalen?",

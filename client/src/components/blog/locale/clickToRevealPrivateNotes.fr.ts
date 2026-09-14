@@ -113,7 +113,7 @@ export const clickToRevealPrivateNotesFr: BlogGuideArticleCopy = {
         "Révéler est une action consciente, pas une conséquence automatique du chargement d'un lien.",
       paragraphs: [
         "Le cliquer-pour-révéler permet d'envoyer un lien tôt sans déchiffrer la note simplement parce que la page d'atterrissage s'est chargée.",
-        "Associez-le à des durées de vie courtes, une vérification quand les canaux sont faibles, et des instructions claires au destinataire—et vous obtenez une révélation différée pratique, sans prétendre que le produit peut supprimer un capture d'écran à distance.",
+        "Associez-le à des durées de vie courtes, une vérification quand les canaux sont faibles, et des instructions claires au destinataire—et vous obtenez une pause pratique avant l’affichage, sans prétendre que le produit peut supprimer un capture d'écran à distance.",
       ],
     },
   ],

@@ -50,6 +50,7 @@ export const Footer: React.FC = () => {
   const productLinks: FooterLink[] = [
     { href: lp("/"), label: t.writeNote },
     { href: lp("/one-time-link"), label: t.otlFooterLabel ?? "One-time link" },
+    { href: lp("/privnote-alternative"), label: t.privnoteAlternativeFooterLabel ?? "Privnote alternative" },
     { href: lp("/secure-file-transfer"), label: t.shareFile },
     { href: lp("/password-generator"), label: t.passwordGenerator },
     { href: lp("/how-it-works"), label: t.howItWorks },

@@ -15,6 +15,8 @@ test("isLocalizedMarketingHreflangRoute matches mirrored marketing paths", () =>
   assert.equal(isLocalizedMarketingHreflangRoute("/de/premium"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/one-time-link"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/de/one-time-link"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/privnote-alternative"), true);
+  assert.equal(isLocalizedMarketingHreflangRoute("/de/privnote-alternative"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/de/security-resources"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/fr/blog"), true);
   assert.equal(isLocalizedMarketingHreflangRoute("/blog/privacy-tools"), true);

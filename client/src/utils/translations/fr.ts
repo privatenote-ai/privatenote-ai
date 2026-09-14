@@ -1621,6 +1621,10 @@ export const fr: Translations = {
   documentMetaOneTimeLinkDescription:
     "Créez un lien chiffré à usage unique pour mots de passe, messages privés et fichiers, sans laisser le clair dans l’e-mail ou le chat.",
   otlFooterLabel: "Lien à usage unique",
+  privnoteAlternativeFooterLabel: "Alternative à Privnote",
+  documentMetaPrivnoteAlternativeTitle: "Alternative à Privnote : notes et fichiers",
+  documentMetaPrivnoteAlternativeDescription:
+    "Vous cherchez une alternative à Privnote ? PrivateNote partage des notes, mots de passe et fichiers chiffrés qui disparaissent — avec des contrôles d’accès optionnels.",
   devBadge: "Intégrations développeurs",
   devHeroTitle: "Partagez les secrets là où le travail se fait vraiment",
   devHeroSubtitle: "PrivateNote fonctionne très bien comme application web, mais les équipes de développement ont souvent besoin du même transfert sécurisé dans leurs éditeurs, agents IA locaux, scripts et déploiements contrôlés. Cette page présente ces points d’entrée et la limite de confiance de chacun.",
@@ -2423,7 +2427,7 @@ export const fr: Translations = {
   pricingRowProofOfAccess: "Preuve d’accès",
   pricingRowRecipientVerification: "Vérification du destinataire",
   pricingRowRecipientLinkDelivery: "Lien envoyé par e-mail au destinataire",
-  pricingRowDelayedReveal: "Ouverture différée",
+  pricingRowDelayedReveal: "Révélation planifiée",
   pricingRowReceiptAcknowledgment: "Confirmation de réception",
   pricingRowSentNotesDashboard: "Suivi des notes envoyées",
   pricingRowRevokeUnopened: "Révocation avant ouverture",
@@ -2452,7 +2456,7 @@ export const fr: Translations = {
   pricingFaqEncryptionQ: "Les formules payantes changent-elles le chiffrement ?",
   pricingFaqEncryptionA: "Non. Chaque formule chiffre le texte de la note dans votre navigateur avant l’envoi. Starter et Business ajoutent des contrôles de livraison, des limites plus élevées et des options de personnalisation — jamais un accès au contenu en clair pour PrivateNote.",
   pricingFaqDifferenceQ: "Quelle est la différence entre Starter et Business ?",
-  pricingFaqDifferenceA: "Starter ({starterMonthly}/mois) débloque la preuve d’accès, la vérification du destinataire, la révélation différée, la révocation, le suivi des notes envoyées, les polices de la page d’ouverture et des limites plus élevées. Business ({businessMonthly}/mois) ajoute des pages d’ouverture à votre image, l’accès fichiers view-only, des modèles de prompts IA personnalisés enregistrés dans le navigateur, des fichiers jusqu’à 1 Go et 50 Go de stockage chiffré — toujours un compte professionnel, pas de licences d’équipe.",
+  pricingFaqDifferenceA: "Starter ({starterMonthly}/mois) débloque la preuve d’accès, la vérification du destinataire, la révélation planifiée, la révocation, le suivi des notes envoyées, les polices de la page d’ouverture et des limites plus élevées. Business ({businessMonthly}/mois) ajoute des pages d’ouverture à votre image, l’accès fichiers view-only, des modèles de prompts IA personnalisés enregistrés dans le navigateur, des fichiers jusqu’à 1 Go et 50 Go de stockage chiffré — toujours un compte professionnel, pas de licences d’équipe.",
   pricingFaqAnnualQ: "Comment fonctionne la facturation annuelle ?",
   pricingFaqAnnualA: "Les formules annuelles sont débitées une fois par an : {starterYearly} pour Starter et {businessYearly} pour Business — deux mois offerts par rapport au mensuel. Stripe débite en USD ou EUR selon votre région au paiement.",
   pricingFaqPayOnlineQ: "Puis-je payer en ligne dès aujourd’hui ?",

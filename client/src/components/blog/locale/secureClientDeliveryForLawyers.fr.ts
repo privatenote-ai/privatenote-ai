@@ -87,7 +87,7 @@ export const secureClientDeliveryForLawyersFr: SecureClientDeliveryForLawyersArt
         "L’identité visuelle du cabinet remplit aussi une fonction de confiance. Un client habitué à se méfier des liens inconnus doit pouvoir reconnaître immédiatement le contexte de l’envoi : nom du cabinet, logo, identité de l’expéditeur et message d’accompagnement. Cela ne remplace pas la vérification cryptographique du destinataire, mais rend la transmission plus identifiable et professionnelle.",
       ],
       midCta: {
-        body: "L’offre Business est conçue pour les besoins de transmission des cabinets d’avocats : image du cabinet chez le destinataire, fichiers en lecture seule, pièces jointes jusqu’à 1 Go, et l’ensemble des contrôles d’envoi (preuve d’accès, vérification du destinataire, révocation, révélation différée). 12 € / 12 $ par mois, ou 120 € / 120 $ par an — un compte professionnel, pas une licence par siège.",
+        body: "L’offre Business est conçue pour les besoins de transmission des cabinets d’avocats : image du cabinet chez le destinataire, fichiers en lecture seule, pièces jointes jusqu’à 1 Go, et l’ensemble des contrôles d’envoi (preuve d’accès, vérification du destinataire, révocation, révélation planifiée). 12 € / 12 $ par mois, ou 120 € / 120 $ par an — un compte professionnel, pas une licence par siège.",
         button: "Découvrir l’offre Business pour cabinets",
       },
       paragraphsAfterOrdered: [

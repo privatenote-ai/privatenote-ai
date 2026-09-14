@@ -1795,6 +1795,10 @@ export const de: Translations = {
   documentMetaOneTimeLinkDescription:
     "Erstellen Sie einen verschlüsselten Einmal-Link für Passwörter, private Nachrichten und Dateien — ohne Klartext in E-Mail oder Chat zu hinterlassen.",
   otlFooterLabel: "Einmal-Link",
+  privnoteAlternativeFooterLabel: "Privnote-Alternative",
+  documentMetaPrivnoteAlternativeTitle: "Privnote-Alternative: Notizen und Dateien",
+  documentMetaPrivnoteAlternativeDescription:
+    "Suchen Sie eine Alternative zu Privnote? PrivateNote teilt verschlüsselte, selbstlöschende Notizen, Passwörter und Dateien — mit optionaler Zugriffssteuerung.",
   devBadge: "Entwickler-Integrationen",
   devHeroTitle: "Geheimnisse dort teilen, wo Entwickler arbeiten",
   devHeroSubtitle: "PrivateNote ist als Website nützlich, aber Entwicklerteams brauchen verschlüsselte Übergaben oft direkt in Editoren, lokalen KI-Agenten, Skripten und kontrollierten Deployments. Diese Seite zeigt die Einstiegspunkte und die Vertrauensgrenzen dahinter.",
@@ -2409,7 +2413,7 @@ export const de: Translations = {
   pricingRowProofOfAccess: "Zugriffsnachweis",
   pricingRowRecipientVerification: "Empfängerverifizierung",
   pricingRowRecipientLinkDelivery: "Link per E-Mail an den Empfänger",
-  pricingRowDelayedReveal: "Verzögertes Öffnen",
+  pricingRowDelayedReveal: "Geplante Freigabe",
   pricingRowReceiptAcknowledgment: "Empfangsbestätigung",
   pricingRowSentNotesDashboard: "Gesendete Notizen im Überblick",
   pricingRowRevokeUnopened: "Widerruf vor dem Öffnen",
@@ -2438,7 +2442,7 @@ export const de: Translations = {
   pricingFaqEncryptionQ: "Ändern bezahlte Tarife die Verschlüsselung?",
   pricingFaqEncryptionA: "Nein. Jeder Tarif verschlüsselt den Notiztext in Ihrem Browser vor dem Upload. Starter und Business ergänzen Zustellkontrollen, höhere Limits und den Markenauftritt — kein anderes Verschlüsselungsversprechen.",
   pricingFaqDifferenceQ: "Worin unterscheiden sich Starter und Business?",
-  pricingFaqDifferenceA: "Starter ({starterMonthly}/Monat) schaltet Zugriffsnachweis, Empfängerprüfung, verzögerte Freigabe, Widerruf, die Übersicht gesendeter Notizen, Schriftarten auf der Abrufseite und höhere Limits frei. Business ({businessMonthly}/Monat) ergänzt gebrandete Abrufseiten, view-only-Dateizugriff, im Browser gespeicherte eigene KI-Promptvorlagen, Dateien bis 1 GB und 50 GB verschlüsselten Speicher — weiterhin ein professionelles Konto, keine Teamlizenzen.",
+  pricingFaqDifferenceA: "Starter ({starterMonthly}/Monat) schaltet Zugriffsnachweis, Empfängerprüfung, geplante Freigabe, Widerruf, die Übersicht gesendeter Notizen, Schriftarten auf der Abrufseite und höhere Limits frei. Business ({businessMonthly}/Monat) ergänzt gebrandete Abrufseiten, view-only-Dateizugriff, im Browser gespeicherte eigene KI-Promptvorlagen, Dateien bis 1 GB und 50 GB verschlüsselten Speicher — weiterhin ein professionelles Konto, keine Teamlizenzen.",
   pricingFaqAnnualQ: "Wie funktioniert die jährliche Abrechnung?",
   pricingFaqAnnualA: "Jahrestarife werden einmal jährlich berechnet: {starterYearly} für Starter und {businessYearly} für Business — zwei Monate geschenkt gegenüber monatlicher Zahlung. Stripe belastet USD oder EUR je nach Region im Checkout.",
   pricingFaqPayOnlineQ: "Kann ich heute online bezahlen?",

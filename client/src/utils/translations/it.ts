@@ -1618,6 +1618,10 @@ export const it: Translations = {
   documentMetaOneTimeLinkDescription:
     "Crea un link cifrato monouso per password, messaggi privati e file, senza lasciare testo in chiaro in email o chat.",
   otlFooterLabel: "Link monouso",
+  privnoteAlternativeFooterLabel: "Alternativa a Privnote",
+  documentMetaPrivnoteAlternativeTitle: "Alternativa a Privnote: note e file",
+  documentMetaPrivnoteAlternativeDescription:
+    "Cerchi un’alternativa a Privnote? PrivateNote condivide note, password e file cifrati che scompaiono, con controlli di accesso opzionali.",
   devBadge: "Integrazioni per sviluppatori",
   devHeroTitle: "Condividi segreti dagli strumenti in cui il lavoro avviene davvero",
   devHeroSubtitle: "PrivateNote funziona bene come app web, ma i team di sviluppo spesso hanno bisogno dello stesso trasferimento sicuro dentro editor, agenti IA locali, script e ambienti controllati. Questa pagina mostra quei punti di ingresso e il confine di fiducia di ciascuno.",
@@ -2417,7 +2421,7 @@ export const it: Translations = {
   pricingRowProofOfAccess: "Prova di accesso",
   pricingRowRecipientVerification: "Verifica del destinatario",
   pricingRowRecipientLinkDelivery: "Invio del link via e-mail al destinatario",
-  pricingRowDelayedReveal: "Apertura ritardata",
+  pricingRowDelayedReveal: "Rivelazione programmata",
   pricingRowReceiptAcknowledgment: "Conferma di ricezione",
   pricingRowSentNotesDashboard: "Monitoraggio delle note inviate",
   pricingRowRevokeUnopened: "Revoca prima dell’apertura",
@@ -2446,7 +2450,7 @@ export const it: Translations = {
   pricingFaqEncryptionQ: "I piani a pagamento cambiano la cifratura?",
   pricingFaqEncryptionA: "No. Ogni piano cifra il testo della nota nel browser prima dell’invio. Starter e Business aggiungono controlli di consegna, limiti più alti e opzioni di personalizzazione — mai un accesso al contenuto in chiaro per PrivateNote.",
   pricingFaqDifferenceQ: "Qual è la differenza tra Starter e Business?",
-  pricingFaqDifferenceA: "Starter ({starterMonthly}/mese) sblocca la prova di accesso, la verifica del destinatario, la rivelazione ritardata, la revoca, il monitoraggio delle note inviate, i caratteri della pagina di apertura e limiti più alti. Business ({businessMonthly}/mese) aggiunge pagine di apertura personalizzate con il tuo brand, accesso file view-only, modelli di prompt IA personalizzati salvati nel browser, file fino a 1 GB e 50 GB di archiviazione cifrata — resta un account professionale, senza licenze team.",
+  pricingFaqDifferenceA: "Starter ({starterMonthly}/mese) sblocca la prova di accesso, la verifica del destinatario, la rivelazione programmata, la revoca, il monitoraggio delle note inviate, i caratteri della pagina di apertura e limiti più alti. Business ({businessMonthly}/mese) aggiunge pagine di apertura personalizzate con il tuo brand, accesso file view-only, modelli di prompt IA personalizzati salvati nel browser, file fino a 1 GB e 50 GB di archiviazione cifrata — resta un account professionale, senza licenze team.",
   pricingFaqAnnualQ: "Come funziona l’addebito annuale?",
   pricingFaqAnnualA: "I piani annuali si addebitano una volta l’anno: {starterYearly} per Starter e {businessYearly} per Business — due mesi in omaggio rispetto al mensile. Stripe addebita USD o EUR in base alla tua area al checkout.",
   pricingFaqPayOnlineQ: "Posso pagare online oggi?",
