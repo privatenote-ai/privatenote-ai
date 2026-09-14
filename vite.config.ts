@@ -157,14 +157,19 @@ export default defineConfig({
     emptyOutDir: true,
     modulePreload: {
       resolveDependencies: (_filename, deps, { hostId }) => {
-        // Homepage lazy graph (CreateNote, icons) must not be preloaded with the entry.
-        if (/index-|Home|App/.test(hostId)) return [];
-        return deps;
+        const filtered = deps.filter(
+          (d) =>
+            !/vendor-web-llm|vendor-transformers|client-llm|clientLLM|webllm-engine/.test(
+              d,
+            ),
+        );
+        // Homepage + composer must not preload AI/feature splits (WebLLM is 1.7MB).
+        if (/index-|Home|App|CreateNote/.test(hostId)) return [];
+        return filtered;
       },
     },
     rollupOptions: {
       output: {
-        experimentalMinChunkSize: 20_000,
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@mlc-ai/web-llm")) return "vendor-web-llm";
