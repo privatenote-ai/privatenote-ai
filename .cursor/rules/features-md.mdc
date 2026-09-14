@@ -1,0 +1,14 @@
+---
+description: Keep FEATURES.md in sync with user-facing product changes (iOS parity catalog).
+globs: FEATURES.md,shared/planCatalog.ts,client/src/components/note/**,client/src/pages/{ViewNote,Home,Premium,PasswordGenerator,SecuritySettings,Auth*}.tsx,client/src/pages/account/**,client/src/pages/security-settings/**,packages/privatenote-{mcp,cli,vscode,chrome,codex-plugin}/**
+alwaysApply: false
+---
+
+# FEATURES.md (iOS feature catalog)
+
+When you add, change, or remove a **user-facing capability**, update `FEATURES.md` in the same change.
+
+- Edit the relevant section so it matches what the app ships now.
+- Add a short **New / Changed / Removed** line near the top (include plan gating if that changed).
+- PR CI (`check-features-md`) fails if capability paths change without `FEATURES.md`.
+- Not a capability change (refactor, copy, style, tests)? Do not pad the catalog. The PR can use label `skip-features-md` or `[skip-features]` in the title.

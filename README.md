@@ -4,7 +4,7 @@
 
 End-to-end encrypted notes and file attachments. Encryption happens in your browser before upload — PrivateNote stores ciphertext only.
 
-🌐 **[privatenote.ai](https://privatenote.ai)** · 📦 **[Public developer tools](https://github.com/privatenote-ai/privatenote-ai)**
+🌐 **[privatenote.ai](https://privatenote.ai)** · 📦 **[Public developer tools](https://github.com/privatenote-ai/privatenote-ai)** · 📋 **[Product feature catalog](./FEATURES.md)** (iOS parity; update on every PR)
 
 ## Developer tools
 
