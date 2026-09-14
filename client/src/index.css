@@ -2,7 +2,8 @@
   font-family: "Inter";
   font-style: normal;
   font-weight: 300 700;
-  /* Avoid late swap (layout “stretch”): use web font only if ready in time; preload helps it win. */
+  /* Avoid late swap (layout “stretch”). Do not preload this TTF — it is ~850KB
+     and starves CSS on mobile. optional means a late face is skipped. */
   font-display: optional;
   src: url("./assets/fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
 }

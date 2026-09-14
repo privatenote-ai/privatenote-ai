@@ -293,6 +293,12 @@ function Router() {
   }, [location, t]);
 
   useEffect(() => {
+    const path = pathWithoutQueryOrHash(location);
+    const shell = document.getElementById("pn-home-prerender");
+    if (shell) shell.hidden = !isLocaleHomeRoute(path);
+  }, [location]);
+
+  useEffect(() => {
     /** Wouter navigations preserve scroll — reset after paint when not already at top. */
     if (window.scrollY === 0) return;
     const frame = requestAnimationFrame(() => {
