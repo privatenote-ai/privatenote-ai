@@ -1,5 +1,5 @@
 import type { Translations } from "@/utils/translation";
-import { buildDocumentTitle } from "@/utils/documentMeta";
+import { buildDocumentTitle, descriptionWithLocaleTag, titleWithLocaleTag } from "@/utils/documentMeta";
 import { localizedSecurityGuideMeta } from "@/components/security-guides/locale";
 import { resolveCanonicalBlogSlug } from "@shared/localizedBlogSlugs";
 import { isBlogCategory } from "@shared/blogCategories";
@@ -519,6 +519,18 @@ export function resolveDocumentMeta(
   t: Translations,
 ): { title: string; description: string } {
   const p = normalizeDocumentPath(pathname);
+  const meta = resolveDocumentMetaForPath(p, t);
+  const language = languageFromDocumentPath(p);
+  return {
+    title: titleWithLocaleTag(meta.title, language),
+    description: descriptionWithLocaleTag(meta.description, language),
+  };
+}
+
+function resolveDocumentMetaForPath(
+  p: string,
+  t: Translations,
+): { title: string; description: string } {
   const segments = p.split("/").filter(Boolean);
 
   if (p === "/" || segments.length === 0) {

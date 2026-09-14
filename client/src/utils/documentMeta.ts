@@ -1,4 +1,5 @@
 import { canonicalPublicPath } from "@shared/homeSeoLinks";
+import { isSupportedLanguage } from "@shared/supportedLanguages";
 
 /** Visible brand suffix for HTML <title> tags. */
 export const DOCUMENT_META_BRAND = "PrivateNote.ai";
@@ -40,6 +41,51 @@ export function buildDocumentTitle(pageTitle: string): string {
   const trimmed = pageTitle.trim();
   if (!trimmed) return DOCUMENT_META_BRAND;
   return `${trimmed} · ${DOCUMENT_META_BRAND}`;
+}
+
+const BRAND_TITLE_SUFFIX = ` · ${DOCUMENT_META_BRAND}`;
+
+/** Typical search-snippet budget for `meta name="description"`. */
+export const META_DESCRIPTION_MAX = 160;
+
+/**
+ * Keep locale URLs from sharing an English (or twin-locale) `<title>`.
+ * English stays untagged; `/de/...` becomes `Page (DE) · PrivateNote.ai`.
+ */
+export function titleWithLocaleTag(title: string, language: string): string {
+  const code = language.trim().toLowerCase();
+  if (!code || code === "en") return title;
+  const tag = ` (${code.toUpperCase()})`;
+  if (title.includes(tag) || !title.endsWith(BRAND_TITLE_SUFFIX)) return title;
+  return `${title.slice(0, -BRAND_TITLE_SUFFIX.length)}${tag}${BRAND_TITLE_SUFFIX}`;
+}
+
+function localeMetaTag(language: string): string | null {
+  const code = language.trim().toLowerCase();
+  if (!code || code === "en") return null;
+  return ` (${code.toUpperCase()})`;
+}
+
+function fitMetaDescription(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const sliced = text.slice(0, max).trimEnd();
+  const lastSpace = sliced.lastIndexOf(" ");
+  const cut = lastSpace >= Math.floor(max * 0.6) ? sliced.slice(0, lastSpace) : sliced;
+  return cut.replace(/[.,;:–—-]+$/u, "").trimEnd();
+}
+
+/**
+ * Keep locale URLs from sharing an English (or twin-locale) meta description.
+ * English stays untagged; `/de/...` appends ` (DE)` and stays within 160 characters.
+ */
+export function descriptionWithLocaleTag(description: string, language: string): string {
+  const trimmed = description.trim();
+  const tag = localeMetaTag(language);
+  if (!tag) return trimmed;
+  if (trimmed.endsWith(tag)) {
+    return trimmed.length <= META_DESCRIPTION_MAX ? trimmed : fitMetaDescription(trimmed, META_DESCRIPTION_MAX);
+  }
+  return `${fitMetaDescription(trimmed, META_DESCRIPTION_MAX - tag.length)}${tag}`;
 }
 
 function absoluteUrlFromHref(href: string): string {
@@ -147,11 +193,19 @@ function currentPathname(): string {
   return typeof window !== "undefined" ? window.location.pathname : "/";
 }
 
+function languageFromPathname(pathname: string): string {
+  const first = (pathname.split(/[?#]/)[0] || "/").split("/").filter(Boolean)[0];
+  return first && isSupportedLanguage(first) && first !== "en" ? first : "en";
+}
+
 /**
  * Updates `<title>`, description, Open Graph, and Twitter Card tags.
  */
 export function setDocumentMeta(title: string, description: string, options?: DocumentMetaOptions): void {
-  document.title = title;
+  const language = languageFromPathname(options?.canonicalPath ?? currentPathname());
+  const taggedTitle = titleWithLocaleTag(title, language);
+  const taggedDescription = descriptionWithLocaleTag(description, language);
+  document.title = taggedTitle;
 
   let meta = document.querySelector('meta[name="description"]');
   if (!meta) {
@@ -159,7 +213,7 @@ export function setDocumentMeta(title: string, description: string, options?: Do
     meta.setAttribute("name", "description");
     document.head.appendChild(meta);
   }
-  meta.setAttribute("content", description);
+  meta.setAttribute("content", taggedDescription);
 
   const pageUrl = canonicalPageUrl(options?.canonicalPath);
   const imageHref = options?.image?.trim() || DEFAULT_OG_IMAGE_PATH;
@@ -173,8 +227,8 @@ export function setDocumentMeta(title: string, description: string, options?: Do
     "robots",
     isNoindexPath(options?.canonicalPath ?? currentPathname()) ? "noindex, nofollow" : "index, follow",
   );
-  upsertMetaProperty("og:title", title);
-  upsertMetaProperty("og:description", description);
+  upsertMetaProperty("og:title", taggedTitle);
+  upsertMetaProperty("og:description", taggedDescription);
   upsertMetaProperty("og:url", pageUrl);
   upsertMetaProperty("og:type", ogType);
   upsertMetaProperty("og:site_name", DOCUMENT_META_BRAND);
@@ -184,8 +238,8 @@ export function setDocumentMeta(title: string, description: string, options?: Do
   upsertMetaProperty("og:locale", ogLocaleFromDocument());
 
   upsertMetaName("twitter:card", "summary_large_image");
-  upsertMetaName("twitter:title", title);
-  upsertMetaName("twitter:description", description);
+  upsertMetaName("twitter:title", taggedTitle);
+  upsertMetaName("twitter:description", taggedDescription);
   upsertMetaName("twitter:image", imageUrl);
 
   if (ogType === "article") {

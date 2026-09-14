@@ -94,15 +94,53 @@ test("resolveDocumentMeta keeps public marketing titles within SEO length", () =
   assert.deepEqual(under, [], `Lengthen document titles for: ${under.join(", ")}`);
 });
 
+test("public marketing titles are unique across locales", () => {
+  const byTitle = new Map<string, string[]>();
+  for (const route of PUBLIC_MARKETING_PATHS) {
+    const { title } = resolveDocumentMeta(route, translationsForRoute(route));
+    const routes = byTitle.get(title) ?? [];
+    routes.push(route);
+    byTitle.set(title, routes);
+  }
+  const dupes = [...byTitle.entries()]
+    .filter(([, routes]) => routes.length > 1)
+    .map(([title, routes]) => `${title} → ${routes.join(", ")}`);
+  assert.deepEqual(dupes, [], `Duplicate titles:\n${dupes.join("\n")}`);
+});
+
+test("public marketing descriptions are unique across locales", () => {
+  const byDescription = new Map<string, string[]>();
+  const over: string[] = [];
+  for (const route of PUBLIC_MARKETING_PATHS) {
+    const [maybeLang] = route.split("/").filter(Boolean);
+    const isLocale = Boolean(maybeLang && maybeLang in localePacks && maybeLang !== "en");
+    const { description } = resolveDocumentMeta(route, translationsForRoute(route));
+    if (isLocale && description.length > META_DESCRIPTION_MAX) {
+      over.push(`${route} description (${description.length})`);
+    }
+    const routes = byDescription.get(description) ?? [];
+    routes.push(route);
+    byDescription.set(description, routes);
+  }
+  assert.deepEqual(over, [], `Trim locale meta descriptions for: ${over.join(", ")}`);
+  const dupes = [...byDescription.entries()]
+    .filter(([, routes]) => routes.length > 1)
+    .map(([description, routes]) => `${description} → ${routes.join(", ")}`);
+  assert.deepEqual(dupes, [], `Duplicate descriptions:\n${dupes.join("\n")}`);
+});
+
 
 test("home document meta invites encrypted notes, photos, and files — not the hero slogan", () => {
   const meta = resolveDocumentMeta("/", en);
   assert.equal(meta.title, "Encrypted Notes, Photos & Files · PrivateNote.ai");
-  assert.match(meta.description, /photos, audio, video, and files/i);
+  assert.match(meta.description, /encrypted notes, photos, audio, video and files/i);
   assert.match(meta.description, /one-time link/i);
   assert.match(meta.description, /disappears/i);
   assert.doesNotMatch(meta.title, /Your Messages/);
-  assert.equal(resolveDocumentMeta("/de", { ...en, ...de }).title, "Verschlüsselte Notizen, Fotos & Dateien · PrivateNote.ai");
+  assert.equal(
+    resolveDocumentMeta("/de", { ...en, ...de }).title,
+    "Verschlüsselte Notizen, Fotos & Dateien (DE) · PrivateNote.ai",
+  );
 });
 
 test("one-time landing has transactional metadata distinct from the guide", () => {

@@ -631,7 +631,7 @@ export const en: Translations = {
     "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
   homeHeroMobileSubtitle: "Encrypted notes and files that disappear.",
   whyPrivateNote: "Why PrivateNote",
-  shareSensitiveHeading: "Send encrypted messages, photos, audio, and files with a one-time link.",
+  shareSensitiveHeading: "Send encrypted notes, photos, audio, video, and files with a one-time link.",
   shareSensitiveBody:
     "Everything is encrypted in the browser, then the note disappears after it’s opened. Recipients don’t need an account.",
   clientSideEncryption: "Client-side encryption means the server never sees your plaintext.",
@@ -2233,7 +2233,7 @@ export const en: Translations = {
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
   documentMetaHomeTitle: "Encrypted Notes, Photos & Files",
   documentMetaHomeDescription:
-    "Send encrypted messages, photos, audio, video, and files via a one-time link that disappears after opening. Recipients don't need an account.",
+    "Send encrypted notes, photos, audio, video and files with a one-time link that disappears after opening. Recipients don't need an account.",
   documentMetaHowItWorksDescription:
     "Learn how PrivateNote.ai uses browser encryption, short-lived secure notes, and optional on-device AI while keeping encryption keys under your control.",
   documentMetaDevelopersTitle: "Developer integrations",
