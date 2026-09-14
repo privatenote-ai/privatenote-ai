@@ -43,6 +43,12 @@ import {
   isOneTimeLinkRoute,
 } from "./oneTimeLinkStructuredData.ts";
 import { getOneTimeLinkCopy } from "../client/src/pages/oneTimeLink/copy.ts";
+import {
+  buildPrivnoteAlternativeFaqSchema,
+  buildPrivnoteAlternativePageSchema,
+  isPrivnoteAlternativeRoute,
+} from "./privnoteAlternativeStructuredData.ts";
+import { getPrivnoteAlternativeCopy } from "../client/src/pages/privnoteAlternative/copy.ts";
 import { isSupportedLanguage, type SupportedLanguage } from "./supportedLanguages.ts";
 
 const LOCALE_TRANSLATIONS: Record<Exclude<SupportedLanguage, "en">, Translations> = {
@@ -393,6 +399,107 @@ function injectOneTimeLinkFaqSchema(html: string, route: string, language: Suppo
   return withoutExisting.replace("</head>", `${script}\n</head>`);
 }
 
+function comparisonRowCell(
+  value: "yes" | "no" | "paid",
+  copy: ReturnType<typeof getPrivnoteAlternativeCopy>,
+  note?: string,
+): string {
+  if (value === "paid") return note ?? copy.comparePaid;
+  if (value === "yes") return copy.compareYes;
+  return copy.compareNo;
+}
+
+function buildPrivnoteAlternativePrerenderArticle(language: SupportedLanguage): string {
+  const copy = getPrivnoteAlternativeCopy(language);
+  const rows = copy.compareRows
+    .map((row) => {
+      const privnote = comparisonRowCell(row.privnote, copy);
+      const privatenote = comparisonRowCell(row.privatenote, copy, row.privatenoteNote);
+      return `<tr><th>${escapeHtmlText(row.feature)}</th><td>${escapeHtmlText(privnote)}</td><td>${escapeHtmlText(privatenote)}</td></tr>`;
+    })
+    .join("");
+  const faqs = copy.faqs
+    .map((faq) => `<h3>${escapeHtmlText(faq.question)}</h3><p>${escapeHtmlText(faq.answer)}</p>`)
+    .join("");
+
+  return (
+    `<article data-privatenote-prerender-article="privnote-alternative">` +
+    `<h1 data-privatenote-prerender-h1="true">${escapeHtmlText(`${copy.heroTitleLine1} ${copy.heroTitleLine2}`)}</h1>` +
+    `<p>${escapeHtmlText(copy.heroBody)}</p>` +
+    `<h2>${escapeHtmlText(copy.introHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.introBody)}</p>` +
+    `<p>${escapeHtmlText(copy.introBody2)}</p>` +
+    `<h2>${escapeHtmlText(copy.compareHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.compareIntro)}</p>` +
+    `<table><thead><tr><th>${escapeHtmlText(copy.compareFeatureColumn)}</th><th>${escapeHtmlText(copy.comparePrivnoteColumn)}</th><th>${escapeHtmlText(copy.comparePrivateNoteColumn)}</th></tr></thead><tbody>${rows}</tbody></table>` +
+    `<p>${escapeHtmlText(copy.compareFootnote)}</p>` +
+    `<h2>${escapeHtmlText(copy.whyHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.whyBody)}</p>` +
+    `<p>${escapeHtmlText(copy.whyBody2)}</p>` +
+    `<p>${escapeHtmlText(copy.whyClose)}</p>` +
+    `<h2>${escapeHtmlText(copy.passwordHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.passwordBody)}</p>` +
+    `<p>${escapeHtmlText(copy.passwordBody2)}</p>` +
+    `<h2>${escapeHtmlText(copy.filesHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.filesBody)}</p>` +
+    `<p>${escapeHtmlText(copy.filesBody2)}</p>` +
+    `<h2>${escapeHtmlText(copy.mediaHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.mediaBody)}</p>` +
+    `<p>${escapeHtmlText(copy.mediaBody2)}</p>` +
+    `<h2>${escapeHtmlText(copy.businessHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.businessBody)}</p>` +
+    `<ul>${copy.businessScenarios.map((item) => `<li>${escapeHtmlText(item)}</li>`).join("")}</ul>` +
+    `<p>${escapeHtmlText(copy.businessBody2)}</p>` +
+    `<h2>${escapeHtmlText(copy.securityHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.securityBody)}</p>` +
+    `<p>${escapeHtmlText(copy.securityArchitecture)}</p>` +
+    `<p>${escapeHtmlText(copy.securityRecipient)}</p>` +
+    `<p>${escapeHtmlText(copy.securityLimitation)}</p>` +
+    `<h3>${escapeHtmlText(copy.founderHeading)}</h3>` +
+    `<p>${escapeHtmlText(copy.founderBody)}</p>` +
+    `<h2>${escapeHtmlText(copy.decideHeading)}</h2>` +
+    `<h3>${escapeHtmlText(copy.decidePrivnoteTitle)}</h3>` +
+    `<ul>${copy.decidePrivnoteItems.map((item) => `<li>${escapeHtmlText(item)}</li>`).join("")}</ul>` +
+    `<h3>${escapeHtmlText(copy.decidePrivateNoteTitle)}</h3>` +
+    `<ul>${copy.decidePrivateNoteItems.map((item) => `<li>${escapeHtmlText(item)}</li>`).join("")}</ul>` +
+    `<h2>${escapeHtmlText(copy.faqHeading)}</h2>` +
+    faqs +
+    `<h2>${escapeHtmlText(copy.finalHeading)}</h2>` +
+    `<p>${escapeHtmlText(copy.finalBody)}</p>` +
+    `</article>`
+  );
+}
+
+function injectPrivnoteAlternativeCrawlerFallback(html: string, route: string, language: SupportedLanguage): string {
+  if (!isPrivnoteAlternativeRoute(route)) return html;
+  if (hasNonemptyH1(html)) return html;
+  const emptyRoot = /<div\s+id=["']root["']\s*>\s*<\/div>/i;
+  if (!emptyRoot.test(html)) return html;
+  const article = buildPrivnoteAlternativePrerenderArticle(language);
+  return html.replace(emptyRoot, `<div id="root"><main>${article}</main></div>`);
+}
+
+function injectPrivnoteAlternativeSchema(html: string, route: string, language: SupportedLanguage): string {
+  if (!isPrivnoteAlternativeRoute(route)) return html;
+
+  const copy = getPrivnoteAlternativeCopy(language);
+  const pagePath = route.replace(/\/+$/, "") || "/privnote-alternative";
+  const homePath = language === "en" ? "/" : `/${language}/`;
+  const faqScript = `<script type="application/ld+json" data-structured-data-id="privnote-alternative-faq">${serializeJsonLd(buildPrivnoteAlternativeFaqSchema(copy.faqs))}</script>`;
+  const pageScript = `<script type="application/ld+json" data-structured-data-id="privnote-alternative-page">${serializeJsonLd(buildPrivnoteAlternativePageSchema(copy, pagePath, homePath))}</script>`;
+
+  const withoutExisting = html
+    .replace(
+      /\s*<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*\bdata-structured-data-id=["']privnote-alternative-faq["'][^>]*>[\s\S]*?<\/script>/gi,
+      "",
+    )
+    .replace(
+      /\s*<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*\bdata-structured-data-id=["']privnote-alternative-page["'][^>]*>[\s\S]*?<\/script>/gi,
+      "",
+    );
+  return withoutExisting.replace("</head>", `${faqScript}\n${pageScript}\n</head>`);
+}
+
 function injectSecureFileTransferFaqSchema(html: string, route: string, t: Translations): string {
   if (!isSecureFileTransferRoute(route)) return html;
 
@@ -437,6 +544,8 @@ export function injectPrerenderDocumentMeta(html: string, route: string): string
   out = injectPasswordGeneratorFaqSchema(out, route, t);
   out = injectSecureFileTransferFaqSchema(out, route, t);
   out = injectOneTimeLinkFaqSchema(out, route, lang);
+  out = injectPrivnoteAlternativeSchema(out, route, lang);
+  out = injectPrivnoteAlternativeCrawlerFallback(out, route, lang);
   out = stripPrerenderCloudflareAnalyticsBeacons(out);
 
   return out;

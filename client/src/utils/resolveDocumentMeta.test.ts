@@ -61,31 +61,86 @@ test("resolveDocumentMeta keeps public marketing meta descriptions within SEO le
   assert.deepEqual(over, [], `Trim meta descriptions for: ${over.join(", ")}`);
 });
 
-const META_TITLE_MAX = 60;
+const META_TITLE_MAX_EN = 60;
+const META_TITLE_MAX_LOCALE = 70;
+/** Ahrefs flags `<title>` tags shorter than 30 characters. */
+const META_TITLE_MIN = 30;
+
+function translationsForRoute(route: string) {
+  const [maybeLang] = route.split("/").filter(Boolean);
+  const pack = maybeLang && maybeLang in localePacks ? localePacks[maybeLang as keyof typeof localePacks] : en;
+  return maybeLang && maybeLang in localePacks ? { ...en, ...pack } : en;
+}
 
 test("resolveDocumentMeta keeps public marketing titles within SEO length", () => {
   const over: string[] = [];
+  const under: string[] = [];
+  const shortTitlePages = new Set(["about", "blog", "contact", "premium", "terms"]);
   for (const route of PUBLIC_MARKETING_PATHS) {
-    const [maybeLang] = route.split("/").filter(Boolean);
-    const pack = maybeLang && maybeLang in localePacks ? localePacks[maybeLang as keyof typeof localePacks] : en;
-    const t = maybeLang && maybeLang in localePacks ? { ...en, ...pack } : en;
-    const { title } = resolveDocumentMeta(route, t);
-    if (title.length > META_TITLE_MAX) {
+    const segments = route.split("/").filter(Boolean);
+    const [maybeLang] = segments;
+    const isLocale = Boolean(maybeLang && maybeLang in localePacks && maybeLang !== "en");
+    const { title } = resolveDocumentMeta(route, translationsForRoute(route));
+    const max = isLocale ? META_TITLE_MAX_LOCALE : META_TITLE_MAX_EN;
+    if (title.length > max) {
       over.push(`${route} title (${title.length})`);
+    }
+    const page = isLocale ? segments[1] : segments[0];
+    if (page && shortTitlePages.has(page) && segments.length === (isLocale ? 2 : 1) && title.length < META_TITLE_MIN) {
+      under.push(`${route} title (${title.length})`);
     }
   }
   assert.deepEqual(over, [], `Trim document titles for: ${over.join(", ")}`);
+  assert.deepEqual(under, [], `Lengthen document titles for: ${under.join(", ")}`);
+});
+
+test("public marketing titles are unique across locales", () => {
+  const byTitle = new Map<string, string[]>();
+  for (const route of PUBLIC_MARKETING_PATHS) {
+    const { title } = resolveDocumentMeta(route, translationsForRoute(route));
+    const routes = byTitle.get(title) ?? [];
+    routes.push(route);
+    byTitle.set(title, routes);
+  }
+  const dupes = [...byTitle.entries()]
+    .filter(([, routes]) => routes.length > 1)
+    .map(([title, routes]) => `${title} → ${routes.join(", ")}`);
+  assert.deepEqual(dupes, [], `Duplicate titles:\n${dupes.join("\n")}`);
+});
+
+test("public marketing descriptions are unique across locales", () => {
+  const byDescription = new Map<string, string[]>();
+  const over: string[] = [];
+  for (const route of PUBLIC_MARKETING_PATHS) {
+    const [maybeLang] = route.split("/").filter(Boolean);
+    const isLocale = Boolean(maybeLang && maybeLang in localePacks && maybeLang !== "en");
+    const { description } = resolveDocumentMeta(route, translationsForRoute(route));
+    if (isLocale && description.length > META_DESCRIPTION_MAX) {
+      over.push(`${route} description (${description.length})`);
+    }
+    const routes = byDescription.get(description) ?? [];
+    routes.push(route);
+    byDescription.set(description, routes);
+  }
+  assert.deepEqual(over, [], `Trim locale meta descriptions for: ${over.join(", ")}`);
+  const dupes = [...byDescription.entries()]
+    .filter(([, routes]) => routes.length > 1)
+    .map(([description, routes]) => `${description} → ${routes.join(", ")}`);
+  assert.deepEqual(dupes, [], `Duplicate descriptions:\n${dupes.join("\n")}`);
 });
 
 
 test("home document meta invites encrypted notes, photos, and files — not the hero slogan", () => {
   const meta = resolveDocumentMeta("/", en);
   assert.equal(meta.title, "Encrypted Notes, Photos & Files · PrivateNote.ai");
-  assert.match(meta.description, /photos, audio, video, and files/i);
+  assert.match(meta.description, /encrypted notes, photos, audio, video and files/i);
   assert.match(meta.description, /one-time link/i);
   assert.match(meta.description, /disappears/i);
   assert.doesNotMatch(meta.title, /Your Messages/);
-  assert.equal(resolveDocumentMeta("/de", { ...en, ...de }).title, "Verschlüsselte Notizen, Fotos & Dateien · PrivateNote.ai");
+  assert.equal(
+    resolveDocumentMeta("/de", { ...en, ...de }).title,
+    "Verschlüsselte Notizen, Fotos & Dateien (DE) · PrivateNote.ai",
+  );
 });
 
 test("one-time landing has transactional metadata distinct from the guide", () => {
@@ -98,4 +153,14 @@ test("one-time landing has transactional metadata distinct from the guide", () =
   const enMeta = resolveDocumentMeta("/one-time-link", en);
   assert.match(enMeta.title, /Create a One-Time Secret Link/);
   assert.notEqual(enMeta.title, resolveDocumentMeta("/blog/one-time-secret-links", en).title);
+});
+
+test("privnote alternative landing has distinct metadata", () => {
+  const meta = resolveDocumentMeta("/privnote-alternative", en);
+  assert.match(meta.title, /Privnote Alternative: Secure Notes & Files/);
+  assert.match(meta.description, /Privnote alternative/);
+  assert.equal(meta.title.length <= 60, true);
+  const deTitle = resolveDocumentMeta("/de/privnote-alternative", { ...en, ...de }).title;
+  assert.match(deTitle, / \(DE\) · PrivateNote\.ai$/);
+  assert.notEqual(deTitle, meta.title);
 });

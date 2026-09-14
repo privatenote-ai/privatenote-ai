@@ -87,6 +87,7 @@ export const PAGE_ENGAGEMENT_LABELS: Record<PageEngagementKey, string> = {
 const EXACT_PATH_TITLES: Record<string, string> = {
   "/": "Home",
   "/password-generator": "Password share",
+  "/privnote-alternative": "Privnote alternative",
   "/secure-file-transfer": "File share",
   "/privacy-tools": "Privacy tools",
   "/security-resources": "Security resources",

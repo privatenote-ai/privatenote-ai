@@ -112,7 +112,7 @@ export const clickToRevealPrivateNotesNl: BlogGuideArticleCopy = {
         "Openen is een bewuste handeling, geen automatische gevolg van het laden van een link.",
       paragraphs: [
         "Klik-om-te-openen laat je een link vroeg sturen zonder de notitie te ontsleutelen enkel omdat de landingspagina is geladen.",
-        "Combineer het met korte levensduren, verificatie wanneer kanalen zwak zijn, en duidelijke instructies aan de ontvanger—en je krijgt praktische vertraagde open zonder te pretenderen dat het product een screenshot op afstand kan wissen.",
+        "Combineer het met korte levensduren, verificatie wanneer kanalen zwak zijn, en duidelijke instructies aan de ontvanger—en je krijgt een praktische pauze voordat het geheim wordt getoond, zonder te pretenderen dat het product een screenshot op afstand kan wissen.",
       ],
     },
   ],

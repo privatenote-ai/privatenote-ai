@@ -109,7 +109,7 @@ export const clickToRevealPrivateNotesEn: BlogGuideArticleCopy = {
       takeaway: "Reveal is a conscious action, not an automatic consequence of loading a link.",
       paragraphs: [
         "Click-to-reveal lets you send a link early without decrypting the note merely because the landing page loaded.",
-        "Pair it with short lifetimes, verification when channels are weak, and clear instructions to the recipient—and you get practical delayed reveal without pretending the product can remote-delete a screenshot.",
+        "Pair it with short lifetimes, verification when channels are weak, and clear instructions to the recipient—and you get a practical pause before the secret is shown, without pretending the product can remote-delete a screenshot.",
       ],
     },
   ],

@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS users (
   subscription_reconciliation_error TEXT,
   business_display_name TEXT,
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
-  preferred_language TEXT CHECK (preferred_language IN ('en', 'de', 'fr', 'es')),
+  preferred_language TEXT,
   allow_hosted_ai INTEGER NOT NULL DEFAULT 0 CHECK (allow_hosted_ai IN (0, 1))
 );
 

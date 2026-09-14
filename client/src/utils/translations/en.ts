@@ -631,7 +631,7 @@ export const en: Translations = {
     "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
   homeHeroMobileSubtitle: "Encrypted notes and files that disappear.",
   whyPrivateNote: "Why PrivateNote",
-  shareSensitiveHeading: "Send encrypted messages, photos, audio, and files with a one-time link.",
+  shareSensitiveHeading: "Send encrypted notes, photos, audio, video, and files with a one-time link.",
   shareSensitiveBody:
     "Everything is encrypted in the browser, then the note disappears after it’s opened. Recipients don’t need an account.",
   clientSideEncryption: "Client-side encryption means the server never sees your plaintext.",
@@ -867,7 +867,7 @@ export const en: Translations = {
   settingsRevealBodyFontMonoHint: "Passwords, keys, and code",
   revealNoteSheetLabel: "Note content",
   settingsDeliveryUpgradeLink: "Upgrade to unlock delivery controls",
-  settingsDelayedReveal: "Delayed reveal",
+  settingsDelayedReveal: "Scheduled reveal",
   settingsDelayedRevealInfo:
     "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.",
   settingsDelayedRevealBefore: "Do not allow opening before",
@@ -2005,12 +2005,12 @@ export const en: Translations = {
   blogRevokeUnopenedNoteProofOfAccessMetaTitle: "Revoke a private note before it is opened",
   blogRevokeUnopenedNoteProofOfAccessMetaDescription:
     "Revoke unopened PrivateNote links and view proof-of-access timelines for delivery events—without putting secrets into email.",
-  blogDelayedRevealTitle: "Delayed Reveal for One-Time Secret Links",
+  blogDelayedRevealTitle: "Scheduled Reveal for One-Time Secret Links",
   blogDelayedRevealSubtitle:
     "Schedule when a private note can first be opened — without giving up burn-after-read.",
   blogDelayedRevealExcerpt:
     "Schedule when a private note can first be opened — for credential handovers, HR packs, and embargoed documents.",
-  blogDelayedRevealMetaTitle: "Delayed reveal for one-time secret links",
+  blogDelayedRevealMetaTitle: "Scheduled reveal for one-time secret links",
   blogDelayedRevealMetaDescription:
     "Set Do not allow opening before a UTC time on PrivateNote. Share encrypted links early for handovers, HR, and embargoes.",
   blogHowToSendNudesSafelyTitle: "How to Send Nudes Safely",
@@ -2144,6 +2144,7 @@ export const en: Translations = {
   blogAgentSecurityMetaDescription:
     "Why agentic AI changes the security playbook: context boundaries, memory risk, permissions, and trust architecture beyond prompt injection.",
   aboutPageTitle: "About",
+  documentMetaAboutTitle: "About Us: Privacy-First Encrypted Notes",
   aboutPageSubtitle:
     "Learn why PrivateNote.ai exists, the privacy values behind the product, and how simple encrypted tools can make sensitive communication safer.",
   aboutRole: "Cryptography and Security Protocols",
@@ -2232,7 +2233,7 @@ export const en: Translations = {
     "Yes, as long as you understand the tradeoffs: anyone with the link and password, if set, can read the secret and can still copy or screenshot it.",
   documentMetaHomeTitle: "Encrypted Notes, Photos & Files",
   documentMetaHomeDescription:
-    "Send encrypted messages, photos, audio, video, and files via a one-time link that disappears after opening. Recipients don't need an account.",
+    "Send encrypted notes, photos, audio, video and files with a one-time link that disappears after opening. Recipients don't need an account.",
   documentMetaHowItWorksDescription:
     "Learn how PrivateNote.ai uses browser encryption, short-lived secure notes, and optional on-device AI while keeping encryption keys under your control.",
   documentMetaDevelopersTitle: "Developer integrations",
@@ -2244,7 +2245,11 @@ export const en: Translations = {
   documentMetaOneTimeLinkTitle: "Create a One-Time Secret Link",
   documentMetaOneTimeLinkDescription:
     "Create an encrypted one-time link for passwords, private messages and files. Share sensitive information without leaving plaintext in email or chat.",
+  documentMetaPrivnoteAlternativeTitle: "Privnote Alternative: Secure Notes & Files",
+  documentMetaPrivnoteAlternativeDescription:
+    "Looking for a Privnote alternative? PrivateNote lets you share encrypted, self-destructing notes, passwords and files with optional access controls.",
   otlFooterLabel: "One-time link",
+  privnoteAlternativeFooterLabel: "Privnote alternative",
   devBadge: "Developer integrations",
   devHeroTitle: "Share secrets from the tools where work actually happens",
   devHeroSubtitle:
@@ -2642,17 +2647,19 @@ export const en: Translations = {
   privacyToolsDirectoryNote:
     "This page is a curated directory of categories and third-party tools. It complements—not replaces—our long-form blog guides.",
   privacyToolsFeaturedCta: "Read the 2026 privacy tools guide",
-  documentMetaContactTitle: "Contact",
+  documentMetaContactTitle: "Contact Support for Encrypted Notes",
   documentMetaContactDescription:
     "Contact PrivateNote.ai for support, billing (cancel vs withdraw, invoices, VAT, failed cards), product questions, or help using encrypted one-time notes.",
   documentMetaPrivacyPolicyDescription:
     "Read how PrivateNote.ai handles personal data, encrypted note retention, cookies, analytics, security logs, and your privacy rights.",
+  documentMetaTermsTitle: "Terms of Use for Encrypted Notes",
   documentMetaTermsDescription:
     "Review the PrivateNote.ai terms of use, acceptable use rules, service limitations, legal disclaimers, and responsibilities when using the site.",
   documentMetaNotFoundTitle: "Page not found",
   documentMetaNotFoundDescription: "This URL does not exist on PrivateNote.ai.",
   documentMetaViewNoteDescription:
     "Open a one-time encrypted note in your browser. Your decryption key stays in the URL fragment.",
+  documentMetaBlogTitle: "Blog on Encrypted Notes & Secure Sharing",
   documentMetaBlogLoadingDescription:
     "Browse PrivateNote.ai articles about encryption, private communication, password safety, secure sharing, and practical digital security habits.",
   documentMetaRecoveryTitle: "Account recovery",
@@ -2971,7 +2978,7 @@ export const en: Translations = {
   chromeExtensionConnectedSignIn: "Sign in",
   chromeExtensionConnectedHome: "Back to PrivateNote",
 
-  documentMetaPremiumTitle: "Pricing",
+  documentMetaPremiumTitle: "Pricing for Encrypted Notes & Files",
   documentMetaPremiumDescription:
     "Compare Free, Starter, and Business. Encrypted notes and files, higher limits, and a billing FAQ for checkout, invoices, and VAT.",
   pricingHeroTitle: "Simple plans for secure sharing.",
@@ -3117,7 +3124,7 @@ export const en: Translations = {
   pricingRowProofOfAccess: "Proof of access",
   pricingRowRecipientVerification: "Recipient verification",
   pricingRowRecipientLinkDelivery: "Email link to recipient",
-  pricingRowDelayedReveal: "Delayed reveal",
+  pricingRowDelayedReveal: "Scheduled reveal",
   pricingRowReceiptAcknowledgment: "Receipt confirmation",
   pricingRowSentNotesDashboard: "Sent-notes dashboard",
   pricingRowRevokeUnopened: "Revoke unopened notes",
@@ -3151,7 +3158,7 @@ export const en: Translations = {
     "No. Every plan encrypts note plaintext in your browser before upload. Starter and Business add delivery controls, higher limits, and Business branding — not a different crypto promise.",
   pricingFaqDifferenceQ: "What is the difference between Starter and Business?",
   pricingFaqDifferenceA:
-    "Starter ({starterMonthly}/month) unlocks proof of access, recipient verification, delayed reveal, revoke, the sent-notes overview, reveal-page typefaces, and higher limits. Business ({businessMonthly}/month) adds branded reveal pages, view-only file access, browser-saved custom AI prompt templates, files up to 1 GB, and 50 GB encrypted storage — still one professional account, not team seats.",
+    "Starter ({starterMonthly}/month) unlocks proof of access, recipient verification, scheduled reveal, revoke, the sent-notes overview, reveal-page typefaces, and higher limits. Business ({businessMonthly}/month) adds branded reveal pages, view-only file access, browser-saved custom AI prompt templates, files up to 1 GB, and 50 GB encrypted storage — still one professional account, not team seats.",
   pricingFaqAnnualQ: "How does annual billing work?",
   pricingFaqAnnualA:
     "Annual plans are charged once per year at {starterYearly} for Starter and {businessYearly} for Business — two months free versus paying monthly. Stripe charges USD or EUR based on your region at checkout.",

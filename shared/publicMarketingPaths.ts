@@ -18,6 +18,7 @@ const NON_BLOG_LOCALIZED_MARKETING_PATHS = [
   "",
   "/password-generator",
   "/one-time-link",
+  "/privnote-alternative",
   "/secure-file-transfer",
   "/privacy-tools",
   "/security-resources",

@@ -416,7 +416,7 @@ export type NoteSettingsPanelProps = {
   canEmailLinkToRecipient: boolean;
   delayedReveal: boolean;
   setDelayedReveal: (v: boolean) => void;
-  /** Local `datetime-local` value (no timezone); empty when delayed reveal is off. */
+  /** Local `datetime-local` value (no timezone); empty when scheduled reveal is off. */
   opensAtLocal: string;
   setOpensAtLocal: (v: string) => void;
   /** Starter+: recipient confirms receipt after successful decrypt. */
@@ -613,7 +613,7 @@ export const NoteSettingsPanel: React.FC<NoteSettingsPanelProps> = ({
     "PrivateNote emails the secret link to this address. Email is not end-to-end encrypted — prefer sharing the link yourself for highest sensitivity.";
   const emailLinkUpgradeCopy =
     "Let PrivateNote deliver the link for you and keep the handoff connected to your Activity history.";
-  const delayedRevealTitle = t.settingsDelayedReveal ?? "Delayed reveal";
+  const delayedRevealTitle = t.settingsDelayedReveal ?? "Scheduled reveal";
   const delayedRevealInfo =
     t.settingsDelayedRevealInfo ??
     "Do not allow opening before a scheduled time. Useful for credential handovers, HR packs, and embargoed documents.";

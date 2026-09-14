@@ -95,7 +95,7 @@ describe("noteMetaEligibility", () => {
 });
 
 describe("parseNoteOpensAtFromBody", () => {
-  it("accepts null/empty as no delayed reveal", () => {
+  it("accepts null/empty as no scheduled reveal", () => {
     const expiresAt = new Date("2030-01-01T00:00:00.000Z");
     assert.deepEqual(parseNoteOpensAtFromBody(null, { expiresAt }), { ok: true, opensAt: null });
     assert.deepEqual(parseNoteOpensAtFromBody("", { expiresAt }), { ok: true, opensAt: null });

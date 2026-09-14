@@ -112,7 +112,7 @@ export const clickToRevealPrivateNotesSr: BlogGuideArticleCopy = {
         "Otvaranje je svesna radnja, ne automatska posledica učitavanja linka.",
       paragraphs: [
         "Klik-za-otvaranje omogućava da pošaljete link ranije bez dekripcije poruke samo zato što se učitala odredišna stranica.",
-        "Kombinujte ga sa kratkim vekom trajanja, verifikacijom kada su kanali slabi i jasnim uputstvima primaocu—i dobijate praktično odloženo otvaranje bez pretvaranja da proizvod može daljinski da obriše snimak ekrana.",
+        "Kombinujte ga sa kratkim vekom trajanja, verifikacijom kada su kanali slabi i jasnim uputstvima primaocu—i dobijate praktičnu pauzu pre prikaza, bez pretvaranja da proizvod može daljinski da obriše snimak ekrana.",
       ],
     },
   ],

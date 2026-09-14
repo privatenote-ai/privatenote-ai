@@ -10,7 +10,7 @@ import { BlogPostCrossLinks } from "@/components/blog/BlogPostCrossLinks";
 const SLUG = "delayed-reveal-scheduled-secret-links";
 
 /**
- * Product feature post: Delayed reveal — schedule when a one-time note can first be opened.
+ * Product feature post: Scheduled reveal — schedule when a one-time note can first be opened.
  */
 export const DelayedRevealScheduledSecretLinksPost: React.FC = () => {
   const { language, t } = useLanguage();
@@ -23,7 +23,7 @@ export const DelayedRevealScheduledSecretLinksPost: React.FC = () => {
       <article>
         <BlogPostHeader
           slug={SLUG}
-          title={t.blogDelayedRevealTitle ?? "Delayed Reveal for One-Time Secret Links"}
+          title={t.blogDelayedRevealTitle ?? "Scheduled Reveal for One-Time Secret Links"}
           excerpt={
             t.blogDelayedRevealExcerpt ??
             "Schedule when a private note can first be opened — for credential handovers, HR packs, and embargoed documents."
@@ -39,7 +39,7 @@ export const DelayedRevealScheduledSecretLinksPost: React.FC = () => {
             second answer first: when is it allowed to open?
           </p>
           <p>
-            Delayed reveal lets you create an encrypted one-time note now and set{" "}
+            Scheduled reveal lets you create an encrypted one-time note now and set{" "}
             <strong>Do not allow opening before</strong> a specific time (for example August 15,
             09:00 UTC). Recipients can receive the link early. They cannot reveal the ciphertext
             until that moment.
@@ -78,11 +78,11 @@ export const DelayedRevealScheduledSecretLinksPost: React.FC = () => {
           <hr className="border-gray-200 dark:border-gray-700" />
           <section className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              How Delayed reveal works on PrivateNote
+              How Scheduled reveal works on PrivateNote
             </h2>
             <p>
               On Starter and Business, open <strong>Delivery &amp; verification</strong> when
-              creating a note. Turn on <strong>Delayed reveal</strong>, then pick{" "}
+              creating a note. Turn on <strong>Scheduled reveal</strong>, then pick{" "}
               <strong>Do not allow opening before</strong>. The time is stored as UTC policy on the
               note metadata — separate from the message ciphertext.
             </p>
@@ -110,7 +110,7 @@ export const DelayedRevealScheduledSecretLinksPost: React.FC = () => {
               </li>
             </ul>
             <p>
-              Delayed reveal is an access policy, not a second encryption layer. Anyone with the
+              Scheduled reveal is an access policy, not a second encryption layer. Anyone with the
               link and key can open the note after the scheduled time — share the URL the same
               careful way you would for any one-time secret.
             </p>
@@ -127,7 +127,7 @@ export const DelayedRevealScheduledSecretLinksPost: React.FC = () => {
                 and encrypt your secret in the browser.
               </li>
               <li>Set note lifetime long enough to cover the embargo window plus a margin.</li>
-              <li>Enable Delayed reveal and choose the earliest open time.</li>
+              <li>Enable Scheduled reveal and choose the earliest open time.</li>
               <li>Optionally email the link or require a one-time recipient code.</li>
               <li>Send the link early; recipients wait until the scheduled open.</li>
             </ol>

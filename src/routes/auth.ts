@@ -48,7 +48,7 @@ import { hostedAiMonthlyLimit, planFeaturesFor } from "@shared/planCatalog";
 import { readHostedAiQuotaSnapshot } from "../planHostedAi";
 import { parseMaxReadsFromBody } from "@shared/noteReadLimits";
 import { parseNoteFileAccessWindowFromBody } from "@shared/noteFileAccess";
-import { isSupportedLanguage } from "@shared/supportedLanguages";
+import { isSupportedLanguage, normalizeAccountPreferredLanguageInput } from "@shared/supportedLanguages";
 import { mayStoreRevealBodyFont, parseRevealBodyFont } from "@shared/revealBodyFont";
 import {
   generateAuthenticationOptions,
@@ -255,25 +255,6 @@ async function readJsonBody(request: Request): Promise<any> {
   } catch {
     throw new Error("Invalid JSON");
   }
-}
-
-function normalizeAccountPreferredLanguageInput(
-  raw: unknown
-): { ok: true; value: string | null } | { ok: false; message: string } {
-  if (raw === null) return { ok: true, value: null };
-  if (raw === "") return { ok: true, value: null };
-  if (typeof raw !== "string") {
-    return { ok: false, message: "preferredLanguage must be a string or null" };
-  }
-  const primary = raw.trim().toLowerCase().split("-")[0];
-  if (isSupportedLanguage(primary)) {
-    return { ok: true, value: primary };
-  }
-  return {
-    ok: false,
-    message:
-      "preferredLanguage must be a supported language code (or a regional tag such as en-US), or null",
-  };
 }
 
 /**
@@ -5654,9 +5635,21 @@ export async function handleAuthRoutes(request: Request, env: Env): Promise<Resp
     updates.push("updated_at = datetime('now')");
     bindings.push(session.id);
 
-    await env.AUTH_DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`)
-      .bind(...bindings)
-      .run();
+    try {
+      await env.AUTH_DB.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`)
+        .bind(...bindings)
+        .run();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (hasPreferredLanguage && /CHECK constraint failed/i.test(message)) {
+        return jsonResponse(
+          { message: "Language preference migration is required before this language can be saved" },
+          503,
+          request,
+        );
+      }
+      throw error;
+    }
 
     const headers = new Headers(getCorsHeaders(request));
     headers.set("Content-Type", "application/json");

@@ -1,13 +1,41 @@
 name: PR check
 
-# Validates build + full prerender before merge to main or develop (no deploy).
+# FEATURES.md catalog check (parallel) + build/prerender before merge (no deploy).
 on:
   pull_request:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
+  features-md:
+    name: FEATURES.md
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require FEATURES.md when capabilities change
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          if echo "$PR_LABELS" | grep -Fq "skip-features-md"; then
+            echo "Skipping FEATURES.md check (label skip-features-md)."
+            exit 0
+          fi
+          if echo "$PR_TITLE" | grep -Fq "[skip-features]"; then
+            echo "Skipping FEATURES.md check ([skip-features] in title)."
+            exit 0
+          fi
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          node scripts/check-features-md.mjs --base "origin/${{ github.base_ref }}"
+
   build-and-prerender:
     runs-on: ubuntu-latest
     permissions:

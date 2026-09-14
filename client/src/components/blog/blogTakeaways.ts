@@ -211,7 +211,7 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "After reveal, assume the recipient may retain the plaintext and rotate exposed credentials.",
   ],
   "delayed-reveal-scheduled-secret-links": [
-    "Delayed reveal sets the earliest time a one-time note can be opened.",
+    "Scheduled reveal sets the earliest time a one-time note can be opened.",
     "Share the link early for handovers; recipients wait until the scheduled UTC time.",
     "The open time must be before the note expires or create is rejected.",
     "Encryption, burn-after-read, and passwords still apply once the note becomes openable.",

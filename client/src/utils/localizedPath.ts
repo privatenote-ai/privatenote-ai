@@ -21,6 +21,7 @@ const LOCALIZED_PUBLIC_PATHS = new Set([
   "/",
   "/password-generator",
   "/one-time-link",
+  "/privnote-alternative",
   "/secure-file-transfer",
   "/privacy-tools",
   "/security-resources",
