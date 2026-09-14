@@ -1,46 +1,54 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  deferEntryStylesheet,
+  ensureBlockingEntryStylesheet,
   stripStaleModulePreloads,
 } from "./deferEntryStylesheet.js";
 
-describe("deferEntryStylesheet", () => {
-  it("converts the Vite entry stylesheet into a preload plus non-blocking media", () => {
+describe("ensureBlockingEntryStylesheet", () => {
+  it("normalizes a blocking entry stylesheet and does not defer it", () => {
     const html =
       '<head><link rel="stylesheet" crossorigin href="/assets/index-d53jlgIE.css"></head>';
-    const out = deferEntryStylesheet(html);
-    assert.match(out, /rel="preload"[^>]*as="style"/);
-    assert.match(out, /href="\/assets\/index-d53jlgIE\.css"/);
-    assert.match(out, /media="not all"/);
-    assert.match(out, /data-pn-defer-css/);
-    assert.match(out, /load-stylesheet\.js/);
-    assert.doesNotMatch(
+    const out = ensureBlockingEntryStylesheet(html);
+    assert.match(
       out,
-      /<link rel="stylesheet" crossorigin href="\/assets\/index-d53jlgIE\.css">/,
+      /<link rel="stylesheet" href="\/assets\/index-d53jlgIE\.css" crossorigin>/,
     );
+    assert.doesNotMatch(out, /load-stylesheet/);
+    assert.doesNotMatch(out, /as="style"/);
+    assert.doesNotMatch(out, /media="not all"/);
+  });
+
+  it("restores a preload plus noscript deferral to a blocking stylesheet", () => {
+    const html =
+      '<head><link rel="preload" href="/assets/index-d53jlgIE.css" as="style" crossorigin />\n' +
+      '<script defer src="/load-stylesheet.js"></script>\n' +
+      '<noscript><link rel="stylesheet" href="/assets/index-d53jlgIE.css" crossorigin /></noscript></head>';
+    const out = ensureBlockingEntryStylesheet(html);
+    assert.match(
+      out,
+      /<link rel="stylesheet" href="\/assets\/index-d53jlgIE\.css" crossorigin>/,
+    );
+    assert.equal((out.match(/index-d53jlgIE\.css/g) || []).length, 1);
+    assert.doesNotMatch(out, /load-stylesheet/);
+    assert.doesNotMatch(out, /rel="preload"/);
     assert.doesNotMatch(out, /<noscript>/);
   });
 
-  it("rewrites a blocking stylesheet even when a preload already exists", () => {
+  it("restores media=not all deferred CSS to a blocking stylesheet", () => {
     const html =
-      '<head><link rel="preload" href="/assets/index-d53jlgIE.css" as="style" crossorigin /><link rel="stylesheet" href="/assets/index-d53jlgIE.css" crossorigin /><script defer src="/load-stylesheet.js"></script></head>';
-    const out = deferEntryStylesheet(html);
-    assert.equal((out.match(/index-d53jlgIE\.css/g) || []).length, 2);
-    assert.match(out, /media="not all"/);
-    assert.doesNotMatch(
+      '<head><link rel="preload" href="/assets/index-B8HdQf3u.css" as="style" crossorigin />\n' +
+      '<link rel="stylesheet" href="/assets/index-B8HdQf3u.css" media="not all" data-pn-defer-css crossorigin />\n' +
+      '<script defer src="/load-stylesheet.js"></script></head>';
+    const out = ensureBlockingEntryStylesheet(html);
+    assert.match(
       out,
-      /<link rel="stylesheet" href="\/assets\/index-d53jlgIE\.css" crossorigin \/>/,
+      /<link rel="stylesheet" href="\/assets\/index-B8HdQf3u.css" crossorigin>/,
     );
-  });
-
-  it("is stable when the entry CSS is already deferred", () => {
-    const html =
-      '<head><link rel="preload" href="/assets/index-d53jlgIE.css" as="style" /><link rel="stylesheet" href="/assets/index-d53jlgIE.css" media="not all" data-pn-defer-css /><script defer src="/load-stylesheet.js"></script></head>';
-    const out = deferEntryStylesheet(html);
-    assert.match(out, /media="not all"/);
-    assert.match(out, /load-stylesheet\.js/);
-    assert.equal((out.match(/load-stylesheet\.js/g) || []).length, 1);
+    assert.equal((out.match(/index-B8HdQf3u\.css/g) || []).length, 1);
+    assert.doesNotMatch(out, /media="not all"/);
+    assert.doesNotMatch(out, /load-stylesheet/);
+    assert.doesNotMatch(out, /rel="preload"/);
   });
 });
 

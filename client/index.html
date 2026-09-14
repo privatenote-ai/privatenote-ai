@@ -82,7 +82,8 @@
     }
   </script>
 
-  <!-- Critical CSS: first paint before the main Tailwind stylesheet finishes loading.
+  <!-- Critical CSS: body/hero colors before Tailwind. The entry stylesheet stays
+       render-blocking in production so prerendered HTML does not flash unstyled.
        Do not preload Inter TTF (~850KB): font-display:optional already skips a late
        face, and a high-priority preload starves CSS/JS on mobile. -->
   <style id="pn-critical">
@@ -119,6 +120,7 @@
     html.dark .pn-hero-l1{color:hsl(210 40% 98%)}
     html.dark .pn-hero-sub{color:hsl(220 9% 65%)}
   </style>
+  <link rel="stylesheet" href="/src/index.css" />
 
   <!-- Prefill guard: defer so it does not block HTML parsing; still runs before the
        type=module bundle (document order). Moves #text= to sessionStorage and sets

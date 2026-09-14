@@ -1,48 +1,66 @@
 /**
- * Convert Vite's render-blocking entry CSS into a preload + media="not all"
- * stylesheet so first paint can use inline critical CSS (hero title).
+ * Keep the Vite entry CSS render-blocking so prerendered HTML cannot paint
+ * unstyled. Also converts leftover preload / media="not all" deferral back.
  *
- * Do not use a <noscript> stylesheet fallback: Cloudflare unwraps noscript and
- * the inner link becomes render-blocking again.
+ * Do not reintroduce a <noscript> stylesheet fallback: Cloudflare unwraps
+ * noscript and the inner link becomes a second stylesheet tag.
  */
 const ENTRY_CSS_HREF_RE = /\/assets\/index-[A-Za-z0-9_-]+\.css/;
 
-export function deferEntryStylesheet(html) {
-  const hrefMatch = html.match(/href=["'](\/assets\/index-[A-Za-z0-9_-]+\.css)["']/i);
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function ensureBlockingEntryStylesheet(html) {
+  const hrefMatch = html.match(ENTRY_CSS_HREF_RE);
   if (!hrefMatch) return html;
 
-  const href = hrefMatch[1];
-  if (!ENTRY_CSS_HREF_RE.test(href)) return html;
-
-  const escapedHref = href.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const entryLinkRe = new RegExp(
-    `<link\\s+[^>]*href=["']${escapedHref}["'][^>]*>\\s*`,
-    "gi",
-  );
-  const existing = html.match(entryLinkRe) || [];
-  const crossorigin = existing.some((tag) => /crossorigin/i.test(tag))
+  const href = hrefMatch[0];
+  const hrefRe = escapeRegExp(href);
+  const linkRe = new RegExp(`<link\\b[^>]*href=["']${hrefRe}["'][^>]*>`, "gi");
+  const tags = html.match(linkRe) || [];
+  const crossorigin = tags.some((tag) => /crossorigin/i.test(tag))
     ? " crossorigin"
     : "";
+  const blocking = `<link rel="stylesheet" href="${href}"${crossorigin}>`;
 
-  entryLinkRe.lastIndex = 0;
-  let out = html.replace(entryLinkRe, "");
+  let out = html.replace(
+    /<script\b[^>]*\bsrc=["']\/load-stylesheet\.js["'][^>]*>\s*<\/script>\s*/gi,
+    "",
+  );
   out = out.replace(
-    /<noscript>\s*<link\s+rel=["']stylesheet["'][^>]*\/assets\/index-[A-Za-z0-9_-]+\.css[^>]*>\s*<\/noscript>\s*/gi,
+    new RegExp(
+      `<noscript>\\s*<link\\b[^>]*href=["']${hrefRe}["'][^>]*>\\s*</noscript>\\s*`,
+      "gi",
+    ),
     "",
   );
 
-  const loader = out.includes("/load-stylesheet.js")
-    ? ""
-    : `<script defer src="/load-stylesheet.js"></script>\n`;
-  const tags =
-    `<link rel="preload" href="${href}" as="style"${crossorigin} />\n` +
-    `<link rel="stylesheet" href="${href}" media="not all" data-pn-defer-css${crossorigin} />\n` +
-    loader;
-
-  if (out.includes("</head>")) {
-    return out.replace("</head>", `${tags}</head>`);
+  const remaining = out.match(
+    new RegExp(`<link\\b[^>]*href=["']${hrefRe}["'][^>]*>\\s*`, "gi"),
+  );
+  if (remaining?.length) {
+    let replaced = false;
+    out = out.replace(
+      new RegExp(`<link\\b[^>]*href=["']${hrefRe}["'][^>]*>\\s*`, "gi"),
+      () => {
+        if (replaced) return "";
+        replaced = true;
+        return `${blocking}\n`;
+      },
+    );
+    return out;
   }
-  return tags + out;
+
+  if (/<\/head>/i.test(out)) {
+    return out.replace(/<\/head>/i, `${blocking}\n</head>`);
+  }
+  return `${out}${blocking}`;
+}
+
+/** @deprecated Prefer {@link ensureBlockingEntryStylesheet}. */
+export function deferEntryStylesheet(html) {
+  return ensureBlockingEntryStylesheet(html);
 }
 
 /** Keep vendor-react, vendor-query, and the entry chunk; drop other modulepreloads. */
