@@ -51,7 +51,12 @@ function spaShellCopyPlugin(): Plugin {
       const distDir = path.resolve(__dirname, "dist");
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
-      fs.copyFileSync(indexPath, path.join(distDir, "spa-shell.html"));
+      const html = fs.readFileSync(indexPath, "utf8");
+      const spa = html.replace(
+        /<div id="pn-home-prerender"[\s\S]*?<div id="root">/,
+        '<div id="root">',
+      );
+      fs.writeFileSync(path.join(distDir, "spa-shell.html"), spa);
     },
   };
 }
@@ -150,8 +155,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
+    modulePreload: {
+      resolveDependencies: (_filename, deps, { hostId }) => {
+        // Homepage lazy graph (CreateNote, icons) must not be preloaded with the entry.
+        if (/index-|Home|App/.test(hostId)) return [];
+        return deps;
+      },
+    },
     rollupOptions: {
       output: {
+        experimentalMinChunkSize: 20_000,
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@mlc-ai/web-llm")) return "vendor-web-llm";

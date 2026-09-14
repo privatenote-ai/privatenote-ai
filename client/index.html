@@ -109,6 +109,11 @@
     @media (prefers-color-scheme:dark){html:not(.light) .pn-hero-l1{color:hsl(210 40% 98%)}html:not(.light) .pn-hero-sub{color:hsl(220 9% 65%)}}
     html.dark .pn-hero-l1{color:hsl(210 40% 98%)}
     html.dark .pn-hero-sub{color:hsl(220 9% 65%)}
+    .pn-home-composer{max-width:56rem;margin:2rem auto 0;padding:0 1rem}
+    .pn-home-composer textarea{display:block;width:100%;min-height:12rem;box-sizing:border-box;resize:none;border:1px solid hsl(240 100% 50% / .45);border-radius:.5rem;padding:.75rem 1rem;font:inherit;background:#fff;color:hsl(222.2 84% 4.9%)}
+    @media (prefers-color-scheme:dark){html:not(.light) .pn-home-composer textarea{background:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%);border-color:hsl(240 100% 50% / .35)}}
+    html.dark .pn-home-composer textarea{background:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%);border-color:hsl(240 100% 50% / .35)}
+    html.light .pn-home-composer textarea{background:#fff;color:hsl(222.2 84% 4.9%)}
   </style>
 
   <!-- Prefill guard: defer so it does not block HTML parsing; still runs before the
@@ -118,19 +123,22 @@
   <script defer src="/prefill-guard.js"></script>
 </head>
 <body>
-  <div id="root">
-    <div id="pn-home-prerender" class="pn-home-prerender">
-      <section class="pn-hero-wrap" aria-label="PrivateNote">
-        <div class="pn-hero-title">
-          <h1 class="page-title">
-            <span class="pn-hero-l1" id="pn-hero-l1">Your Messages,</span>
-            <span class="pn-hero-l2" id="pn-hero-l2">Your Privacy</span>
-          </h1>
-          <p class="pn-hero-sub" id="pn-hero-sub">Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.</p>
-        </div>
-      </section>
+  <!-- LCP hero + composer live outside #root so createRoot() cannot retimestamp LCP. -->
+  <div id="pn-home-prerender" class="pn-home-prerender">
+    <section class="pn-hero-wrap" aria-label="PrivateNote">
+      <div class="pn-hero-title">
+        <h1 class="page-title">
+          <span class="pn-hero-l1" id="pn-hero-l1">Your Messages,</span>
+          <span class="pn-hero-l2" id="pn-hero-l2">Your Privacy</span>
+        </h1>
+        <p class="pn-hero-sub" id="pn-hero-sub">Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.</p>
+      </div>
+    </section>
+    <div id="pn-home-composer" class="pn-home-composer">
+      <textarea id="pn-home-composer-input" rows="8" placeholder="Write a private note…" aria-label="Private note"></textarea>
     </div>
   </div>
+  <div id="root"></div>
   <noscript>
     <nav aria-label="Primary site links">
       <a href="/">Home</a>

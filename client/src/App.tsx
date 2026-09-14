@@ -13,7 +13,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { DeferredToaster } from "@/components/DeferredToaster";
 import { AuthProvider } from "@/context/AuthContext";
 import { AccountEntitlementsProvider } from "@/context/AccountEntitlementsContext";
-import Home from "@/pages/Home";
 import AccountBranding from "@/pages/account/AccountBranding";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
@@ -35,6 +34,7 @@ import { canAccessInternalAppRoutes } from "@/utils/internalAppRoutes";
 import { PREMIUM_PAGE_PUBLIC } from "@shared/premiumPagePublic";
 import { NativePageAnalytics } from "@/components/NativePageAnalytics";
 
+const Home = lazy(() => import("@/pages/Home"));
 const ViewNote = lazy(() => import("@/pages/ViewNote"));
 const PasswordGenerator = lazy(() => import("@/pages/PasswordGenerator"));
 const OneTimeLink = lazy(() => import("@/pages/OneTimeLink"));
@@ -237,7 +237,11 @@ function HomeRoute({ language = "en" }: { language?: SupportedLanguage }) {
     }
   }, [activeLanguage, language, setLanguage]);
 
-  return <Home />;
+  return (
+    <Suspense fallback={null}>
+      <Home />
+    </Suspense>
+  );
 }
 
 function LocalizedRoute({
@@ -293,6 +297,12 @@ function Router() {
   }, [location, t]);
 
   useEffect(() => {
+    const path = pathWithoutQueryOrHash(location);
+    const shell = document.getElementById("pn-home-prerender");
+    if (shell) shell.hidden = !isLocaleHomeRoute(path);
+  }, [location]);
+
+  useEffect(() => {
     /** Wouter navigations preserve scroll — reset after paint when not already at top. */
     if (window.scrollY === 0) return;
     const frame = requestAnimationFrame(() => {
@@ -302,6 +312,7 @@ function Router() {
   }, [location]);
   const isAuthRoute = location.startsWith("/auth") || location === "/magic";
   const isNoteRoute = location.startsWith("/note/");
+  const onLocaleHome = isLocaleHomeRoute(pathWithoutQueryOrHash(location));
   const showNavbar =
     !isNoteRoute &&
     (!isAuthRoute ||
@@ -315,7 +326,7 @@ function Router() {
   return (
     <div className="flex min-h-screen min-w-0 flex-col">
       {showNavbar && <Navbar />}
-      <main className={`min-w-0 flex-grow ${isNoteRoute ? "pt-0" : isAuthRoute ? "pt-6" : "pt-16"}`}>
+      <main className={`min-w-0 flex-grow ${isNoteRoute ? "pt-0" : isAuthRoute ? "pt-6" : onLocaleHome ? "pt-0" : "pt-16"}`}>
         <Switch>
           <Route path="/" component={() => <HomeRoute />} />
           {/*

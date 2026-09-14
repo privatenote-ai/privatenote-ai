@@ -53,18 +53,21 @@
 
   function isHomePath() {
     var p = location.pathname || "/";
+    if (p === "/") return true;
+    var seg = p.split("/").filter(Boolean)[0];
+    var rest = p.split("/").filter(Boolean).slice(1);
+    if (!seg || rest.length > 0) return false;
     return (
-      p === "/" ||
-      p === "/de" ||
-      p === "/de/" ||
-      p === "/fr" ||
-      p === "/fr/" ||
-      p === "/es" ||
-      p === "/es/" ||
-      p === "/it" ||
-      p === "/it/" ||
-      p === "/nl" ||
-      p === "/nl/"
+      seg === "de" ||
+      seg === "fr" ||
+      seg === "es" ||
+      seg === "it" ||
+      seg === "nl" ||
+      seg === "pt" ||
+      seg === "sr" ||
+      seg === "hr" ||
+      seg === "tr" ||
+      seg === "pl"
     );
   }
 

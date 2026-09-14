@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { NoteResult } from '@/components/note/NoteResult';
 import { HomeBelowFoldSkeleton } from '@/components/home/HomeBelowFoldSkeleton';
 import { HomeKeyFeaturesSkeleton } from '@/components/home/HomeKeyFeaturesSkeleton';
@@ -6,46 +6,54 @@ import { useMountWhenInView } from '@/hooks/useMountWhenInView';
 import { useLanguage } from '@/context/LanguageContext';
 import { localizedPath } from '@/utils/localizedPath';
 
-const CreateNote = lazy(() =>
-  import('@/components/note/CreateNote').then((m) => ({ default: m.CreateNote })),
-);
 const SecurityFeatures = lazy(() =>
   import('@/components/features/SecurityFeatures').then((m) => ({ default: m.SecurityFeatures })),
 );
 const HomeBelowFold = lazy(() => import('@/pages/HomeBelowFold'));
 
-/** Reserve editor layout without a skeleton flash while the CreateNote chunk loads. */
-function CreateNoteMountPlaceholder() {
-  return <div className="min-h-[28rem] w-full" aria-hidden />;
-}
+type CreateNoteComponent = React.ComponentType<{
+  onSuccessStateChange?: (isSuccess: boolean) => void;
+}>;
 
 const Home: React.FC = () => {
   const [showCreateNote, setShowCreateNote] = useState(true);
   const noteUrl = '';
   const [isCreateSuccessView, setIsCreateSuccessView] = useState(false);
-  const [mountCreateNote, setMountCreateNote] = useState(false);
+  const [CreateNoteComp, setCreateNoteComp] = useState<CreateNoteComponent | null>(null);
   const { t, language } = useLanguage();
+  const [useStaticHero] = useState(
+    () => typeof document !== 'undefined' && Boolean(document.getElementById('pn-home-prerender')),
+  );
+
+  const loadCreateNote = useCallback(() => {
+    void import('@/components/note/CreateNote').then((m) => {
+      setCreateNoteComp(() => m.CreateNote);
+    });
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const mount = () => {
-      if (!cancelled) setMountCreateNote(true);
+    const shell = document.getElementById('pn-home-prerender');
+    if (shell) shell.hidden = isCreateSuccessView;
+  }, [isCreateSuccessView]);
+
+  useEffect(() => {
+    const composer = document.getElementById('pn-home-composer');
+    if (composer) composer.hidden = Boolean(CreateNoteComp);
+  }, [CreateNoteComp]);
+
+  useEffect(() => {
+    if (CreateNoteComp) return;
+    const composer = document.getElementById('pn-home-composer');
+    const onInteract = () => {
+      loadCreateNote();
     };
-    if (typeof requestIdleCallback === 'function') {
-      const id = requestIdleCallback(mount, { timeout: 2500 });
-      return () => {
-        cancelled = true;
-        cancelIdleCallback(id);
-      };
-    }
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(mount);
-    });
+    composer?.addEventListener('pointerdown', onInteract, { once: true, passive: true });
+    composer?.addEventListener('focusin', onInteract, { once: true });
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(id);
+      composer?.removeEventListener('pointerdown', onInteract);
+      composer?.removeEventListener('focusin', onInteract);
     };
-  }, []);
+  }, [CreateNoteComp, loadCreateNote]);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
@@ -126,15 +134,15 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
+    <div className={`min-w-0 max-w-full overflow-x-clip pb-28 sm:pb-32 ${useStaticHero ? "pt-0" : "pt-0 sm:pt-20 h-short:!pt-4"}`}>
       <div
         className={
-          isCreateSuccessView
+          isCreateSuccessView || (useStaticHero && !CreateNoteComp)
             ? undefined
             : "lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col"
         }
       >
-        {!isCreateSuccessView && (
+        {!isCreateSuccessView && !useStaticHero && (
           <section className="relative mx-auto max-w-4xl px-4 pt-16 sm:px-6 sm:pt-8 lg:px-8 h-short:pt-6 h-short:sm:pt-5">
             <div className="text-center">
               <h1 data-lcp-element="true" className="page-title text-gray-900 dark:text-white">
@@ -165,23 +173,23 @@ const Home: React.FC = () => {
           </section>
         )}
 
+        {(CreateNoteComp || !useStaticHero || !showCreateNote) && (
         <div
           className={`${isCreateSuccessView ? "mt-0" : "mt-8 sm:mt-6 md:mt-10 lg:mt-12 h-short:mt-4 h-short:md:mt-5 h-short:lg:mt-5"} min-w-0 px-4 pb-16 sm:px-6 sm:pb-20 md:pb-24 lg:flex-1 lg:px-8`}
         >
           <div className="mx-auto min-w-0 max-w-4xl">
             {showCreateNote ? (
-              mountCreateNote ? (
-                <Suspense fallback={<CreateNoteMountPlaceholder />}>
-                  <CreateNote onSuccessStateChange={setIsCreateSuccessView} />
-                </Suspense>
+              CreateNoteComp ? (
+                <CreateNoteComp onSuccessStateChange={setIsCreateSuccessView} />
               ) : (
-                <CreateNoteMountPlaceholder />
+                <div className="min-h-[12rem] w-full" aria-hidden />
               )
             ) : (
               <NoteResult noteUrl={noteUrl} onCreateNew={handleCreateNew} />
             )}
           </div>
         </div>
+        )}
       </div>
 
       <div
