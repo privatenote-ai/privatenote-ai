@@ -65,7 +65,7 @@ test("resolveDocumentMeta returns unique titles for reported duplicate-title URL
   );
   assert.equal(
     resolveDocumentMeta("/fr/contact", { ...en, ...fr }).title,
-    "Contact · PrivateNote.ai",
+    "Contacter le support des notes chiffrées · PrivateNote.ai",
   );
   assert.equal(
     resolveDocumentMeta("/fr/privacy", { ...en, ...fr }).title,

@@ -320,7 +320,7 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "about":
       return {
-        title: buildDocumentTitle(t.aboutPageTitle),
+        title: buildDocumentTitle(t.documentMetaAboutTitle),
         description: t.documentMetaAboutDescription,
       };
     case "contact":
@@ -335,7 +335,7 @@ function pageMetaForPublicPage(rest: string, t: Translations): { title: string; 
       };
     case "terms":
       return {
-        title: buildDocumentTitle(t.termsOfUse),
+        title: buildDocumentTitle(t.documentMetaTermsTitle),
         description: t.documentMetaTermsDescription,
       };
     default:
@@ -347,7 +347,7 @@ function metaForBlogSubpath(slug: string, t: Translations): { title: string; des
   const fromSlug = blogSlugStaticMeta(slug, t);
   if (fromSlug) return fromSlug;
   return {
-    title: buildDocumentTitle(t.blog),
+    title: buildDocumentTitle(t.documentMetaBlogTitle),
     description: t.documentMetaBlogLoadingDescription,
   };
 }
@@ -359,7 +359,7 @@ function metaForLocalizedRest(
   pathname: string,
 ): { title: string; description: string } | null {
   if (rest === "blog") {
-    return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
+    return { title: buildDocumentTitle(t.documentMetaBlogTitle), description: t.blogSubtitle };
   }
   if (rest.startsWith("blog/")) {
     const slugFromUrl = rest.slice("blog/".length);
@@ -581,7 +581,7 @@ export function resolveDocumentMeta(
 
   if (segments[0] === "blog") {
     if (segments.length === 1) {
-      return { title: buildDocumentTitle(t.blog), description: t.blogSubtitle };
+      return { title: buildDocumentTitle(t.documentMetaBlogTitle), description: t.blogSubtitle };
     }
     if (segments.length === 3 && segments[1] === "category" && isBlogCategory(segments[2]!)) {
       const category = segments[2]!;
