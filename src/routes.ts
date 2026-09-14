@@ -78,7 +78,7 @@ import {
   uploadedChunkHashKey,
 } from "@shared/noteFileUploadAuth";
 import { readClientIpFromRequestHeaders } from "@shared/clientRequestIdentity";
-import { isSupportedLanguage } from "@shared/supportedLanguages";
+import { normalizeAccountPreferredLanguageInput } from "@shared/supportedLanguages";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { handleAuthRoutes as handleAuthRoutesComplete } from "./routes/auth";
 import {
@@ -3688,13 +3688,13 @@ async function handleAuthRoutes(request: Request, env: Env): Promise<Response | 
       updates.push("email_notifications = ?");
       bindings.push(body.emailNotifications ? 1 : 0);
     }
-    if (typeof body.preferredLanguage === "string") {
-      const preferredLanguage = body.preferredLanguage.trim().toLowerCase().split("-")[0];
-      if (!isSupportedLanguage(preferredLanguage)) {
-        return jsonResponse({ message: "Unsupported language" }, 400, request);
+    if (typeof body.preferredLanguage === "string" || body.preferredLanguage === null) {
+      const parsed = normalizeAccountPreferredLanguageInput(body.preferredLanguage);
+      if (!parsed.ok) {
+        return jsonResponse({ message: parsed.message }, 400, request);
       }
       updates.push("preferred_language = ?");
-      bindings.push(preferredLanguage);
+      bindings.push(parsed.value);
     }
     if (typeof body.allowHostedAi === "boolean") {
       const info = await env.AUTH_DB.prepare("PRAGMA table_info(users)").all<{ name: string }>();

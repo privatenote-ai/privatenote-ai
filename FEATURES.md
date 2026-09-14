@@ -10,6 +10,8 @@ Baseline date: 2026-09-14.
 
 **Changed:** Delayed reveal is now **Scheduled reveal** in the UI, pricing, and docs. Same behavior (`opensAt`).
 
+**Changed:** Account preferred language accepts every PrivateNote UI language (`en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `sr`, `hr`, `tr`, `pl`), not only English, German, French, and Spanish.
+
 Tagline: **Share secrets. Leave no trail.**
 
 Site: https://privatenote.ai
@@ -191,7 +193,7 @@ No navbar/footer. Anonymous. Click-to-reveal is always on.
 - Step-up auth for sensitive actions.
 - Delete account.
 - Theme: light / dark / system.
-- Preferred UI language stored on the account.
+- Preferred UI language stored on the account (same set as the product UI: English, German, French, Spanish, Italian, Dutch, Portuguese, Serbian, Croatian, Turkish, Polish).
 
 ### Activity / Notification Center (Starter+ for dashboard and revoke)
 

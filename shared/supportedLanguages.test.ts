@@ -6,6 +6,7 @@ import {
   isSupportedLanguage,
   LOCALE_HOME_PATH_PATTERN,
   NON_ENGLISH_LANGUAGE_CODES,
+  normalizeAccountPreferredLanguageInput,
   normalizeLanguageCode,
   SUPPORTED_LANGUAGES,
 } from "./supportedLanguages.ts";
@@ -13,6 +14,27 @@ import {
 test("supported languages include pt, sr, hr, tr, pl", () => {
   assert.deepEqual(SUPPORTED_LANGUAGES, ["en", "de", "fr", "es", "it", "nl", "pt", "sr", "hr", "tr", "pl"]);
   assert.equal(NON_ENGLISH_LANGUAGE_CODES.length, 10);
+});
+
+test("account preferred language accepts every product UI language", () => {
+  for (const language of SUPPORTED_LANGUAGES) {
+    assert.deepEqual(normalizeAccountPreferredLanguageInput(language), {
+      ok: true,
+      value: language,
+    });
+  }
+  assert.deepEqual(normalizeAccountPreferredLanguageInput("it-IT"), { ok: true, value: "it" });
+  assert.deepEqual(normalizeAccountPreferredLanguageInput("sr-Latn"), { ok: true, value: "sr" });
+  assert.deepEqual(normalizeAccountPreferredLanguageInput("nl-NL"), { ok: true, value: "nl" });
+  assert.deepEqual(normalizeAccountPreferredLanguageInput(null), { ok: true, value: null });
+  const rejected = normalizeAccountPreferredLanguageInput("xx");
+  assert.equal(rejected.ok, false);
+  if (!rejected.ok) {
+    assert.equal(
+      rejected.message,
+      `preferredLanguage must be one of ${SUPPORTED_LANGUAGES.join(", ")} (or a regional tag such as en-US), or null`,
+    );
+  }
 });
 
 test("normalizeLanguageCode maps regional tags", () => {

@@ -17,6 +17,24 @@ export function normalizeLanguageCode(language: string | null | undefined): Supp
   return "en";
 }
 
+/** Account `preferredLanguage` PATCH body: product UI codes, regional tags, or null. */
+export function normalizeAccountPreferredLanguageInput(
+  raw: unknown,
+): { ok: true; value: SupportedLanguage | null } | { ok: false; message: string } {
+  if (raw === null || raw === "") return { ok: true, value: null };
+  if (typeof raw !== "string") {
+    return { ok: false, message: "preferredLanguage must be a string or null" };
+  }
+  const primary = raw.trim().toLowerCase().split("-")[0];
+  if (isSupportedLanguage(primary)) {
+    return { ok: true, value: primary };
+  }
+  return {
+    ok: false,
+    message: `preferredLanguage must be one of ${SUPPORTED_LANGUAGES.join(", ")} (or a regional tag such as en-US), or null`,
+  };
+}
+
 /**
  * BCP 47 tag for Intl and `html lang`.
  * Serbian UI copy is Latin-only; bare `sr` formats months in Cyrillic.
