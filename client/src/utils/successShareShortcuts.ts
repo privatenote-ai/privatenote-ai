@@ -1,12 +1,13 @@
-export const SUCCESS_SHARE_SHORTCUTS_KEY = "privatenote_success_share_shortcuts.v2";
+export const SUCCESS_SHARE_SHORTCUTS_KEY = "privatenote_success_share_shortcuts.v4";
 
 export const SUCCESS_SHARE_CHANNEL_IDS = [
   "email",
   "signal",
-  "whatsapp",
   "qr",
-  "telegram",
+  "whatsapp",
   "slack",
+  "device",
+  "telegram",
   "discord",
   "teams",
   "sms",
@@ -17,18 +18,20 @@ export type SuccessShareChannelId = (typeof SUCCESS_SHARE_CHANNEL_IDS)[number];
 export const DEFAULT_SUCCESS_SHARE_ORDER: readonly SuccessShareChannelId[] = [
   "email",
   "signal",
-  "whatsapp",
   "qr",
-  "telegram",
+  "whatsapp",
   "slack",
+  "device",
+  "telegram",
   "discord",
   "teams",
   "sms",
 ];
 
-export const PINNED_SUCCESS_SHARE_COUNT = 4;
+/** Email, Signal, QR, WhatsApp, Slack, and Share from this device, plus More. */
+export const PINNED_SUCCESS_SHARE_COUNT = 6;
 
-export type SuccessShareChannelKind = "link" | "qr" | "copy-app";
+export type SuccessShareChannelKind = "link" | "qr" | "copy-app" | "native";
 
 const CHANNEL_KIND: Record<SuccessShareChannelId, SuccessShareChannelKind> = {
   email: "link",
@@ -40,6 +43,7 @@ const CHANNEL_KIND: Record<SuccessShareChannelId, SuccessShareChannelKind> = {
   discord: "copy-app",
   teams: "link",
   sms: "link",
+  device: "native",
 };
 
 export function shareChannelKind(id: SuccessShareChannelId): SuccessShareChannelKind {
@@ -64,6 +68,7 @@ export function shareChannelHref(id: SuccessShareChannelId, url: string): string
       return `sgnl://send?text=${encodeURIComponent(url)}`;
     case "qr":
     case "discord":
+    case "device":
       return null;
   }
 }
@@ -119,3 +124,4 @@ export function moveShareShortcut(
   next.splice(clamped, 0, id);
   return next;
 }
+

@@ -106,6 +106,7 @@ import { isVideoMessageFile } from "@/utils/videoMessageRecording";
 import { isCameraCaptureSupported, isCapturedPhotoFile } from "@/utils/photoCapture";
 import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
+import { deriveSuccessHeadlineKind } from "@/utils/successHeadline";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import type { AiPostGenTransform } from "./AiComposer";
@@ -2109,8 +2110,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         }
       }
 
-      const { id } = await apiRequest<{
+      const { id, burnToken } = await apiRequest<{
         id: string;
+        burnToken?: string;
       }>("/api/notes", "POST", {
         id: reservedId,
         content: encryptedBase64,
@@ -2206,6 +2208,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       setRevokingNote(false);
       setCreatedNote({
         url,
+        headlineKind: deriveSuccessHeadlineKind({
+          isFileTransfer: isFileTransferMode,
+          creationEntryPoint: creationEntryPointProp,
+          files: selectedFiles,
+          noteBody: noteContent,
+        }),
+        burnToken,
         meta: {
           expiryValue,
           readCount,
@@ -2414,7 +2423,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
   const revokeCreatedNote = useCallback(async () => {
     if (!createdNote?.url || noteRevoked || revokingNote) return;
-    if (!planCapabilities.revokeUnopened) return;
+    const canRevokeByPlan = Boolean(planCapabilities.revokeUnopened);
+    if (!canRevokeByPlan && !createdNote.burnToken) return;
 
     const noteId =
       createdNote.meta?.noteId ??
@@ -2436,7 +2446,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
     setRevokingNote(true);
     try {
-      await apiRequest(`/api/notes/${encodeURIComponent(noteId)}/revoke`, "POST");
+      await apiRequest(
+        `/api/notes/${encodeURIComponent(noteId)}/revoke`,
+        "POST",
+        canRevokeByPlan ? undefined : { burnToken: createdNote.burnToken },
+      );
       setNoteRevoked(true);
       toast({
         title: t.notificationRevokeSuccessTitle ?? "Note revoked",
@@ -3138,7 +3152,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         onShareQrCode={shareQrCode}
         onDownloadQrCode={downloadQrCode}
         onCreateNewNote={createNewNote}
-        canRevoke={Boolean(user) && planCapabilities.revokeUnopened && !noteRevoked}
+        canRevoke={
+          Boolean(
+            (planCapabilities.revokeUnopened || createdNote.burnToken) && !noteRevoked,
+          )
+        }
         noteRevoked={noteRevoked}
         revoking={revokingNote}
         onRevoke={revokeCreatedNote}

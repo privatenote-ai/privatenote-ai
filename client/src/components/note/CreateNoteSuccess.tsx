@@ -10,7 +10,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  CircleHelp,
   CirclePlus,
   Copy,
   Eye,
@@ -31,6 +30,7 @@ import {
 import { ChromeExtensionOnboardingBanner } from "./ChromeExtensionOnboardingBanner";
 import { useToast } from "@/hooks/use-toast";
 import { NOTE_LABEL_MAX_LENGTH } from "@/utils/noteLabelsStorage";
+import type { SuccessHeadlineKind } from "@/utils/successHeadline";
 import {
   DEFAULT_SUCCESS_SHARE_ORDER,
   PINNED_SUCCESS_SHARE_COUNT,
@@ -60,7 +60,7 @@ import {
 
 export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verify_email";
 
-const COPY_SUCCESS_MS = 1800;
+const COPY_SUCCESS_MS = 1500;
 const ghostBtn =
   "inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800";
 
@@ -154,6 +154,8 @@ function ShareChannelGlyph({ id }: { id: SuccessShareChannelId }) {
       return <TeamsGlyph />;
     case "sms":
       return <MessageSquare className="h-5 w-5" aria-hidden />;
+    case "device":
+      return <Share2 className="h-5 w-5" aria-hidden />;
   }
 }
 
@@ -195,6 +197,9 @@ export type CreatedNoteState = {
   url: string;
   /** Present in normal flow; optional so a defensive UI can recover if state is ever partial. */
   meta?: CreatedNoteMeta;
+  headlineKind?: SuccessHeadlineKind;
+  /** One-time creator capability to burn the note from the success page. */
+  burnToken?: string;
 };
 
 export type CreateNoteSuccessProps = {
@@ -317,16 +322,29 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     ? t.successCreateAnotherTransfer ?? t.createAnotherTransfer
     : t.successCreateAnotherNote ?? t.createAnotherNote;
   const linkAriaLabel = isFileTransfer ? t.encryptedTransferLink : t.encryptedNoteLink;
-  const headingPrefix = isFileTransfer ? t.yourSecureTransferIs : t.yourSecureNoteIs;
-  const subtitleLine = isFileTransfer ? t.transferEncryptedInBrowser : t.noteEncryptedInBrowser;
+  const headlineKind: SuccessHeadlineKind = createdNote.headlineKind ?? (isFileTransfer ? "file" : "note");
+  const headingPrefix =
+    headlineKind === "file"
+      ? t.yourSecureFileIs ?? t.yourSecureTransferIs
+      : headlineKind === "photo"
+        ? t.yourSecurePhotoIs ?? t.yourSecureNoteIs
+        : headlineKind === "password"
+          ? t.yourPasswordIs ?? t.yourSecurePasswordIs
+          : t.yourSecureNoteIs;
+  const headingAccent = headlineKind === "password" ? t.readyToShare ?? t.ready : t.ready;
+  const subtitleLine =
+    t.successReadySubtitle ??
+    "Encrypted in your browser. Only someone with this link can open it.";
+  const copyLabel = t.successCopy ?? "Copy link";
+  const copiedLabel = t.successCopied ?? t.copied ?? "Copied";
+  const nameActionLabel = t.successNameThisNote ?? "Name for Activity";
+  const namePrivacyHint =
+    t.successNoteLabelHint ?? "Only visible to you. Never shared with the recipient.";
   const premiumUpgradeHref = localizedPath("/premium", language);
   const signInHref = localizedPath("/auth/sign-in", language);
   const deliverySent = recipientLinkDelivery?.status === "sent";
   const deliveryFailed = recipientLinkDelivery?.status === "failed";
   const canSubmitDelivery = recipientLinkDeliveryGate === "ready" && Boolean(onDeliverRecipientLink);
-  const copyLabel = t.successCopy ?? "Copy";
-  const copiedLabel = t.successCopied ?? t.copied ?? "Copied";
-  const nameActionLabel = t.successNameThisNote ?? "Name this note";
   const nameEditLabel = t.successNameEdit ?? "Edit";
   const burnLabel = t.successBurnThisOne ?? "Burn this one";
   const shareYourWay = t.successShareItYourWay ?? "Share it your way";
@@ -427,6 +445,8 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         return t.successShareTeams ?? "Teams";
       case "sms":
         return t.successShareSms ?? "SMS";
+      case "device":
+        return t.successShareDevice ?? t.successSystemShare ?? "This device";
     }
   };
 
@@ -455,6 +475,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
       setShowSuccessQr(true);
       return;
     }
+    if (shareChannelKind(id) === "native") {
+      setShowShareMore(false);
+      void nativeShare();
+      return;
+    }
     if (shareChannelKind(id) === "copy-app") {
       void copyLinkForApp(shareChannelLabel(id));
     }
@@ -475,7 +500,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const pinnedShareIds = shareOrder.slice(0, PINNED_SUCCESS_SHARE_COUNT);
 
   const shareActionClass =
-    "success-share-action group flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+    "success-share-action group flex min-h-11 min-w-[3.25rem] flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1.5 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
   const shareIconClass =
     "flex h-11 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-gray-100 group-focus-visible:bg-gray-100 dark:group-hover:bg-gray-800 dark:group-focus-visible:bg-gray-800";
 
@@ -485,12 +510,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         <section className="px-4 sm:px-6 lg:px-8 pt-1">
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
-              {headingPrefix} <span className="text-primary italic">{t.ready}</span>
+              {headingPrefix} <span className="text-primary italic">{headingAccent}</span>
             </h1>
-            <div className="mt-2 max-w-3xl mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-3 md:text-xl space-y-1">
-              <p className="m-0">{subtitleLine}</p>
-              <p className="m-0">{t.onlySomeoneWithLinkCanRead}</p>
-            </div>
+            <p className="mt-2 mx-auto max-w-3xl text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-3 md:text-xl">
+              {subtitleLine}
+            </p>
           </div>
         </section>
 
@@ -540,7 +564,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 type="button"
                 onClick={() => void copySecureUrl()}
                 disabled={noteRevoked}
-                className={`success-primary-btn inline-flex h-11 min-w-[7.5rem] shrink-0 items-center justify-center gap-1.5 rounded-md px-5 text-sm font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                className={`success-primary-btn inline-flex h-11 min-w-[10.5rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-5 text-sm font-semibold text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                   linkCopied
                     ? "bg-emerald-600 hover:bg-emerald-600 focus-visible:ring-emerald-500"
                     : "bg-primary hover:bg-primary/90 focus-visible:ring-primary"
@@ -564,27 +588,41 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
 
             <div className="mt-4 flex flex-col items-center gap-1 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-1">
               {nameEditing ? (
-                <label className="flex min-w-0 w-full max-w-md items-center gap-2 rounded-lg px-2 py-1.5 sm:w-auto sm:min-w-[16rem]">
-                  <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
-                  <span className="sr-only">{nameActionLabel}</span>
-                  <input
-                    id="success-note-label"
-                    ref={nameInputRef}
-                    type="text"
-                    maxLength={NOTE_LABEL_MAX_LENGTH}
-                    value={labelValue}
-                    onChange={(event) => handleLabelChange(event.target.value)}
-                    onBlur={() => setNameEditing(false)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === "Escape") {
-                        event.preventDefault();
-                        setNameEditing(false);
-                      }
-                    }}
-                    placeholder={nameActionLabel}
-                    className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-gray-950 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm dark:text-gray-100 dark:placeholder:text-gray-400"
-                  />
-                </label>
+                <div
+                  className="flex min-w-0 w-full max-w-md flex-col gap-1 px-2 py-1 sm:w-auto sm:min-w-[16rem]"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setNameEditing(false);
+                    }
+                  }}
+                >
+                  <label className="flex min-w-0 items-center gap-2">
+                    <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+                    <span className="sr-only">{nameActionLabel}</span>
+                    <input
+                      id="success-note-label"
+                      ref={nameInputRef}
+                      type="text"
+                      maxLength={NOTE_LABEL_MAX_LENGTH}
+                      value={labelValue}
+                      onChange={(event) => handleLabelChange(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === "Escape") {
+                          event.preventDefault();
+                          setNameEditing(false);
+                        }
+                      }}
+                      placeholder={nameActionLabel}
+                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-gray-950 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm dark:text-gray-100 dark:placeholder:text-gray-400"
+                    />
+                  </label>
+                  <p
+                    className="m-0 pl-6 text-[11px] leading-snug text-gray-500 dark:text-gray-400"
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    {namePrivacyHint}
+                  </p>
+                </div>
               ) : (
                 <button
                   type="button"
@@ -650,7 +688,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
             </div>
 
             <div className="mt-4 border-t border-gray-200 pt-4 sm:mt-5 sm:pt-5 dark:border-gray-800">
-              <div className="grid grid-cols-3 gap-x-1 gap-y-2 sm:grid-cols-5 sm:gap-2">
+              <div className="grid grid-cols-4 gap-x-0.5 gap-y-2 sm:grid-cols-7 sm:gap-1">
                 {pinnedShareIds.map((id) => {
                   const kind = shareChannelKind(id);
                   const href = shareChannelHref(id, successUrl);
@@ -660,7 +698,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       <span className={`${shareIconClass} ${shareChannelIconClass(id)}`}>
                         <ShareChannelGlyph id={id} />
                       </span>
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      <span className="max-w-[4.75rem] text-xs font-medium leading-tight text-gray-700 dark:text-gray-300">
                         {label}
                       </span>
                     </>
@@ -696,7 +734,9 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       aria-label={
                         id === "qr"
                           ? t.successShowQrCode ?? t.shareViaQrCode
-                          : (t.successShareViaApp ?? "Share via {app}").replace("{app}", label)
+                          : id === "device"
+                            ? t.successSystemShare ?? "Share from this device"
+                            : (t.successShareViaApp ?? "Share via {app}").replace("{app}", label)
                       }
                       aria-expanded={id === "qr" ? showSuccessQr : undefined}
                     >
@@ -724,12 +764,12 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </div>
 
           <div
-            className="mx-auto mt-2 hidden w-full max-w-[960px] items-start gap-1 pl-2 lg:flex"
+            className="mx-auto -mt-0.5 hidden w-full max-w-[960px] items-start gap-0.5 pl-6 lg:flex"
             aria-hidden
           >
             <svg
               viewBox="0 0 72 56"
-              className="mt-1 h-12 w-[3.75rem] shrink-0 text-primary"
+              className="mt-0.5 h-9 w-11 shrink-0 text-primary"
               fill="none"
             >
               <path
@@ -746,13 +786,13 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 strokeLinejoin="round"
               />
             </svg>
-            <p className="success-hand-accent mt-7 -ml-1 rotate-[-7deg] text-primary">
+            <p className="success-hand-accent mt-2.5 -ml-0.5 rotate-[-7deg] text-primary">
               {shareYourWay}
             </p>
           </div>
         </div>
 
-        <div className="mx-auto mt-10 w-full max-w-[960px] px-4 sm:mt-12 sm:px-6">
+        <div className="mx-auto mt-8 w-full max-w-[960px] px-4 sm:mt-9 sm:px-6">
           {deliverySent && recipientLinkDelivery ? (
             <div className="text-center text-sm text-emerald-800 dark:text-emerald-200" role="status">
               <p className="m-0 inline-flex items-center justify-center gap-1.5 font-medium">
@@ -769,16 +809,20 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           ) : (
             <form
               id="success-private-note-delivery"
-              className="mx-auto max-w-xl space-y-2.5"
+              className="mx-auto max-w-xl rounded-2xl border border-gray-200/90 bg-gray-50/80 px-4 py-5 sm:px-5 dark:border-gray-800 dark:bg-gray-900/40"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitRecipientLinkDelivery();
               }}
             >
-              <p className="m-0 text-center text-sm font-medium text-gray-600 dark:text-gray-300">
-                {t.successLetPrivateNoteSend ?? "Let PrivateNote send it"}
+              <p className="m-0 text-center text-[15px] font-semibold text-gray-900 dark:text-white">
+                {t.successLetPrivateNoteSend ?? "Or let PrivateNote send it"}
               </p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+              <p className="mt-1.5 m-0 text-center text-sm leading-snug text-gray-500 dark:text-gray-400">
+                {t.successLetPrivateNoteSendBody ??
+                  "Enter the recipient's email and we'll send the secure link."}
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <label htmlFor="success-deliver-recipient-email" className="sr-only">
                   {t.settingsDeliverRecipientEmail ?? "Email link to recipient"}
                 </label>
@@ -807,28 +851,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                       : t.successSendLink ?? "Send link"}
                 </button>
               </div>
-              <p className="m-0 flex items-start gap-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400">
-                <span className="min-w-0 flex-1">
-                  {t.successDeliveryLinkOnly ??
-                    "PrivateNote sends only the secure link — never your note contents."}
-                </span>
-                <button
-                  type="button"
-                  className="success-quiet-btn inline-flex shrink-0 rounded-full p-0.5 text-gray-400 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:hover:text-gray-300"
-                  title={
-                    t.successDeliveryLinkOnlyHint ??
-                    "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
-                  }
-                  aria-label={
-                    t.successDeliveryLinkOnlyHint ??
-                    "The note stays encrypted. Email only carries the link, so prefer sharing it yourself for the most sensitive secrets."
-                  }
-                >
-                  <CircleHelp className="h-3.5 w-3.5" aria-hidden />
-                </button>
+              <p className="mt-3 m-0 text-center text-xs leading-snug text-gray-500 dark:text-gray-400">
+                {t.successDeliveryLinkOnly ?? "We send the link, never the note contents."}
               </p>
               {deliveryFailed && recipientLinkDelivery ? (
-                <p className="m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
+                <p className="mt-2 m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
                   {(
                     t.recipientLinkDeliveryFailedBody ??
                     "We could not send the link to {email}. You can still copy it above."
@@ -836,7 +863,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 </p>
               ) : null}
               {recipientLinkDeliveryGate === "sign_in" ? (
-                <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                <p className="mt-2 m-0 text-center text-xs leading-snug text-gray-500 dark:text-gray-400">
                   {t.recipientLinkDeliverySignInHint ??
                     "Sign in with Starter or Business to email the link —"}{" "}
                   <Link href={signInHref} className="font-medium text-primary hover:underline">
@@ -845,7 +872,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 </p>
               ) : null}
               {recipientLinkDeliveryGate === "upgrade" ? (
-                <p className="m-0 text-xs leading-snug text-gray-500 dark:text-gray-400">
+                <p className="mt-2 m-0 text-center text-xs leading-snug text-gray-500 dark:text-gray-400">
                   {t.recipientLinkDeliveryUpgradeHint ??
                     "Starter and Business can email the link —"}{" "}
                   <Link
@@ -857,7 +884,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                 </p>
               ) : null}
               {recipientLinkDeliveryGate === "verify_email" ? (
-                <p className="m-0 text-xs leading-snug text-amber-800 dark:text-amber-200">
+                <p className="mt-2 m-0 text-center text-xs leading-snug text-amber-800 dark:text-amber-200">
                   {t.recipientLinkDeliveryVerifyEmailHint ??
                     "Verify your account email before we can send the link for you."}
                 </p>
@@ -1035,7 +1062,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
             {t.successOrganizeShortcutsHint ??
-              "Drag to choose which four appear on the card. Tap a shortcut to share now."}
+              "Drag to choose which shortcuts appear on the card. Tap a shortcut to share now."}
           </DialogDescription>
           <ol className="m-0 flex list-none flex-col gap-1 p-0">
             {shareOrder.map((id, index) => {
@@ -1049,7 +1076,9 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     <ShareChannelGlyph id={id} />
                   </span>
                   <span className="min-w-0 flex-1 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {label}
+                    {id === "device"
+                      ? (t.successSystemShare ?? "Share from this device")
+                      : label}
                     {pinned ? (
                       <span className="ml-2 text-xs font-normal text-gray-400">
                         {t.successShortcutOnCard ?? "On card"}
@@ -1141,14 +1170,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               );
             })}
           </ol>
-          <button
-            type="button"
-            onClick={() => void nativeShare()}
-            className={`${ghostBtn} w-full`}
-          >
-            <Share2 className="mr-1.5 h-4 w-4 shrink-0 text-primary" />
-            {t.successSystemShare ?? "Share from this device"}
-          </button>
         </DialogContent>
       </Dialog>
 

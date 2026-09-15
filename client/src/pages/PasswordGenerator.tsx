@@ -461,12 +461,12 @@ const PasswordGenerator: React.FC = () => {
             <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
               <div className="text-center">
                 <h1 className="page-title text-gray-900 dark:text-white">
-                  {t.yourSecurePasswordIs} <span className="text-primary italic">{t.ready}</span>
+                  {t.yourPasswordIs ?? t.yourSecurePasswordIs}{" "}
+                  <span className="text-primary italic">{t.readyToShare ?? t.ready}</span>
                 </h1>
-                <div className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl space-y-1 md:space-y-2">
-                  <p className="m-0">{t.passwordEncryptedInPrivateNote}</p>
-                  <p className="m-0">{t.onlySomeoneWithLinkCanRead}</p>
-                </div>
+                <p className="mt-3 mx-auto max-w-md text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:max-w-3xl">
+                  {t.successReadySubtitle ?? t.passwordEncryptedInPrivateNote}
+                </p>
               </div>
             </section>
 
