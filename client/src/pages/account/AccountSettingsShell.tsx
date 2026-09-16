@@ -36,10 +36,9 @@ export function AccountSettingsShell({
 
   return (
     // Same outer padding as the navbar. Every tab uses this width so the left
-    // nav does not jump. 83.5rem is a little wider than 7xl so the sidebar
-    // lines up with the hanging navbar logo.
+    // nav does not jump when Branding needs the extra canvas for photos.
     <div className="px-4 pb-16 pt-6 sm:px-6 sm:pt-10 lg:px-8">
-      <div className="relative mx-auto max-w-[83.5rem]">
+      <div className="relative mx-auto max-w-7xl">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8 lg:gap-10">
           {/* Sidebar: wide enough for long emails; nav stays readable */}
           <aside className="w-full shrink-0 md:min-w-[15rem] md:w-60 lg:min-w-[17rem] lg:w-64">
