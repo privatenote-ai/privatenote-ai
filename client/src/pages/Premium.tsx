@@ -24,8 +24,13 @@ import { useAuth } from "@/context/AuthContext";
 import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { useBillingPortal } from "@/hooks/useBillingPortal";
 import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
+import {
+  canCancelSubscription,
+  canManageBilling,
+} from "@/utils/billingPortalAccess";
 import { BillingFaqSection } from "@/components/billing/BillingFaqSection";
 import { BILLING_FAQ_ANCHOR } from "@shared/billingFaq";
 import type { Translations } from "@/utils/translations/types";
@@ -40,6 +45,10 @@ type BillingStatus = {
   canChangeSubscription: boolean;
   configuredAccountType: AccountType;
   billingCurrency?: BillingCurrency;
+  billingCustomerLinked?: boolean;
+  billingSubscriptionLinked?: boolean;
+  subscriptionState?: string;
+  cancelAtPeriodEnd?: boolean;
 };
 
 const KB = 1024;
@@ -647,6 +656,7 @@ export default function Premium() {
   const { user } = useAuth();
   const { entitlements } = useAccountEntitlements();
   const { toast } = useToast();
+  const { billingPortalFlow, openBillingPortal } = useBillingPortal();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<PaidPlanId | null>(null);
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
@@ -664,6 +674,17 @@ export default function Premium() {
   const currentPlan: AccountType | null = user
     ? billingStatus?.accountType ?? entitlements.accountType
     : null;
+  const showBillingActions = Boolean(user) && canManageBilling({
+    stripeCustomerLinked:
+      billingStatus?.billingCustomerLinked === true || entitlements.billingCustomerLinked,
+    accountType: currentPlan,
+  });
+  const showCancelSubscription = canCancelSubscription({
+    canManage: showBillingActions,
+    subscriptionState: billingStatus?.subscriptionState ?? entitlements.subscriptionState,
+    subscriptionLinked: billingStatus?.billingSubscriptionLinked,
+    cancelAtPeriodEnd: billingStatus?.cancelAtPeriodEnd,
+  });
 
   useEffect(() => {
     if (!user) {
@@ -685,20 +706,9 @@ export default function Premium() {
   }, [user, entitlements.refreshedAt]);
 
   const openPortal = useCallback(async () => {
-    try {
-      const portal = await apiRequest<{ url: string }>("/api/auth/billing/portal", "POST", {
-        flow: "subscription_update",
-      });
-      window.location.assign(portal.url);
-    } catch {
-      toast({
-        title: t.pricingToastBillingTitle,
-        description: t.pricingToastBillingDesc,
-        variant: "destructive",
-      });
-      setCheckoutBusyPlan(null);
-    }
-  }, [t, toast]);
+    await openBillingPortal("manage");
+    setCheckoutBusyPlan(null);
+  }, [openBillingPortal]);
 
   const startCheckout = useCallback(
     async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
@@ -797,9 +807,37 @@ export default function Premium() {
           {t.pricingHeroSubtitle}
         </p>
         {currentPlan ? (
-          <p className="mx-auto mt-4 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-sm font-medium text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
-            {currentPlanAcknowledgement(currentPlan, t)}
-          </p>
+          <div className="mx-auto mt-4 max-w-2xl space-y-3">
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-2.5 text-sm font-medium text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
+              {currentPlanAcknowledgement(currentPlan, t)}
+            </p>
+            {showBillingActions ? (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  disabled={billingPortalFlow !== null}
+                  onClick={() => void openBillingPortal("manage")}
+                  className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-100 dark:hover:bg-gray-900"
+                >
+                  {billingPortalFlow === "manage"
+                    ? t.authBillingOpening || "Opening..."
+                    : t.authManageBilling || "Manage billing"}
+                </button>
+                {showCancelSubscription ? (
+                  <button
+                    type="button"
+                    disabled={billingPortalFlow !== null}
+                    onClick={() => void openBillingPortal("cancel")}
+                    className="inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold text-gray-600 hover:text-red-700 disabled:opacity-60 dark:text-gray-300 dark:hover:text-red-300"
+                  >
+                    {billingPortalFlow === "cancel"
+                      ? t.authBillingOpening || "Opening..."
+                      : t.authCancelSubscription || "Cancel subscription"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
         <div className="mt-7 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-gray-800 dark:bg-gray-950">
           <button

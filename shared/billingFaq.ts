@@ -86,14 +86,14 @@ const FAQ_DEFS: FaqDef[] = [
     aKey: "billingFaqHowToCancelA",
     question: "How do I cancel so I am not charged again?",
     answer: paragraphs(
-      "Sign in, open Account, then Cancel subscription. That opens Stripe’s billing portal on the cancel flow. You can also choose Manage billing and cancel from there.",
+      "Sign in, then Cancel subscription from the account menu, Account, or Pricing. That opens Stripe’s billing portal on the cancel flow. You can also choose Manage billing and cancel from there.",
       "You will keep paid features until the date shown as “access continues until…”. Nothing further is charged. You can reverse the cancellation in the portal before that date, or start a new plan from Pricing after it ends.",
       "Deleting your account also cancels the subscription. Time left in the current period is not refunded.",
       "There is no self-serve refund for ordinary cancellation. If the portal will not open, email {supportEmail} from the address on the account.",
     ),
     links: [
       { href: "/account", label: "Account — cancel or manage billing", labelKey: "billingFaqLinkAccountCancel" },
-      { href: "/premium", label: "Pricing", labelKey: "billingFaqLinkPricing" },
+      { href: "/premium", label: "Pricing — cancel or manage billing", labelKey: "billingFaqLinkPricing" },
     ],
   },
   {
