@@ -276,8 +276,9 @@ export default function AccountOverview() {
   const canCancelSubscription = subscriptionCanCancel({
     canManage: showBillingActions,
     subscriptionState: entitlements.subscriptionState,
-    subscriptionStatus: summary?.billing?.subscriptionStatus ?? subscriptionStatus,
-    subscriptionLinked: summary?.billing?.stripeSubscriptionLinked,
+    subscriptionStatus: summary?.billing?.subscriptionStatus,
+    subscriptionLinked:
+      summary?.billing?.stripeSubscriptionLinked === true || stripeCustomerLinked,
     cancelAtPeriodEnd,
   });
   const showPlanOptions = accountType === "free" || cancelAtPeriodEnd;

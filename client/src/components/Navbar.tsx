@@ -2,17 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { Menu, X, Lock, Sparkles, Shield, ShieldCheck, FileText, FileLock2, Info, Mail, Key, LogOut, Code2, ChevronDown, History, Palette, SlidersHorizontal, BadgeDollarSign } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useAccountEntitlements } from '@/context/AccountEntitlementsContext';
 import { Logo } from '@/components/Logo';
 import { useLanguage } from '@/context/LanguageContext';
-import { useBillingPortal } from '@/hooks/useBillingPortal';
 import { isLocaleSiteHomeHref, localizedPath } from '@/utils/localizedPath';
 import { shouldEagerPrefetchAuth } from '@/utils/authPrefetch';
 import { PREMIUM_NAV_LINK_PUBLIC } from '@shared/premiumPagePublic';
-import {
-  canCancelSubscription,
-  canManageBilling,
-} from '@/utils/billingPortalAccess';
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -55,18 +49,7 @@ export const Navbar: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isResourcesOpen, setIsResourcesOpen] = useState(false);
   const { user, loading: authLoading, signOut, refresh: refreshAuth } = useAuth();
-  const { entitlements } = useAccountEntitlements();
   const { language, t } = useLanguage();
-  const tx = (key: string, fallback: string) => t[key] || fallback;
-  const { billingPortalFlow, openBillingPortal } = useBillingPortal();
-  const showBillingActions = Boolean(user?.email) && canManageBilling({
-    stripeCustomerLinked: entitlements.billingCustomerLinked,
-    accountType: entitlements.accountType,
-  });
-  const showCancelSubscription = canCancelSubscription({
-    canManage: showBillingActions,
-    subscriptionState: entitlements.subscriptionState,
-  });
   const profileRef = useRef<HTMLDivElement>(null);
   const resourcesRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
@@ -255,36 +238,6 @@ export const Navbar: React.FC = () => {
               >
                 {t.authNavPreferences ?? "Preferences"}
               </NavLink>
-              {showBillingActions ? (
-                <button
-                  type="button"
-                  disabled={billingPortalFlow !== null}
-                  onClick={() => {
-                    closeMenu();
-                    void openBillingPortal("manage");
-                  }}
-                  className="block w-full px-4 py-2 text-left text-sm text-primary hover:text-black dark:text-blue-300 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/60 disabled:opacity-60"
-                >
-                  {billingPortalFlow === "manage"
-                    ? tx("authBillingOpening", "Opening...")
-                    : tx("authManageBilling", "Manage billing")}
-                </button>
-              ) : null}
-              {showCancelSubscription ? (
-                <button
-                  type="button"
-                  disabled={billingPortalFlow !== null}
-                  onClick={() => {
-                    closeMenu();
-                    void openBillingPortal("cancel");
-                  }}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 hover:text-red-700 dark:text-gray-300 dark:hover:bg-gray-800/60 dark:hover:text-red-300 disabled:opacity-60"
-                >
-                  {billingPortalFlow === "cancel"
-                    ? tx("authBillingOpening", "Opening...")
-                    : tx("authCancelSubscription", "Cancel subscription")}
-                </button>
-              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -642,41 +595,6 @@ export const Navbar: React.FC = () => {
               <SlidersHorizontal className="h-4 w-4 shrink-0 opacity-80" />
               <span>{t.authNavPreferences ?? "Preferences"}</span>
             </NavLink>
-            {showBillingActions ? (
-              <button
-                type="button"
-                disabled={billingPortalFlow !== null}
-                onClick={() => {
-                  closeMenu();
-                  void openBillingPortal("manage");
-                }}
-                className={`${mobileItemClass} w-full text-left disabled:opacity-60`}
-              >
-                <BadgeDollarSign className="h-4 w-4 shrink-0 opacity-80" />
-                <span>
-                  {billingPortalFlow === "manage"
-                    ? tx("authBillingOpening", "Opening...")
-                    : tx("authManageBilling", "Manage billing")}
-                </span>
-              </button>
-            ) : null}
-            {showCancelSubscription ? (
-              <button
-                type="button"
-                disabled={billingPortalFlow !== null}
-                onClick={() => {
-                  closeMenu();
-                  void openBillingPortal("cancel");
-                }}
-                className={`${mobileItemClass} w-full text-left text-gray-600 hover:text-red-700 dark:text-gray-300 dark:hover:text-red-300 disabled:opacity-60`}
-              >
-                <span>
-                  {billingPortalFlow === "cancel"
-                    ? tx("authBillingOpening", "Opening...")
-                    : tx("authCancelSubscription", "Cancel subscription")}
-                </span>
-              </button>
-            ) : null}
             <button
               type="button"
               onClick={() => {

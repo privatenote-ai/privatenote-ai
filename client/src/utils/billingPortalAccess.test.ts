@@ -46,6 +46,23 @@ describe("billing portal access", () => {
     assert.equal(
       canCancelSubscription({
         canManage: true,
+        subscriptionState: "manual",
+        subscriptionLinked: true,
+        subscriptionStatus: "active",
+      }),
+      true,
+    );
+    assert.equal(
+      canCancelSubscription({
+        canManage: true,
+        subscriptionState: "manual",
+        subscriptionLinked: true,
+      }),
+      true,
+    );
+    assert.equal(
+      canCancelSubscription({
+        canManage: true,
         subscriptionLinked: false,
       }),
       false,
