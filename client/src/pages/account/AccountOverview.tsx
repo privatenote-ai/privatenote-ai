@@ -12,6 +12,7 @@ import {
   canCancelSubscription as subscriptionCanCancel,
   canManageBilling,
 } from "@/utils/billingPortalAccess";
+import { AccountDangerZone } from "./AccountDangerZone";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -648,6 +649,8 @@ export default function AccountOverview() {
             </div>
           )}
         </section>
+
+        <AccountDangerZone />
       </div>
     </AccountSettingsShell>
   );
