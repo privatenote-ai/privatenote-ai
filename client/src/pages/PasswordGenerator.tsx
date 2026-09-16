@@ -926,7 +926,7 @@ const PasswordGenerator: React.FC = () => {
         <div className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto relative z-10">
             <div className="mb-10">
-              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-transparent">
+              <h2 className="bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-4xl font-display font-bold tracking-[-0.035em] text-transparent sm:text-5xl">
                 {t.faq}
               </h2>
               <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">

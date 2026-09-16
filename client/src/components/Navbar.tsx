@@ -157,7 +157,7 @@ export const Navbar: React.FC = () => {
   const logoInner = (
     <>
       <Logo size={30} className="shrink-0" />
-      <span className="font-bold text-xl sm:text-2xl text-primary dark:text-blue-300">
+      <span className="font-display text-xl font-bold tracking-[-0.035em] text-primary sm:text-2xl dark:text-blue-300">
         privateNote
         <span className="text-xs text-primary align-super ml-0.5 dark:text-blue-300">.ai</span>
       </span>

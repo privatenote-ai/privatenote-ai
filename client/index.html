@@ -84,17 +84,16 @@
 
   <!-- Critical CSS: body/hero colors before Tailwind. The entry stylesheet stays
        render-blocking in production so prerendered HTML does not flash unstyled.
-       Do not preload Inter TTF (~850KB): font-display:optional already skips a late
-       face, and a high-priority preload starves CSS/JS on mobile. -->
+       Production preloads only Satoshi-latin-700 and Inter-latin-400 woff2. -->
   <style id="pn-critical">
-    body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
     @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
     html.dark body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}
     html.light body{background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
-    .page-title{font-size:2.25rem;font-weight:800;letter-spacing:-.025em;line-height:1.1;text-align:center;color:hsl(222.2 84% 4.9%)}
-    @media (min-width:640px){.page-title{font-size:3rem}}
-    @media (min-width:768px){.page-title{font-size:3.75rem}}
-    @media (min-width:768px) and (max-height:900px){.page-title{font-size:3rem;line-height:1.15}}
+    .page-title{font-family:Satoshi,Inter,system-ui,sans-serif;font-size:2.375rem;font-weight:700;letter-spacing:-.035em;line-height:1.08;text-align:center;color:hsl(222.2 84% 4.9%)}
+    @media (min-width:640px){.page-title{font-size:2.625rem}}
+    @media (min-width:768px){.page-title{font-size:3.5rem}}
+    @media (min-width:768px) and (max-height:900px){.page-title{font-size:3.25rem;line-height:1.08}}
     @media (prefers-color-scheme:dark){html:not(.light) .page-title{color:hsl(210 40% 98%)}}
     html.dark .page-title{color:hsl(210 40% 98%)}
     html.light .page-title{color:hsl(222.2 84% 4.9%)}
