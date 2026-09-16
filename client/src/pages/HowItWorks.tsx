@@ -393,7 +393,7 @@ export default function HowItWorks() {
           <div className="space-y-8 pb-8 md:space-y-10 lg:space-y-11">
             <div className="text-center">
               <h1 className="page-title relative z-10 mb-6 bg-clip-text pb-2 leading-[1.05] text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 md:mb-8">
-                {t.howHeroPrefix} <span className="text-primary italic">{t.howHeroAccent}</span>
+                {t.howHeroPrefix} <span className="text-primary not-italic">{t.howHeroAccent}</span>
               </h1>
               <p className="relative z-10 mx-auto max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400 md:text-xl">
                 {t.howHeroSubtitle}

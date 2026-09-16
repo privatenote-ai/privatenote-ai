@@ -63,6 +63,10 @@ export type RecipientLinkDeliveryGate = "ready" | "sign_in" | "upgrade" | "verif
 const COPY_SUCCESS_MS = 1500;
 const ghostBtn =
   "inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800";
+const successActionBtn =
+  "inline-flex h-11 w-full min-w-0 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-800 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800";
+const successBurnBtn =
+  "inline-flex h-11 w-full min-w-0 items-center justify-center gap-2 rounded-md border border-rose-200 bg-white px-3 text-sm font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-900 dark:bg-gray-950 dark:text-rose-300 dark:hover:bg-rose-950/40";
 
 function WhatsAppGlyph() {
   return (
@@ -345,7 +349,6 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const deliverySent = recipientLinkDelivery?.status === "sent";
   const deliveryFailed = recipientLinkDelivery?.status === "failed";
   const canSubmitDelivery = recipientLinkDeliveryGate === "ready" && Boolean(onDeliverRecipientLink);
-  const nameEditLabel = t.successNameEdit ?? "Edit";
   const burnLabel = t.successBurnThisOne ?? "Burn this one";
   const shareYourWay = t.successShareItYourWay ?? "Share it your way";
   const qrScanLabel = t.successQrScanToOpen ?? "Scan to open this secure note";
@@ -510,7 +513,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         <section className="px-4 sm:px-6 lg:px-8 pt-1">
           <div className="text-center">
             <h1 className="page-title text-gray-900 dark:text-white">
-              {headingPrefix} <span className="text-primary italic">{headingAccent}</span>
+              {headingPrefix} <span className="text-primary not-italic">{headingAccent}</span>
             </h1>
             <p className="mt-2 mx-auto max-w-3xl text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-3 md:text-xl">
               {subtitleLine}
@@ -536,10 +539,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
 
         <div className="relative mt-11 px-4 sm:mt-12 sm:px-6">
           <div className="mx-auto w-full max-w-[960px] rounded-[20px] border border-gray-200/90 bg-white px-5 py-6 shadow-[0_10px_28px_-18px_rgba(15,23,42,0.28)] sm:px-7 sm:py-7 dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.65)]">
-            <div className={`flex gap-2.5 sm:gap-3 ${linkInspecting ? "items-start" : "items-center"}`}>
-              <div className="success-plain-field flex min-w-0 flex-1 items-start gap-2.5 rounded-[13px] border border-gray-200 bg-[#f7faff] px-3 py-2 dark:border-gray-700 dark:bg-gray-950">
+            <div className={`flex gap-2.5 ${linkInspecting ? "items-start" : "items-stretch"}`}>
+              <div
+                className={`success-plain-field flex min-w-0 flex-1 items-center gap-2.5 rounded-md border border-gray-200 bg-[#f7faff] px-3 dark:border-gray-700 dark:bg-gray-950 ${
+                  linkInspecting ? "min-h-11 items-start py-2" : "h-11"
+                }`}
+              >
                 <Link2
-                  className="mt-0.5 h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+                  className={`h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400 ${
+                    linkInspecting ? "mt-0.5" : ""
+                  }`}
                   aria-hidden
                 />
                 <textarea
@@ -586,18 +595,18 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               </button>
             </div>
 
-            <div className="mt-4 flex flex-col items-center gap-1 sm:mt-5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-1">
+            <div className="mt-4 flex flex-col gap-2.5 sm:mt-5 sm:flex-row sm:items-stretch">
               {nameEditing ? (
                 <div
-                  className="flex min-w-0 w-full max-w-md flex-col gap-1 px-2 py-1 sm:w-auto sm:min-w-[16rem]"
+                  className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 dark:border-gray-600 dark:bg-gray-900"
                   onBlur={(event) => {
                     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                       setNameEditing(false);
                     }
                   }}
                 >
-                  <label className="flex min-w-0 items-center gap-2">
-                    <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+                  <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
+                  <label className="flex min-w-0 flex-1 items-center">
                     <span className="sr-only">{nameActionLabel}</span>
                     <input
                       id="success-note-label"
@@ -613,79 +622,61 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                         }
                       }}
                       placeholder={nameActionLabel}
-                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-gray-950 placeholder:text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-sm dark:text-gray-100 dark:placeholder:text-gray-400"
+                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-semibold text-gray-950 placeholder:text-gray-500 focus:outline-none dark:text-gray-100 dark:placeholder:text-gray-400"
                     />
                   </label>
-                  <p
-                    className="m-0 pl-6 text-[11px] leading-snug text-gray-500 dark:text-gray-400"
-                    onMouseDown={(event) => event.preventDefault()}
-                  >
-                    {namePrivacyHint}
-                  </p>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => setNameEditing(true)}
-                  className="success-quiet-btn inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                  className={`${successActionBtn} sm:flex-1`}
                 >
-                  <Tag className="h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden />
-                  {trimmedLabel ? (
-                    <>
-                      <span className="truncate">{trimmedLabel}</span>
-                      <span className="shrink-0 text-gray-400" aria-hidden>
-                        ·
-                      </span>
-                      <span className="shrink-0 text-primary">{nameEditLabel}</span>
-                    </>
-                  ) : (
-                    nameActionLabel
-                  )}
+                  <Tag className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  <span className="truncate">{trimmedLabel || nameActionLabel}</span>
                 </button>
               )}
-
-              <div
-                className="hidden h-7 w-px shrink-0 bg-gray-200 sm:block lg:mx-1 dark:bg-gray-700"
-                aria-hidden
-              />
 
               <button
                 type="button"
                 onClick={onCreateNewNote}
-                className="success-quiet-btn inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className={`${successActionBtn} sm:flex-1`}
               >
-                <CirclePlus className="h-4 w-4 shrink-0" aria-hidden />
-                {createAnotherLabel}
+                <CirclePlus className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                <span className="truncate">{createAnotherLabel}</span>
               </button>
 
               {showBurn ? (
-                <>
-                  <div
-                    className="hidden h-7 w-px shrink-0 bg-gray-200 sm:block lg:mx-1 dark:bg-gray-700"
-                    aria-hidden
-                  />
-                  {noteRevoked ? (
-                    <p
-                      className="inline-flex min-h-11 items-center gap-1.5 px-2 text-sm font-medium text-rose-700 dark:text-rose-300"
-                      role="status"
-                    >
-                      <Ban className="h-4 w-4 shrink-0" aria-hidden />
+                noteRevoked ? (
+                  <p
+                    className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
+                    role="status"
+                  >
+                    <Ban className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="truncate">
                       {t.notificationRevokeSuccessTitle ?? "Note revoked"}
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setRevokeDialogOpen(true)}
-                      disabled={revoking || !onRevoke}
-                      className="success-quiet-btn inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/50 disabled:cursor-not-allowed disabled:opacity-60 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
-                    >
-                      <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+                    </span>
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setRevokeDialogOpen(true)}
+                    disabled={revoking || !onRevoke}
+                    className={`${successBurnBtn} sm:flex-1`}
+                  >
+                    <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="truncate">
                       {revoking ? t.notificationRevoking ?? "Revoking..." : burnLabel}
-                    </button>
-                  )}
-                </>
+                    </span>
+                  </button>
+                )
               ) : null}
             </div>
+            {nameEditing ? (
+              <p className="m-0 mt-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                {namePrivacyHint}
+              </p>
+            ) : null}
 
             <div className="mt-4 border-t border-gray-200 pt-4 sm:mt-5 sm:pt-5 dark:border-gray-800">
               <div className="grid grid-cols-4 gap-x-0.5 gap-y-2 sm:grid-cols-7 sm:gap-1">

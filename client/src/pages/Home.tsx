@@ -124,7 +124,7 @@ const Home: React.FC = () => {
                   <span className="block">
                     {t.homeHeroMobileLine1 ?? t.homeHeroLine1}
                   </span>
-                  <span className="pn-hero-l2 mt-0.5 block text-primary">
+                  <span className="pn-hero-l2 mt-0.5 block text-primary not-italic">
                     {t.homeHeroMobileLine2 ?? t.homeHeroLine2}
                   </span>
                 </span>
@@ -132,7 +132,7 @@ const Home: React.FC = () => {
                   <span className="block">
                     {t.homeHeroLine1}
                   </span>
-                  <span className="pn-hero-l2 mt-1 block text-primary">
+                  <span className="pn-hero-l2 mt-1 block text-primary not-italic">
                     {t.homeHeroLine2}
                   </span>
                 </span>
