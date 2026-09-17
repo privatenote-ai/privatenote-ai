@@ -303,7 +303,7 @@
 
 @layer components {
   .page-title {
-    @apply font-display text-[2.375rem] font-bold leading-[1.08] tracking-[0.02em] sm:text-[2.625rem] md:text-[3.5rem];
+    @apply font-display text-[2.375rem] font-bold leading-[1.08] tracking-[0em] sm:text-[2.625rem] md:text-[3.5rem];
   }
 
   .success-hand-accent {
