@@ -11,7 +11,7 @@ import {
   Eye,
   FilePlus2,
   Globe2,
-  Hash,
+  Copy,
   KeyRound,
   Lock,
   Mail,
@@ -66,6 +66,7 @@ import {
   buildProofTimeline,
   deliveryStatusFilterFor,
   formatDeviceClass,
+  formatOpenCountLabel,
   formatProofTimestamp,
   statusLabel,
   type NotificationItem,
@@ -174,30 +175,44 @@ function formatExpiryLabel(seconds: number, t: Record<string, string>): string {
 function createOptionChips(
   metadata: AccountActivityCreateMetadata | null | undefined,
   t: Record<string, string>,
+  counts?: { openCount?: number | null; maxReads?: number | null },
 ): OptionChip[] {
-  if (!metadata) return [];
+  if (!metadata && counts == null) return [];
   const chips: OptionChip[] = [];
-  if (metadata.hasVoiceMessage) {
+  if (metadata?.hasVoiceMessage) {
     chips.push({
       key: "voice",
       label: t.authActivityChipVoiceMessage ?? "Voice recording",
       Icon: Mic,
     });
-  } else if (metadata.hasAttachment) {
+  } else if (metadata?.hasAttachment) {
     chips.push({
       key: "attachment",
       label: t.authActivityChipAttachment ?? "Encrypted file",
       Icon: Paperclip,
     });
   }
-  if (metadata.passwordProtected) {
+  if (metadata?.passwordProtected) {
     chips.push({
       key: "password",
       label: t.authActivityChipPassword ?? "Password",
       Icon: KeyRound,
     });
   }
-  if (typeof metadata.maxReads === "number") {
+  const trackedMax =
+    typeof counts?.maxReads === "number" && counts.maxReads > 0 ? counts.maxReads : null;
+  const trackedUsed = typeof counts?.openCount === "number" ? counts.openCount : null;
+  const maxReads = trackedMax ?? (typeof metadata?.maxReads === "number" ? metadata.maxReads : null);
+  if (trackedMax != null || trackedUsed != null) {
+    const label = formatOpenCountLabel(trackedUsed ?? 0, maxReads, t);
+    if (label) {
+      chips.push({
+        key: "reads",
+        label,
+        Icon: Eye,
+      });
+    }
+  } else if (typeof metadata?.maxReads === "number") {
     chips.push({
       key: "reads",
       label:
@@ -207,7 +222,7 @@ function createOptionChips(
       Icon: Eye,
     });
   }
-  if (typeof metadata.expirySeconds === "number") {
+  if (typeof metadata?.expirySeconds === "number") {
     chips.push({
       key: "expiry",
       label: (t.authActivityChipExpiry ?? "Expires in {v}").replace(
@@ -217,7 +232,7 @@ function createOptionChips(
       Icon: Timer,
     });
   }
-  if (metadata.aiEnhanced) {
+  if (metadata?.aiEnhanced) {
     chips.push({
       key: "ai",
       label:
@@ -229,35 +244,35 @@ function createOptionChips(
       Icon: Sparkles,
     });
   }
-  if (metadata.notifyOnOpen) {
+  if (metadata?.notifyOnOpen) {
     chips.push({
       key: "alert-open",
       label: t.authActivityChipAlertOpen ?? "Open alerts",
       Icon: Bell,
     });
   }
-  if (metadata.notifyOnDestroyed) {
+  if (metadata?.notifyOnDestroyed) {
     chips.push({
       key: "alert-destroy",
       label: t.authActivityChipAlertDestroy ?? "Destroy alerts",
       Icon: Bell,
     });
   }
-  if (metadata.notifyOnAttachmentDownload) {
+  if (metadata?.notifyOnAttachmentDownload) {
     chips.push({
       key: "alert-download",
       label: t.authActivityChipAlertDownload ?? "Download alerts",
       Icon: Download,
     });
   }
-  if (metadata.requireRecipientVerification) {
+  if (metadata?.requireRecipientVerification) {
     chips.push({
       key: "verification",
       label: t.authActivityChipVerification ?? "Recipient verification",
       Icon: ShieldCheck,
     });
   }
-  if (metadata.requireReceiptAck) {
+  if (metadata?.requireReceiptAck) {
     chips.push({
       key: "receipt",
       label: t.authActivityChipReceipt ?? "Receipt confirmation",
@@ -426,12 +441,14 @@ function timelineIconTone(entry: ProofTimelineEntry): string {
 
 function CreateOptionsSection({
   metadata,
+  counts,
   t,
 }: {
   metadata?: AccountActivityCreateMetadata | null;
+  counts?: { openCount?: number | null; maxReads?: number | null };
   t: Record<string, string>;
 }) {
-  const chips = createOptionChips(metadata, t);
+  const chips = createOptionChips(metadata, t, counts);
   if (chips.length === 0) return null;
   return (
     <section className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 px-4 py-4">
@@ -481,7 +498,14 @@ function DeliveryDetail({
   onRevoke: (item: NotificationItem) => void;
   t: Record<string, string>;
 }) {
-  const createOptions = <CreateOptionsSection metadata={event.metadata} t={t} />;
+  const { toast } = useToast();
+  const deliveryCounts = event.delivery
+    ? {
+        openCount: event.delivery.openCount,
+        maxReads: event.delivery.maxReads ?? event.metadata?.maxReads,
+      }
+    : undefined;
+  const createOptions = <CreateOptionsSection metadata={event.metadata} counts={deliveryCounts} t={t} />;
 
   if (event.type === "note_opened") {
     return (
@@ -548,6 +572,25 @@ function DeliveryDetail({
   const country = delivery.openCountry?.trim() || unavailable;
   const device = formatDeviceClass(delivery.openDeviceClass, t);
   const browser = delivery.openBrowser?.trim() || unavailable;
+  const noteId = delivery.noteId?.trim() || event.noteId?.trim() || "";
+  const opensLabel = formatOpenCountLabel(
+    delivery.openCount ?? 0,
+    delivery.maxReads ?? event.metadata?.maxReads,
+    t,
+  );
+
+  const copyNoteId = async () => {
+    if (!noteId) return;
+    try {
+      await navigator.clipboard.writeText(noteId);
+      toast({ title: t.authActivityNoteIdCopied ?? "Note ID copied" });
+    } catch {
+      toast({
+        title: t.authActivityNoteIdCopyFailed ?? "Could not copy note ID",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -579,11 +622,29 @@ function DeliveryDetail({
                 />
                 {statusLabel(delivery.status, t, { hasVoiceMessage })}
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-                <Hash className="h-3 w-3" aria-hidden />
-                {delivery.displayNoteId.replace(/^#/, "")}
-              </span>
+              {opensLabel ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  <Eye className="h-3 w-3" aria-hidden />
+                  {opensLabel}
+                </span>
+              ) : null}
             </div>
+            {noteId ? (
+              <div className="flex min-w-0 items-start gap-1.5">
+                <p className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  {noteId}
+                </p>
+                <button
+                  type="button"
+                  className="mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  onClick={() => void copyNoteId()}
+                  aria-label={t.authActivityCopyNoteId ?? "Copy note ID"}
+                  title={t.authActivityCopyNoteId ?? "Copy note ID"}
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+            ) : null}
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               {hasRecipientEmail ? (
                 <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -935,7 +996,9 @@ export default function AccountActivity() {
     const exportRows = events
       .filter((event) => event.delivery)
       .map((event) => ({
-        reference: event.delivery!.displayNoteId,
+        reference: event.delivery!.noteId,
+        openCount: event.delivery!.openCount ?? 0,
+        maxReads: event.delivery!.maxReads ?? event.metadata?.maxReads ?? null,
         label: noteLabels[event.noteId ?? ""] ?? event.delivery!.label ?? null,
         folder: event.delivery!.folder ?? null,
         tags: event.delivery!.tags ?? [],
@@ -1287,7 +1350,16 @@ export default function AccountActivity() {
                     }
                     const desc = eventDescription(ev);
                     const delivery = canTrackDelivery ? ev.delivery : null;
-                    const chips = createOptionChips(ev.metadata, t).slice(0, 4);
+                    const chips = createOptionChips(
+                      ev.metadata,
+                      t,
+                      delivery
+                        ? {
+                            openCount: delivery.openCount,
+                            maxReads: delivery.maxReads ?? ev.metadata?.maxReads,
+                          }
+                        : undefined,
+                    ).slice(0, 4);
                     const selected = selectedId === ev.id;
                     const namedLabel =
                       (ev.noteId ? noteLabels[ev.noteId]?.trim() : "") ||
@@ -1319,6 +1391,11 @@ export default function AccountActivity() {
                               {namedLabel ? (
                                 <p className="truncate text-sm font-semibold tracking-tight text-foreground">
                                   {namedLabel}
+                                </p>
+                              ) : null}
+                              {ev.noteId ? (
+                                <p className="truncate font-mono text-[11px] text-muted-foreground" title={ev.noteId}>
+                                  {ev.noteId}
                                 </p>
                               ) : null}
                               {delivery?.folder || delivery?.tags?.length ? (

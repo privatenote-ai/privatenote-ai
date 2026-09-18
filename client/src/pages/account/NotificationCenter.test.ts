@@ -8,6 +8,7 @@ import {
   buildProofTimeline,
   hasProofReport,
   deliveryStatusFilterFor,
+  formatOpenCountLabel,
   type NotificationItem,
 } from "./NotificationCenter.logic.ts";
 
@@ -115,5 +116,15 @@ describe("NotificationCenter helpers", () => {
       timeline.map((entry) => entry.key),
       ["created", "opened", "destroyed"],
     );
+  });
+
+  it("formats persisted open counts as N of M", () => {
+    assert.equal(
+      formatOpenCountLabel(3, 10, { authActivityOpensUsed: "{used} of {max} opens" }),
+      "3 of 10 opens",
+    );
+    assert.equal(formatOpenCountLabel(0, 10, {}), "0 of 10 opens");
+    assert.equal(formatOpenCountLabel(2, null, {}), "2 opens");
+    assert.equal(formatOpenCountLabel(null, 1, {}), "1 read");
   });
 });

@@ -1080,6 +1080,7 @@ async function registerPremiumSentNote(
     alertCustomEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
+    maxReads?: number | null;
   },
 ): Promise<SentNoteRegistration> {
   const notifyOnOpen = input.notifyOnOpen === true;
@@ -1128,6 +1129,7 @@ async function registerPremiumSentNote(
       unopenedReminderHours: input.unopenedReminderHours,
       expiresAt: input.expiresAt,
       proofEnabled: true,
+      maxReads: input.maxReads,
     });
     return {
       recipientGateRequired: requireRecipientVerification,
@@ -9784,6 +9786,7 @@ export async function registerRoutes(
           typeof requestBody?.alertCustomEmail === "string" ? requestBody.alertCustomEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
+        maxReads: maxReadsForCreate.maxReads,
       });
 
       if (registration.recipientGateRequired && !registration.recipientGateApplied) {
@@ -10257,6 +10260,8 @@ export async function registerRoutes(
 
     if (doResponse.ok) {
       let noteDestroyed = false;
+      let revealReadCount: number | null = null;
+      let revealMaxReads: number | null = null;
       try {
         type RevealJson = {
           content?: string;
@@ -10274,6 +10279,8 @@ export async function registerRoutes(
         // Note is "destroyed" when it has been read the maximum number of times
         const maxReads = data.maxReads ?? 0;
         const readCount = data.readCount ?? 0;
+        revealMaxReads = maxReads > 0 ? maxReads : null;
+        revealReadCount = readCount;
         const destroyed = maxReads > 0 && readCount >= maxReads;
         noteDestroyed = destroyed;
         const noteForAnalytics: Note = {
@@ -10308,6 +10315,7 @@ export async function registerRoutes(
             return result;
           },
           noteDestroyed,
+          { readCount: revealReadCount, maxReads: revealMaxReads },
         );
       } catch (error) {
         console.warn("[SENT_NOTES] Failed to process sent-note lifecycle:", error);
@@ -10469,6 +10477,8 @@ export async function registerRoutes(
           expiresAt: row.expires_at,
           destroyedAt: row.destroyed_at,
           revokedAt: row.revoked_at,
+          openCount: typeof row.open_count === "number" ? row.open_count : 0,
+          maxReads: typeof row.max_reads === "number" ? row.max_reads : null,
         },
       },
       200,

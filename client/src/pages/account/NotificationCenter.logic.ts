@@ -28,6 +28,8 @@ export type NotificationItem = {
   tags?: string[];
   unopenedReminderAt?: string | null;
   unopenedRemindedAt?: string | null;
+  openCount?: number | null;
+  maxReads?: number | null;
 };
 
 export type TimePeriod = "today" | "yesterday" | "this_week" | "earlier";
@@ -150,6 +152,35 @@ export function formatDeviceClass(raw: string | null | undefined, t: Record<stri
   if (value === "desktop") return t.proofDeviceDesktop ?? "Desktop";
   if (!value) return t.proofUnavailable ?? "Not available";
   return raw!;
+}
+
+export function formatOpenCountLabel(
+  openCount: number | null | undefined,
+  maxReads: number | null | undefined,
+  t: Record<string, string>,
+): string | null {
+  const used =
+    typeof openCount === "number" && Number.isFinite(openCount) && openCount >= 0
+      ? Math.floor(openCount)
+      : null;
+  const max =
+    typeof maxReads === "number" && Number.isFinite(maxReads) && maxReads > 0
+      ? Math.floor(maxReads)
+      : null;
+  if (used != null && max != null) {
+    return (t.authActivityOpensUsed ?? "{used} of {max} opens")
+      .replace("{used}", String(used))
+      .replace("{max}", String(max));
+  }
+  if (max != null) {
+    return max === 1
+      ? (t.authActivityChipOneRead ?? "1 read")
+      : (t.authActivityChipReads ?? "{n} reads").replace("{n}", String(max));
+  }
+  if (used != null && used > 0) {
+    return (t.authActivityOpensCount ?? "{n} opens").replace("{n}", String(used));
+  }
+  return null;
 }
 
 export function statusLabel(
