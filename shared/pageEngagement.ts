@@ -1,8 +1,30 @@
+import {
+  addEngagedMsToHistogram,
+  mergeEngagedHistograms,
+} from "./engagedTime";
+import { isSearchReferrer, type ReferrerType } from "./referrerCategory";
 import { isLocaleHomeSegment } from "./supportedLanguages";
+import { utmCampaignKey, type SanitizedUtm } from "./utmSanitize";
 
 export const MAX_VISIBLE_MS_PER_FLUSH = 20 * 60 * 1000;
 export const MAX_ANALYTICS_PATH_LENGTH = 160;
 export const MAX_STORED_PAGES_PER_DAY = 250;
+export const MAX_TRANSITIONS_PER_DAY = 200;
+export const MAX_UTM_CAMPAIGNS_PER_DAY = 80;
+
+export const SEO_LANDING_PATHS = [
+  "/",
+  "/one-time-link",
+  "/privnote-alternative",
+  "/secure-file-transfer",
+  "/password-generator",
+  "/developers",
+  "/developers/mcp",
+  "/developers/cli",
+  "/auth",
+  "/account",
+  "/premium",
+] as const;
 /** Write shards per UTC day so ingest is not a single hot KV key (~1 write/sec). */
 export const ENGAGEMENT_WRITE_SHARDS = 16;
 /** Admin reads merge shards+legacy; keep this under the Worker subrequest budget. */
@@ -87,6 +109,7 @@ export const PAGE_ENGAGEMENT_LABELS: Record<PageEngagementKey, string> = {
 const EXACT_PATH_TITLES: Record<string, string> = {
   "/": "Home",
   "/password-generator": "Password share",
+  "/one-time-link": "One-time link",
   "/privnote-alternative": "Privnote alternative",
   "/secure-file-transfer": "File share",
   "/privacy-tools": "Privacy tools",
@@ -134,7 +157,28 @@ export function isLegacyEngagementKey(page: string): page is PageEngagementKey {
 
 export interface DailyPageEngagement {
   visits: Record<string, number>;
+  /** Engaged seconds (legacy field name kept for existing KV records). */
   visibleSeconds: Record<string, number>;
+  uniqueSessions?: Record<string, number>;
+  bounces?: Record<string, number>;
+  exits?: Record<string, number>;
+  engagedHistogram?: Record<string, number[]>;
+  transitions?: Record<string, number>;
+  referrerSessions?: Record<string, number>;
+  searchOriginSessions?: Record<string, number>;
+  utmCampaignSessions?: Record<string, number>;
+  ctaClicks?: Record<string, number>;
+  sessionsOpenedNote?: number;
+  sessionsCreatedNote?: number;
+  recipientLoopCompleted?: number;
+  noteCreationsByLanding?: Record<string, number>;
+  signupsByLanding?: Record<string, number>;
+  authStartsByLanding?: Record<string, number>;
+  premiumByLanding?: Record<string, number>;
+  checkoutByLanding?: Record<string, number>;
+  notesByReferrer?: Record<string, number>;
+  signupsByReferrer?: Record<string, number>;
+  premiumByReferrer?: Record<string, number>;
 }
 
 export interface AggregatedPageEngagement {
@@ -153,6 +197,26 @@ export function createEmptyDailyPageEngagement(): DailyPageEngagement {
   return {
     visits: {},
     visibleSeconds: {},
+    uniqueSessions: {},
+    bounces: {},
+    exits: {},
+    engagedHistogram: {},
+    transitions: {},
+    referrerSessions: {},
+    searchOriginSessions: {},
+    utmCampaignSessions: {},
+    ctaClicks: {},
+    sessionsOpenedNote: 0,
+    sessionsCreatedNote: 0,
+    recipientLoopCompleted: 0,
+    noteCreationsByLanding: {},
+    signupsByLanding: {},
+    authStartsByLanding: {},
+    premiumByLanding: {},
+    checkoutByLanding: {},
+    notesByReferrer: {},
+    signupsByReferrer: {},
+    premiumByReferrer: {},
   };
 }
 
@@ -212,7 +276,7 @@ export function isStoredPageKey(value: string): boolean {
   return isSafeExactPath(value);
 }
 
-function remapCounts(source: Record<string, number> | undefined): Record<string, number> {
+function remapPageCounts(source: Record<string, number> | undefined): Record<string, number> {
   const out: Record<string, number> = {};
   for (const [key, value] of Object.entries(source || {})) {
     const page = migrateLegacyPageKey(key);
@@ -224,11 +288,55 @@ function remapCounts(source: Record<string, number> | undefined): Record<string,
   return out;
 }
 
+function remapLooseCounts(source: Record<string, number> | undefined, maxKeyLength = 80): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(source || {})) {
+    if (typeof key !== "string" || key.length === 0 || key.length > maxKeyLength) continue;
+    const n = Math.floor(Number(value) || 0);
+    if (n <= 0) continue;
+    out[key] = (out[key] || 0) + n;
+  }
+  return out;
+}
+
+function addCountMaps(
+  into: Record<string, number>,
+  from: Record<string, number> | undefined,
+  cap?: number,
+): void {
+  for (const [key, value] of Object.entries(from || {})) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    if (cap && !(key in into) && Object.keys(into).length >= cap) continue;
+    into[key] = (into[key] || 0) + Math.floor(n);
+  }
+}
+
 export function normalizeDailyPageEngagement(raw: DailyPageEngagement | undefined | null): DailyPageEngagement {
   const source = raw || createEmptyDailyPageEngagement();
   return {
-    visits: remapCounts(source.visits),
-    visibleSeconds: remapCounts(source.visibleSeconds),
+    visits: remapPageCounts(source.visits),
+    visibleSeconds: remapPageCounts(source.visibleSeconds),
+    uniqueSessions: remapPageCounts(source.uniqueSessions),
+    bounces: remapPageCounts(source.bounces),
+    exits: remapPageCounts(source.exits),
+    engagedHistogram: { ...(source.engagedHistogram || {}) },
+    transitions: remapLooseCounts(source.transitions, 120),
+    referrerSessions: remapLooseCounts(source.referrerSessions, 24),
+    searchOriginSessions: remapPageCounts(source.searchOriginSessions),
+    utmCampaignSessions: remapLooseCounts(source.utmCampaignSessions, 80),
+    ctaClicks: remapLooseCounts(source.ctaClicks, 80),
+    sessionsOpenedNote: Math.max(0, Math.floor(Number(source.sessionsOpenedNote) || 0)),
+    sessionsCreatedNote: Math.max(0, Math.floor(Number(source.sessionsCreatedNote) || 0)),
+    recipientLoopCompleted: Math.max(0, Math.floor(Number(source.recipientLoopCompleted) || 0)),
+    noteCreationsByLanding: remapPageCounts(source.noteCreationsByLanding),
+    signupsByLanding: remapPageCounts(source.signupsByLanding),
+    authStartsByLanding: remapPageCounts(source.authStartsByLanding),
+    premiumByLanding: remapPageCounts(source.premiumByLanding),
+    checkoutByLanding: remapPageCounts(source.checkoutByLanding),
+    notesByReferrer: remapLooseCounts(source.notesByReferrer, 24),
+    signupsByReferrer: remapLooseCounts(source.signupsByReferrer, 24),
+    premiumByReferrer: remapLooseCounts(source.premiumByReferrer, 24),
   };
 }
 
@@ -239,17 +347,46 @@ export function mergeDailyPageEngagement(
   const base = normalizeDailyPageEngagement(baseMetrics);
   const add = normalizeDailyPageEngagement(addMetrics);
   const merged = createEmptyDailyPageEngagement();
-  const addCounts = (into: Record<string, number>, from: Record<string, number>) => {
-    for (const [key, value] of Object.entries(from)) {
-      const n = Number(value);
-      if (!Number.isFinite(n) || n <= 0) continue;
-      into[key] = (into[key] || 0) + Math.floor(n);
-    }
-  };
-  addCounts(merged.visits, base.visits);
-  addCounts(merged.visits, add.visits);
-  addCounts(merged.visibleSeconds, base.visibleSeconds);
-  addCounts(merged.visibleSeconds, add.visibleSeconds);
+  addCountMaps(merged.visits, base.visits);
+  addCountMaps(merged.visits, add.visits);
+  addCountMaps(merged.visibleSeconds, base.visibleSeconds);
+  addCountMaps(merged.visibleSeconds, add.visibleSeconds);
+  addCountMaps(merged.uniqueSessions!, base.uniqueSessions);
+  addCountMaps(merged.uniqueSessions!, add.uniqueSessions);
+  addCountMaps(merged.bounces!, base.bounces);
+  addCountMaps(merged.bounces!, add.bounces);
+  addCountMaps(merged.exits!, base.exits);
+  addCountMaps(merged.exits!, add.exits);
+  merged.engagedHistogram = mergeEngagedHistograms(base.engagedHistogram, add.engagedHistogram);
+  addCountMaps(merged.transitions!, base.transitions, MAX_TRANSITIONS_PER_DAY);
+  addCountMaps(merged.transitions!, add.transitions, MAX_TRANSITIONS_PER_DAY);
+  addCountMaps(merged.referrerSessions!, base.referrerSessions);
+  addCountMaps(merged.referrerSessions!, add.referrerSessions);
+  addCountMaps(merged.searchOriginSessions!, base.searchOriginSessions);
+  addCountMaps(merged.searchOriginSessions!, add.searchOriginSessions);
+  addCountMaps(merged.utmCampaignSessions!, base.utmCampaignSessions, MAX_UTM_CAMPAIGNS_PER_DAY);
+  addCountMaps(merged.utmCampaignSessions!, add.utmCampaignSessions, MAX_UTM_CAMPAIGNS_PER_DAY);
+  addCountMaps(merged.ctaClicks!, base.ctaClicks);
+  addCountMaps(merged.ctaClicks!, add.ctaClicks);
+  merged.sessionsOpenedNote = (base.sessionsOpenedNote || 0) + (add.sessionsOpenedNote || 0);
+  merged.sessionsCreatedNote = (base.sessionsCreatedNote || 0) + (add.sessionsCreatedNote || 0);
+  merged.recipientLoopCompleted = (base.recipientLoopCompleted || 0) + (add.recipientLoopCompleted || 0);
+  addCountMaps(merged.noteCreationsByLanding!, base.noteCreationsByLanding);
+  addCountMaps(merged.noteCreationsByLanding!, add.noteCreationsByLanding);
+  addCountMaps(merged.signupsByLanding!, base.signupsByLanding);
+  addCountMaps(merged.signupsByLanding!, add.signupsByLanding);
+  addCountMaps(merged.authStartsByLanding!, base.authStartsByLanding);
+  addCountMaps(merged.authStartsByLanding!, add.authStartsByLanding);
+  addCountMaps(merged.premiumByLanding!, base.premiumByLanding);
+  addCountMaps(merged.premiumByLanding!, add.premiumByLanding);
+  addCountMaps(merged.checkoutByLanding!, base.checkoutByLanding);
+  addCountMaps(merged.checkoutByLanding!, add.checkoutByLanding);
+  addCountMaps(merged.notesByReferrer!, base.notesByReferrer);
+  addCountMaps(merged.notesByReferrer!, add.notesByReferrer);
+  addCountMaps(merged.signupsByReferrer!, base.signupsByReferrer);
+  addCountMaps(merged.signupsByReferrer!, add.signupsByReferrer);
+  addCountMaps(merged.premiumByReferrer!, base.premiumByReferrer);
+  addCountMaps(merged.premiumByReferrer!, add.premiumByReferrer);
   return merged;
 }
 
@@ -268,9 +405,10 @@ export function parsePageEngagementFlush(body: unknown): PageEngagementFlush | n
   if (!page) return null;
 
   const visits = rec.visits === 1 ? 1 : 0;
+  const engagedRaw = rec.engagedMs ?? rec.visibleMs;
   const visibleMs = Math.min(
     MAX_VISIBLE_MS_PER_FLUSH,
-    Math.max(0, Math.floor(Number(rec.visibleMs) || 0)),
+    Math.max(0, Math.floor(Number(engagedRaw) || 0)),
   );
 
   if (visits === 0 && visibleMs === 0) {
@@ -302,6 +440,127 @@ export function applyEngagementFlush(
     if (seconds > 0) {
       next.visibleSeconds[page] = (next.visibleSeconds[page] || 0) + seconds;
     }
+    next.engagedHistogram = next.engagedHistogram || {};
+    next.engagedHistogram[page] = addEngagedMsToHistogram(next.engagedHistogram[page], flush.visibleMs);
   }
+  return next;
+}
+
+function bumpPage(map: Record<string, number>, page: string, n = 1): void {
+  map[page] = (map[page] || 0) + n;
+}
+
+export function applySessionStarted(
+  current: DailyPageEngagement,
+  input: { page: string; referrerType: ReferrerType; utm: SanitizedUtm },
+): DailyPageEngagement {
+  const next = normalizeDailyPageEngagement(current);
+  const page = migrateLegacyPageKey(input.page);
+  next.uniqueSessions = next.uniqueSessions || {};
+  bumpPage(next.uniqueSessions, page);
+  next.referrerSessions = next.referrerSessions || {};
+  next.referrerSessions[input.referrerType] = (next.referrerSessions[input.referrerType] || 0) + 1;
+  if (isSearchReferrer(input.referrerType)) {
+    next.searchOriginSessions = next.searchOriginSessions || {};
+    bumpPage(next.searchOriginSessions, page);
+  }
+  const campaign = utmCampaignKey(input.utm);
+  if (campaign) {
+    next.utmCampaignSessions = next.utmCampaignSessions || {};
+    if (
+      campaign in next.utmCampaignSessions ||
+      Object.keys(next.utmCampaignSessions).length < MAX_UTM_CAMPAIGNS_PER_DAY
+    ) {
+      next.utmCampaignSessions[campaign] = (next.utmCampaignSessions[campaign] || 0) + 1;
+    }
+  }
+  return next;
+}
+
+export function applyPageTransition(
+  current: DailyPageEngagement,
+  fromPage: string,
+  toPage: string,
+): DailyPageEngagement {
+  const next = normalizeDailyPageEngagement(current);
+  const from = migrateLegacyPageKey(fromPage);
+  const to = migrateLegacyPageKey(toPage);
+  const key = `${from}\t${to}`;
+  next.transitions = next.transitions || {};
+  if (key in next.transitions || Object.keys(next.transitions).length < MAX_TRANSITIONS_PER_DAY) {
+    next.transitions[key] = (next.transitions[key] || 0) + 1;
+  }
+  return next;
+}
+
+export function applySessionSummary(
+  current: DailyPageEngagement,
+  input: {
+    landingPage: string;
+    exitPage: string;
+    pageCount: number;
+    openedNote: boolean;
+    createdNote: boolean;
+    recipientLoop: boolean;
+    viewedAuth: boolean;
+    startedSignup: boolean;
+    viewedPremium: boolean;
+    startedCheckout: boolean;
+    referrerType?: ReferrerType;
+  },
+): DailyPageEngagement {
+  const next = normalizeDailyPageEngagement(current);
+  const landing = migrateLegacyPageKey(input.landingPage);
+  const exit = migrateLegacyPageKey(input.exitPage);
+  next.exits = next.exits || {};
+  bumpPage(next.exits, exit);
+  if (input.pageCount <= 1) {
+    next.bounces = next.bounces || {};
+    bumpPage(next.bounces, landing);
+  }
+  if (input.openedNote) next.sessionsOpenedNote = (next.sessionsOpenedNote || 0) + 1;
+  if (input.createdNote) {
+    next.sessionsCreatedNote = (next.sessionsCreatedNote || 0) + 1;
+    next.noteCreationsByLanding = next.noteCreationsByLanding || {};
+    bumpPage(next.noteCreationsByLanding, landing);
+    if (input.referrerType) {
+      next.notesByReferrer = next.notesByReferrer || {};
+      next.notesByReferrer[input.referrerType] = (next.notesByReferrer[input.referrerType] || 0) + 1;
+    }
+  }
+  if (input.recipientLoop) next.recipientLoopCompleted = (next.recipientLoopCompleted || 0) + 1;
+  if (input.viewedAuth) {
+    next.authStartsByLanding = next.authStartsByLanding || {};
+    bumpPage(next.authStartsByLanding, landing);
+  }
+  if (input.startedSignup) {
+    next.signupsByLanding = next.signupsByLanding || {};
+    bumpPage(next.signupsByLanding, landing);
+    if (input.referrerType) {
+      next.signupsByReferrer = next.signupsByReferrer || {};
+      next.signupsByReferrer[input.referrerType] = (next.signupsByReferrer[input.referrerType] || 0) + 1;
+    }
+  }
+  if (input.viewedPremium) {
+    next.premiumByLanding = next.premiumByLanding || {};
+    bumpPage(next.premiumByLanding, landing);
+    if (input.referrerType) {
+      next.premiumByReferrer = next.premiumByReferrer || {};
+      next.premiumByReferrer[input.referrerType] = (next.premiumByReferrer[input.referrerType] || 0) + 1;
+    }
+  }
+  if (input.startedCheckout) {
+    next.checkoutByLanding = next.checkoutByLanding || {};
+    bumpPage(next.checkoutByLanding, landing);
+  }
+  return next;
+}
+
+export function applyCtaClick(current: DailyPageEngagement, page: string, ctaId: string): DailyPageEngagement {
+  const next = normalizeDailyPageEngagement(current);
+  const path = migrateLegacyPageKey(page);
+  next.ctaClicks = next.ctaClicks || {};
+  next.ctaClicks[path] = (next.ctaClicks[path] || 0) + 1;
+  next.ctaClicks[ctaId] = (next.ctaClicks[ctaId] || 0) + 1;
   return next;
 }

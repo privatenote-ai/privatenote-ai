@@ -2,14 +2,22 @@ import React, { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { trackNamedEvent } from "@/utils/productAnalytics";
+import type { AnalyticsNamedEvent } from "@shared/analyticsEvents";
 
 type CopyableCodeBlockProps = {
   code: string;
   className?: string;
   compact?: boolean;
+  analyticsEvent?: AnalyticsNamedEvent;
 };
 
-export function CopyableCodeBlock({ code, className = "", compact = false }: CopyableCodeBlockProps) {
+export function CopyableCodeBlock({
+  code,
+  className = "",
+  compact = false,
+  analyticsEvent,
+}: CopyableCodeBlockProps) {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -18,6 +26,7 @@ export function CopyableCodeBlock({ code, className = "", compact = false }: Cop
     try {
       await navigator.clipboard.writeText(code);
       setCopied(true);
+      if (analyticsEvent) trackNamedEvent(analyticsEvent);
       toast({ title: t.copiedToClipboard });
       window.setTimeout(() => setCopied(false), 2000);
     } catch {

@@ -1,7 +1,11 @@
+import { ANALYTICS_IDLE_TIMEOUT_MS } from "@shared/analyticsRetention";
 import { canonicalizeAnalyticsPath, type AnalyticsPageId } from "@shared/pageEngagement";
-import { hasPagesSameOriginApiProxy } from "@shared/pagesAppHosts";
-
-const FLUSH_MS = 15_000;
+import {
+  beginAnalyticsSession,
+  recordAnalyticsPath,
+  takeAnalyticsSessionSummary,
+} from "@/utils/analyticsSession";
+import { trackAnalytics } from "@/utils/productAnalytics";
 
 function isPrerender(): boolean {
   return Boolean((window as Window & { __PRERENDER__?: boolean }).__PRERENDER__);
@@ -16,42 +20,19 @@ function isEmbeddedPreview(): boolean {
   return false;
 }
 
-function analyticsUrl(): string {
-  const host = typeof window !== "undefined" ? window.location.hostname : "";
-  const base = hasPagesSameOriginApiProxy(host)
-    ? ""
-    : (import.meta.env.VITE_API_URL || "").trim();
-  return `${base}/api/analytics/event`;
-}
-
-function postEngagement(payload: Record<string, unknown>, keepalive: boolean): void {
-  const json = JSON.stringify(payload);
-  const url = analyticsUrl();
-  if (keepalive && typeof navigator.sendBeacon === "function") {
-    try {
-      const ok = navigator.sendBeacon(url, new Blob([json], { type: "text/plain;charset=UTF-8" }));
-      if (ok) return;
-    } catch {
-      /* fall through to fetch */
-    }
-  }
-  fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: json,
-    keepalive,
-    credentials: "omit",
-  }).catch(() => {});
+function analyticsPathname(): string {
+  return (window.location.pathname || "/").split(/[?#]/)[0] || "/";
 }
 
 class NativePageAnalyticsCollector {
   private page: AnalyticsPageId | null = null;
   private path = "/";
   private visitsPending = 0;
-  private visibleStartedAt = 0;
-  private visibleAccumMs = 0;
-  private flushTimer: number | null = null;
+  private engagedStartedAt = 0;
+  private engagedAccumMs = 0;
+  private lastInteractionAt = 0;
   private started = false;
+  private idleTimer: number | null = null;
 
   start(): void {
     try {
@@ -59,8 +40,14 @@ class NativePageAnalyticsCollector {
       this.started = true;
       document.addEventListener("visibilitychange", this.onVisibility);
       window.addEventListener("pagehide", this.onPageHide);
-      this.setPage(window.location.pathname || "/");
-      this.armTimers();
+      window.addEventListener("focus", this.onFocus);
+      window.addEventListener("blur", this.onBlur);
+      window.addEventListener("pointerdown", this.onInteraction, { passive: true });
+      window.addEventListener("keydown", this.onInteraction);
+      window.addEventListener("scroll", this.onInteraction, { passive: true });
+      this.lastInteractionAt = Date.now();
+      this.setPage(analyticsPathname());
+      this.sendSessionStarted();
     } catch {
       this.started = false;
     }
@@ -70,13 +57,19 @@ class NativePageAnalyticsCollector {
     if (!this.started) return;
     try {
       this.flush({ keepalive: true });
+      this.sendSessionSummary();
     } catch {
       /* ignore */
     }
     this.started = false;
     document.removeEventListener("visibilitychange", this.onVisibility);
     window.removeEventListener("pagehide", this.onPageHide);
-    this.clearTimers();
+    window.removeEventListener("focus", this.onFocus);
+    window.removeEventListener("blur", this.onBlur);
+    window.removeEventListener("pointerdown", this.onInteraction);
+    window.removeEventListener("keydown", this.onInteraction);
+    window.removeEventListener("scroll", this.onInteraction);
+    this.clearIdleTimer();
   }
 
   onRouteChange(pathname: string): void {
@@ -85,10 +78,55 @@ class NativePageAnalyticsCollector {
       const path = pathname.split(/[?#]/)[0] || "/";
       if (path === this.path && this.page) return;
       this.flush({ keepalive: false });
+      const transition = recordAnalyticsPath(path);
+      if (transition) {
+        trackAnalytics({
+          kind: "page_transition",
+          fromPath: transition.from,
+          toPath: transition.to,
+        });
+      }
       this.setPage(path);
     } catch {
       /* never break routing */
     }
+  }
+
+  private sendSessionStarted(): void {
+    const { flags, first } = beginAnalyticsSession(this.path);
+    if (!first) return;
+    const payload: Record<string, unknown> = {
+      kind: "session_started",
+      path: flags.landingPath,
+      referrerType: flags.referrerType,
+    };
+    if (flags.utm.source) payload.utmSource = flags.utm.source;
+    if (flags.utm.medium) payload.utmMedium = flags.utm.medium;
+    if (flags.utm.campaign) payload.utmCampaign = flags.utm.campaign;
+    if (flags.utm.content) payload.utmContent = flags.utm.content;
+    trackAnalytics(payload);
+  }
+
+  private sendSessionSummary(): void {
+    const flags = takeAnalyticsSessionSummary();
+    if (!flags) return;
+    trackAnalytics(
+      {
+        kind: "session_summary",
+        landingPath: flags.landingPath,
+        exitPath: this.page || flags.lastPath,
+        pageCount: flags.pageCount,
+        openedNote: flags.openedNote,
+        createdNote: flags.createdNote,
+        recipientLoop: flags.openedNote && flags.createdNote,
+        viewedAuth: flags.viewedAuth,
+        startedSignup: flags.startedSignup,
+        viewedPremium: flags.viewedPremium,
+        startedCheckout: flags.startedCheckout,
+        referrerType: flags.referrerType,
+      },
+      true,
+    );
   }
 
   private setPage(pathname: string): void {
@@ -96,70 +134,102 @@ class NativePageAnalyticsCollector {
     this.path = pathname.split(/[?#]/)[0] || "/";
     this.page = page;
     this.visitsPending = page ? 1 : 0;
-    this.visibleAccumMs = 0;
-    if (document.visibilityState === "visible") {
-      this.visibleStartedAt = Date.now();
-    } else {
-      this.visibleStartedAt = 0;
+    this.engagedAccumMs = 0;
+    this.engagedStartedAt = this.shouldAccumulate() ? Date.now() : 0;
+    this.armIdleTimer();
+  }
+
+  private shouldAccumulate(): boolean {
+    if (document.visibilityState !== "visible") return false;
+    if (typeof document.hasFocus === "function" && !document.hasFocus()) {
+      return Date.now() - this.lastInteractionAt < ANALYTICS_IDLE_TIMEOUT_MS;
     }
+    return Date.now() - this.lastInteractionAt < ANALYTICS_IDLE_TIMEOUT_MS;
   }
 
-  private armTimers(): void {
-    this.clearTimers();
-    this.flushTimer = window.setInterval(() => this.flush({ keepalive: false }), FLUSH_MS);
+  private onInteraction = (): void => {
+    this.lastInteractionAt = Date.now();
+    if (this.started && this.engagedStartedAt === 0 && this.shouldAccumulate()) {
+      this.engagedStartedAt = Date.now();
+    }
+    this.armIdleTimer();
+  };
+
+  private onFocus = (): void => {
+    this.lastInteractionAt = Date.now();
+    if (this.engagedStartedAt === 0 && this.shouldAccumulate()) {
+      this.engagedStartedAt = Date.now();
+    }
+    this.armIdleTimer();
+  };
+
+  private onBlur = (): void => {
+    this.armIdleTimer();
+  };
+
+  private armIdleTimer(): void {
+    this.clearIdleTimer();
+    this.idleTimer = window.setTimeout(() => {
+      this.pauseEngagedClock();
+    }, ANALYTICS_IDLE_TIMEOUT_MS);
   }
 
-  private clearTimers(): void {
-    if (this.flushTimer != null) {
-      window.clearInterval(this.flushTimer);
-      this.flushTimer = null;
+  private clearIdleTimer(): void {
+    if (this.idleTimer != null) {
+      window.clearTimeout(this.idleTimer);
+      this.idleTimer = null;
     }
   }
 
   private onVisibility = (): void => {
     if (document.visibilityState === "hidden") {
-      this.pauseVisibleClock();
+      this.pauseEngagedClock();
       this.flush({ keepalive: true });
     } else if (document.visibilityState === "visible") {
-      this.visibleStartedAt = Date.now();
+      this.lastInteractionAt = Date.now();
+      this.engagedStartedAt = Date.now();
+      this.armIdleTimer();
     }
   };
 
   private onPageHide = (): void => {
-    this.pauseVisibleClock();
+    this.pauseEngagedClock();
     this.flush({ keepalive: true });
+    this.sendSessionSummary();
   };
 
-  private pauseVisibleClock(): void {
-    if (this.visibleStartedAt > 0) {
-      this.visibleAccumMs += Math.max(0, Date.now() - this.visibleStartedAt);
-      this.visibleStartedAt = 0;
+  private pauseEngagedClock(): void {
+    if (this.engagedStartedAt > 0) {
+      this.engagedAccumMs += Math.max(0, Date.now() - this.engagedStartedAt);
+      this.engagedStartedAt = 0;
     }
   }
 
   private flush(opts: { keepalive: boolean }): void {
     try {
       if (!this.page) return;
-      if (document.visibilityState === "visible" && this.visibleStartedAt > 0) {
-        this.visibleAccumMs += Math.max(0, Date.now() - this.visibleStartedAt);
-        this.visibleStartedAt = Date.now();
+      if (this.shouldAccumulate() && this.engagedStartedAt > 0) {
+        this.engagedAccumMs += Math.max(0, Date.now() - this.engagedStartedAt);
+        this.engagedStartedAt = Date.now();
+      } else {
+        this.pauseEngagedClock();
       }
       const visits = this.visitsPending;
-      const visibleMs = this.visibleAccumMs;
-      if (visits === 0 && visibleMs < 500) {
+      const engagedMs = this.engagedAccumMs;
+      if (visits === 0 && engagedMs < 500) {
         return;
       }
-      postEngagement(
+      trackAnalytics(
         {
           kind: "engagement",
           path: this.path,
           visits,
-          visibleMs,
+          engagedMs,
         },
         opts.keepalive,
       );
       this.visitsPending = 0;
-      this.visibleAccumMs = 0;
+      this.engagedAccumMs = 0;
     } catch {
       /* never throw into the page */
     }

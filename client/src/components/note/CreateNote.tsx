@@ -106,6 +106,11 @@ import { isVideoMessageFile } from "@/utils/videoMessageRecording";
 import { isCameraCaptureSupported, isCapturedPhotoFile } from "@/utils/photoCapture";
 import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
+import {
+  markAnalyticsCreatedNote,
+  markAnalyticsCreationStarted,
+} from "@/utils/analyticsSession";
+import { trackNamedEvent } from "@/utils/productAnalytics";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import type { AiPostGenTransform } from "./AiComposer";
@@ -1711,6 +1716,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     }
 
     setIsLoading(true);
+    if (markAnalyticsCreationStarted()) {
+      trackNamedEvent("note_creation_started");
+    }
     setAttachmentProgress(
       hasAttachments
         ? {
@@ -2197,6 +2205,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
       clearCreateNoteAuthDraft();
       recordWebNoteCreated();
+      markAnalyticsCreatedNote();
 
       const deliveryEmailForCreate = applyEmailLinkToRecipient
         ? trimmedLinkDeliveryEmail.toLowerCase()
@@ -2285,6 +2294,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     try {
       await navigator.clipboard.writeText(noteUrl);
       setSuccessLinkCopied(true);
+      trackNamedEvent("note_link_copied");
     } catch {
       toast({
         title: t.toastCouldNotCopyLinkTitle,
@@ -2296,6 +2306,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
   const shareLink = async () => {
     if (!noteUrl) return;
+    trackNamedEvent("share_action_selected");
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ url: noteUrl });

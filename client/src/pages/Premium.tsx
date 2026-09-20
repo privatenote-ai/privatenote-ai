@@ -26,6 +26,11 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
+import {
+  markAnalyticsStartedCheckout,
+  markAnalyticsViewedPremium,
+} from "@/utils/analyticsSession";
+import { trackCta, trackNamedEvent } from "@/utils/productAnalytics";
 import { BillingFaqSection } from "@/components/billing/BillingFaqSection";
 import { BILLING_FAQ_ANCHOR } from "@shared/billingFaq";
 import type { Translations } from "@/utils/translations/types";
@@ -652,6 +657,11 @@ export default function Premium() {
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
   const lp = (path: string) => localizedPath(path, language);
 
+  useEffect(() => {
+    markAnalyticsViewedPremium();
+    trackNamedEvent("premium_viewed");
+  }, []);
+
   const displayCurrency = useMemo(
     () =>
       billingStatus?.billingCurrency === "usd" || billingStatus?.billingCurrency === "eur"
@@ -704,6 +714,11 @@ export default function Premium() {
     async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {
       if (currentPlan === plan) return;
       setCheckoutBusyPlan(plan);
+      if (markAnalyticsStartedCheckout()) {
+        trackNamedEvent("checkout_started");
+        trackNamedEvent("pricing_cta_clicked");
+        trackCta(plan === "business_premium" ? "premium_business" : "premium_starter", "/premium");
+      }
       try {
         const checkout = await apiRequest<{ url: string; mode?: string }>(
           "/api/auth/billing/checkout",
