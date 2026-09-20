@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,8 @@ import { isPlausibleEmailFormat } from "@shared/isPlausibleEmailFormat";
 import { sanitizeAuthReturnTo } from "@shared/sanitizeAuthReturnTo";
 import { getTurnstileSiteKeyForClient } from "@/lib/turnstileClient";
 import { ensureTurnstileScript } from "@/lib/turnstileScript";
+import { markAnalyticsStartedSignup, markAnalyticsViewedAuth } from "@/utils/analyticsSession";
+import { trackNamedEvent } from "@/utils/productAnalytics";
 import { Loader2 } from "lucide-react";
 import type { Translations } from "@/utils/translations/types";
 
@@ -139,6 +141,14 @@ export default function Auth({ mode: _mode = "sign-in" }: { mode?: AuthMode }) {
   }, []);
   const isCloudAssistSignIn = signInContext.purpose === "cloud_assist";
   const isFileAttachSignIn = signInContext.purpose === "file_attach";
+
+  useEffect(() => {
+    markAnalyticsViewedAuth();
+    trackNamedEvent("auth_page_viewed");
+    if (_mode === "sign-up" && markAnalyticsStartedSignup()) {
+      trackNamedEvent("signup_started");
+    }
+  }, [_mode]);
 
   const resetAuthTurnstile = useCallback(() => {
     setTurnstileToken(null);

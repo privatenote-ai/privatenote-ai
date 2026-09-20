@@ -17,8 +17,16 @@ import {
   mergeDailyMetrics,
   normalizeDailyMetrics,
 } from "@shared/analyticsMetrics";
+import type { ClientAnalyticsEvent } from "@shared/clientAnalyticsEvents";
+import type { AnalyticsIngest } from "@shared/analyticsEvents";
+import { namedEventToClientCountKey } from "@shared/analyticsEvents";
+import { ANALYTICS_AGGREGATE_TTL_SECONDS } from "@shared/analyticsRetention";
 import {
+  applyCtaClick,
   applyEngagementFlush,
+  applyPageTransition,
+  applySessionStarted,
+  applySessionSummary,
   createEmptyDailyPageEngagement,
   engagementReadKvKeys,
   engagementShardKvKey,
@@ -86,7 +94,8 @@ export interface IStorage {
   trackBlogView(slug: string): Promise<void>;
   trackAccountSignup(): Promise<void>;
   trackAccountLogin(): Promise<void>;
-  trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void>;
+  trackClientEvent(event: ClientAnalyticsEvent): Promise<void>;
+  ingestAnalyticsEvent(event: AnalyticsIngest): Promise<void>;
   trackPageView(page: 'file-share' | 'password-share'): Promise<void>;
   trackPageEngagement(flush: PageEngagementFlush): Promise<void>;
   getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement>;
@@ -368,9 +377,9 @@ class MemStorage {
     
     // Track content length distribution
     const contentLength = note.content.length;
-    if (contentLength < 100) {
+    if (contentLength < 10 * 1024) {
       metrics.contentLengthDistribution.short++;
-    } else if (contentLength >= 100 && contentLength <= 1000) {
+    } else if (contentLength < 1024 * 1024) {
       metrics.contentLengthDistribution.medium++;
     } else {
       metrics.contentLengthDistribution.long++;
@@ -412,7 +421,8 @@ class MemStorage {
 
   async trackAccountSignup(): Promise<void> { /* MemStorage no-op */ }
   async trackAccountLogin(): Promise<void> { /* MemStorage no-op */ }
-  async trackClientEvent(_event: 'wrong_password' | 'qr_share'): Promise<void> { /* MemStorage no-op */ }
+  async trackClientEvent(_event: ClientAnalyticsEvent): Promise<void> { /* MemStorage no-op */ }
+  async ingestAnalyticsEvent(_event: AnalyticsIngest): Promise<void> { /* MemStorage no-op */ }
   async trackPageView(_page: 'file-share' | 'password-share'): Promise<void> { /* MemStorage no-op */ }
   async trackPageEngagement(_flush: PageEngagementFlush): Promise<void> { /* MemStorage no-op */ }
   async getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement> {
@@ -460,7 +470,9 @@ class KVAnalyticsStorage {
 
   private async saveDailyMetrics(date: Date, metrics: DailyMetrics): Promise<void> {
     const key = this.getDailyKey(date);
-    await this.kv.put(key, JSON.stringify(metrics));
+    await this.kv.put(key, JSON.stringify(metrics), {
+      expirationTtl: ANALYTICS_AGGREGATE_TTL_SECONDS,
+    });
   }
 
   private buildAnalyticsData(date: Date, metricsType: AnalyticsMetricsType, metrics: DailyMetrics): AnalyticsData {
@@ -614,9 +626,9 @@ class KVAnalyticsStorage {
     }
 
     const contentLength = note.content.length;
-    if (contentLength < 100) {
+    if (contentLength < 10 * 1024) {
       metrics.contentLengthDistribution.short++;
-    } else if (contentLength >= 100 && contentLength <= 1000) {
+    } else if (contentLength < 1024 * 1024) {
       metrics.contentLengthDistribution.medium++;
     } else {
       metrics.contentLengthDistribution.long++;
@@ -694,14 +706,16 @@ class KVAnalyticsStorage {
     await this.saveDailyMetrics(today, metrics);
   }
 
-  async trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void> {
+  async trackClientEvent(event: ClientAnalyticsEvent): Promise<void> {
     const today = new Date();
     const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
-    if (event === 'wrong_password') {
+    if (event === "wrong_password") {
       metrics.wrongPasswordAttempts = (metrics.wrongPasswordAttempts ?? 0) + 1;
-    } else if (event === 'qr_share') {
+    } else if (event === "qr_share") {
       metrics.qrSharesGenerated = (metrics.qrSharesGenerated ?? 0) + 1;
     }
+    metrics.clientEventCounts = metrics.clientEventCounts || {};
+    metrics.clientEventCounts[event] = (metrics.clientEventCounts[event] ?? 0) + 1;
     await this.saveDailyMetrics(today, metrics);
   }
 
@@ -721,7 +735,77 @@ class KVAnalyticsStorage {
     const next = applyEngagementFlush(current, flush);
     const payload = JSON.stringify(next);
     if (payload.length > MAX_ENGAGEMENT_SHARD_JSON_BYTES) return;
-    await this.kv.put(key, payload);
+    await this.kv.put(key, payload, {
+      expirationTtl: ANALYTICS_AGGREGATE_TTL_SECONDS,
+    });
+  }
+
+  private async mutatePageEngagement(
+    apply: (current: DailyPageEngagement) => DailyPageEngagement,
+  ): Promise<void> {
+    const dateKey = getAnalyticsDateKeyUtc(new Date());
+    const entropy = crypto.getRandomValues(new Uint8Array(1))[0] ?? 0;
+    const key = engagementShardKvKey(dateKey, pickEngagementWriteShard(entropy));
+    const stored = await this.loadEngagementRecord(key);
+    const current = stored
+      ? mergeDailyPageEngagement(createEmptyDailyPageEngagement(), stored)
+      : createEmptyDailyPageEngagement();
+    const next = apply(current);
+    const payload = JSON.stringify(next);
+    if (payload.length > MAX_ENGAGEMENT_SHARD_JSON_BYTES) return;
+    await this.kv.put(key, payload, {
+      expirationTtl: ANALYTICS_AGGREGATE_TTL_SECONDS,
+    });
+  }
+
+  async ingestAnalyticsEvent(event: AnalyticsIngest): Promise<void> {
+    if (event.kind === "engagement") {
+      await this.trackPageEngagement({
+        page: event.page,
+        visits: event.visits,
+        visibleMs: event.engagedMs,
+      });
+      return;
+    }
+    if (event.kind === "session_started") {
+      await this.mutatePageEngagement((current) =>
+        applySessionStarted(current, {
+          page: event.page,
+          referrerType: event.referrerType,
+          utm: event.utm,
+        }),
+      );
+      return;
+    }
+    if (event.kind === "page_transition") {
+      await this.mutatePageEngagement((current) =>
+        applyPageTransition(current, event.fromPage, event.toPage),
+      );
+      return;
+    }
+    if (event.kind === "session_summary") {
+      await this.mutatePageEngagement((current) => applySessionSummary(current, event));
+      return;
+    }
+    if (event.kind === "legacy_page") {
+      await this.trackPageView(event.page);
+      return;
+    }
+    const countKey = namedEventToClientCountKey(event.event, event.ctaId);
+    const today = new Date();
+    const metrics = normalizeDailyMetrics(await this.loadDailyMetrics(today));
+    if (event.event === "wrong_password") {
+      metrics.wrongPasswordAttempts = (metrics.wrongPasswordAttempts ?? 0) + 1;
+    } else if (event.event === "qr_share") {
+      metrics.qrSharesGenerated = (metrics.qrSharesGenerated ?? 0) + 1;
+    }
+    metrics.clientEventCounts = metrics.clientEventCounts || {};
+    metrics.clientEventCounts[countKey] = (metrics.clientEventCounts[countKey] ?? 0) + 1;
+    await this.saveDailyMetrics(today, metrics);
+    if (event.event === "cta_clicked" && event.ctaId) {
+      const page = event.page || "/other";
+      await this.mutatePageEngagement((current) => applyCtaClick(current, page, event.ctaId!));
+    }
   }
 
   async getAggregatedPageEngagement(startDate: Date, endDate: Date): Promise<AggregatedPageEngagement> {
@@ -907,8 +991,12 @@ export class CompositeStorage implements IStorage {
     return this.analyticsStorage.trackAccountLogin();
   }
 
-  async trackClientEvent(event: 'wrong_password' | 'qr_share'): Promise<void> {
+  async trackClientEvent(event: ClientAnalyticsEvent): Promise<void> {
     return this.analyticsStorage.trackClientEvent(event);
+  }
+
+  async ingestAnalyticsEvent(event: AnalyticsIngest): Promise<void> {
+    return this.analyticsStorage.ingestAnalyticsEvent(event);
   }
 
   async trackPageView(page: 'file-share' | 'password-share'): Promise<void> {

@@ -14,6 +14,10 @@ Baseline date: 2026-09-14.
 
 **Changed:** IBM Plex Serif is a Business-only reveal typeface.
 
+**Changed:** First-party analytics now measures engaged time (idle tabs excluded), landing-page funnels, and same-session recipient→sender rates as aggregates only. No session ID, visitor ID, or advertising tracker is stored.
+
+**Changed:** Recipient **Create New Note** clicks after a reveal are counted as an aggregate (clicks / reveals), not as unique people or per-note identities.
+
 Tagline: **Share secrets. Leave no trail.**
 
 Site: https://privatenote.ai
@@ -302,7 +306,7 @@ Admin (not a product feature for iOS): `/admin` (Cloudflare Access + token), blo
 - Theme: light, dark, system.
 - Navbar hidden on `/note/*` and most `/auth/*` (shown on magic / email-change / totp).
 - Lazy-route error boundary with stale-chunk reload.
-- First-party page analytics (visits and visible time only; skipped on admin and iframes).
+- First-party page analytics (visits, engaged time, coarse funnel counts, and aggregate recipient Create New Note clicks after reveal; skipped on admin and iframes; no session ID or advertising).
 - `llms.txt` / `llms-full.txt` for agents.
 
 ---

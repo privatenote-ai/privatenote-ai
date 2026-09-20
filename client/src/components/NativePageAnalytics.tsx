@@ -6,8 +6,8 @@ import {
 } from "@/utils/nativePageAnalytics";
 
 /**
- * First-party page tracker (visits and visible time only).
- * Mounted once in the app shell; skipped on admin/internal routes and iframes.
+ * First-party page tracker (visits and engaged time).
+ * No session ID is sent. Admin routes and iframes are skipped.
  */
 export function NativePageAnalytics() {
   const [location] = useLocation();

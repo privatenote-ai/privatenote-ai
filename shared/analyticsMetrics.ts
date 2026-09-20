@@ -40,6 +40,7 @@ export function createEmptyDailyMetrics(): DailyMetrics {
     accountSignups: 0,
     accountLogins: 0,
     qrSharesGenerated: 0,
+    clientEventCounts: {},
     localAiUsed: 0,
     cloudAiUsed: 0,
     countryDistribution: {},
@@ -70,6 +71,7 @@ export function normalizeDailyMetrics(metrics?: DailyMetrics | null): DailyMetri
     creationEntryPointCounts: metrics.creationEntryPointCounts || {},
     countryDistribution: metrics.countryDistribution || {},
     languageDistribution: metrics.languageDistribution || {},
+    clientEventCounts: { ...(metrics.clientEventCounts || {}) },
     expiryRangeDistribution: {
       ...base.expiryRangeDistribution,
       ...(metrics.expiryRangeDistribution || {}),
@@ -112,6 +114,7 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
     creationEntryPointCounts: { ...(base.creationEntryPointCounts || {}) },
     countryDistribution: { ...(base.countryDistribution || {}) },
     languageDistribution: { ...(base.languageDistribution || {}) },
+    clientEventCounts: { ...(base.clientEventCounts || {}) },
     notesFailedToView: base.notesFailedToView + add.notesFailedToView,
     notesDestroyedOnView: base.notesDestroyedOnView + add.notesDestroyedOnView,
     wrongPasswordAttempts: base.wrongPasswordAttempts + add.wrongPasswordAttempts,
@@ -167,6 +170,9 @@ export function mergeDailyMetrics(baseMetrics: DailyMetrics, addMetrics: DailyMe
   }
   for (const [lang, count] of Object.entries(add.languageDistribution || {})) {
     merged.languageDistribution[lang] = (merged.languageDistribution[lang] || 0) + count;
+  }
+  for (const [event, count] of Object.entries(add.clientEventCounts || {})) {
+    merged.clientEventCounts![event] = (merged.clientEventCounts?.[event] || 0) + count;
   }
 
   return merged;

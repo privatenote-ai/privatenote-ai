@@ -112,9 +112,9 @@ export interface DailyMetrics {
     unlimited: number;
   };
   contentLengthDistribution: {
-    short: number;  // < 100 chars
-    medium: number; // 100-1000 chars
-    long: number;   // > 1000 chars
+    short: number;  // ciphertext under 10 KB
+    medium: number; // 10 KB – 1 MB
+    long: number;   // over 1 MB
   };
 
   // --- Engagement & funnel ---
@@ -134,6 +134,8 @@ export interface DailyMetrics {
   // --- Feature adoption ---
   /** QR code share events reported by the client. */
   qrSharesGenerated: number;
+  /** Client beacon events keyed by event name (landing-page CTAs, etc.). */
+  clientEventCounts?: Record<string, number>;
   /** Notes enhanced with the local (on-device) AI. */
   localAiUsed: number;
   /** Notes enhanced with the hosted cloud AI. */

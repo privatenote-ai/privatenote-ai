@@ -16,6 +16,9 @@ export const NoteResult: React.FC<NoteResultProps> = ({ noteUrl, onCreateNew }) 
     try {
       await navigator.clipboard.writeText(noteUrl);
       setCopied(true);
+      void import("@/utils/productAnalytics").then(({ trackNamedEvent }) => {
+        trackNamedEvent("note_link_copied");
+      }).catch(() => {});
       toast({
         title: "Copied!",
         description: "Link copied to clipboard",

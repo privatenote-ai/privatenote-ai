@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, CheckCircle2, ExternalLink } from "lucide-react";
 import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
@@ -16,6 +16,8 @@ import { RelatedIntegrations } from "@/components/developers/RelatedIntegrations
 import type { DevIntegrationContent, DevIntegrationCta } from "@/components/developers/types";
 import { useLanguage } from "@/context/LanguageContext";
 import { blogPostPath, localizedPath } from "@/utils/localizedPath";
+import { trackNamedEvent } from "@/utils/productAnalytics";
+import type { AnalyticsNamedEvent } from "@shared/analyticsEvents";
 
 type DeveloperIntegrationPageProps = {
   content: DevIntegrationContent;
@@ -57,6 +59,10 @@ function IntegrationCtaButton({
       target={cta.external ? "_blank" : undefined}
       rel={cta.external ? "noopener noreferrer" : undefined}
       className={className}
+      onClick={() => {
+        if (cta.href.includes("npmjs.com")) trackNamedEvent("npm_link_clicked");
+        if (cta.href.includes("github.com")) trackNamedEvent("github_link_clicked");
+      }}
     >
       {cta.label}
       {icon}
@@ -67,6 +73,16 @@ function IntegrationCtaButton({
 export function DeveloperIntegrationPage({ content, statusLabel }: DeveloperIntegrationPageProps) {
   const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
+
+  useEffect(() => {
+    const event: AnalyticsNamedEvent =
+      content.id === "mcp"
+        ? "mcp_page_viewed"
+        : content.id === "cli"
+          ? "cli_page_viewed"
+          : "developer_page_viewed";
+    trackNamedEvent(event);
+  }, [content.id]);
 
   const sectionNav = [
     { href: "#why", label: t.devSectionWhy, id: "why" },
@@ -165,7 +181,10 @@ export function DeveloperIntegrationPage({ content, statusLabel }: DeveloperInte
             {content.quickStartNote}
           </p>
         ) : null}
-        <CopyableCodeBlock code={content.quickStartCode} />
+        <CopyableCodeBlock
+          code={content.quickStartCode}
+          analyticsEvent="install_command_copied"
+        />
       </section>
 
       {content.playground ? (

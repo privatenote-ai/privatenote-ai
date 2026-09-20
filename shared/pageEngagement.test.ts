@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   analyticsPageLabel,
   applyEngagementFlush,
+  applySessionStarted,
+  applySessionSummary,
   canonicalizeAnalyticsPath,
   createEmptyDailyPageEngagement,
   engagementLegacyKvKey,
@@ -110,6 +112,35 @@ describe("applyEngagementFlush + merge", () => {
     const merged = mergeDailyPageEngagement(day, other);
     assert.equal(merged.visits["/"], 2);
     assert.equal(merged.visits["/premium"], 1);
+  });
+});
+
+describe("applySessionSummary recipient loop", () => {
+  it("counts same-session open-then-create without a session id", () => {
+    let day = createEmptyDailyPageEngagement();
+    day = applySessionStarted(day, {
+      page: "/note",
+      referrerType: "direct",
+      utm: { source: null, medium: null, campaign: null, content: null },
+    });
+    day = applySessionSummary(day, {
+      landingPage: "/note",
+      exitPage: "/",
+      pageCount: 3,
+      openedNote: true,
+      createdNote: true,
+      recipientLoop: true,
+      viewedAuth: false,
+      startedSignup: false,
+      viewedPremium: false,
+      startedCheckout: false,
+      referrerType: "direct",
+    });
+    assert.equal(day.sessionsOpenedNote, 1);
+    assert.equal(day.sessionsCreatedNote, 1);
+    assert.equal(day.recipientLoopCompleted, 1);
+    assert.equal(day.noteCreationsByLanding?.["/note"], 1);
+    assert.equal(JSON.stringify(day).includes("sessionId"), false);
   });
 });
 

@@ -9,7 +9,9 @@ import { parseNoteOpensAtFromBody } from "@shared/noteMetaEligibility";
 import { isValidReceiptAckTokenHash } from "@shared/noteReceiptAck";
 import { sanitizeNoteCreationSource } from "@shared/noteCreationSource";
 import { sanitizeNoteCreationEntryPoint } from "@shared/noteCreationEntryPoint";
-import { MAX_ENGAGEMENT_RANGE_DAYS, parsePageEngagementFlush } from "@shared/pageEngagement";
+import { parseAnalyticsIngest } from "@shared/analyticsEvents";
+import { ANALYTICS_MAX_BODY_BYTES } from "@shared/analyticsRetention";
+import { MAX_ENGAGEMENT_RANGE_DAYS } from "@shared/pageEngagement";
 import {
   normalizeAccountType,
   planFeaturesFor,
@@ -183,6 +185,12 @@ const RATE_LIMIT_FILE_CHUNK_PUT = {
   MAX_REQUESTS: 120,
   WINDOW_SECONDS: 60,
   KEY_PREFIX: "rl:put:file-chunk:",
+};
+
+const RATE_LIMIT_ANALYTICS = {
+  MAX_REQUESTS: 80,
+  WINDOW_SECONDS: 60,
+  KEY_PREFIX: "rl:post:analytics:",
 };
 
 const AI_VERIFICATION = {
@@ -10487,32 +10495,29 @@ export async function registerRoutes(
   // No auth required — only accepts a fixed allow-list of event types.
   if (pathname === "/api/analytics/event" && method === "POST") {
     try {
-      // text/plain sendBeacon and application/json fetch both land here as JSON text.
-      const body = (await readJsonBody(request)) as Record<string, unknown>;
-      const engagement = parsePageEngagementFlush(body);
-      if (engagement) {
-        scheduleAnalyticsWork(ctx, storage.trackPageEngagement(engagement));
-        return jsonResponse({ ok: true }, 200, request);
+      const clientId = getClientIdentifier(request);
+      const analyticsLimit = await checkRateLimit(env, clientId, RATE_LIMIT_ANALYTICS);
+      if (!analyticsLimit.allowed) {
+        return jsonResponse({ message: "Too many analytics requests" }, 429, request);
       }
-      const allowed = ["wrong_password", "qr_share"] as const;
-      type AllowedEvent = typeof allowed[number];
-      const event = typeof body?.event === "string" && (allowed as readonly string[]).includes(body.event)
-        ? (body.event as AllowedEvent)
-        : null;
-      if (event) {
-        scheduleAnalyticsWork(ctx, storage.trackClientEvent(event));
-        return jsonResponse({ ok: true }, 200, request);
+      const text = await request.text();
+      if (text.length > ANALYTICS_MAX_BODY_BYTES) {
+        return jsonResponse({ message: "Payload too large" }, 413, request);
       }
-      const pageAllowed = ["file-share", "password-share"] as const;
-      type AllowedPage = typeof pageAllowed[number];
-      const page = typeof body?.page === "string" && (pageAllowed as readonly string[]).includes(body.page)
-        ? (body.page as AllowedPage)
-        : null;
-      if (page) {
-        scheduleAnalyticsWork(ctx, storage.trackPageView(page));
-        return jsonResponse({ ok: true }, 200, request);
+      let body: unknown = {};
+      if (text) {
+        try {
+          body = JSON.parse(text);
+        } catch {
+          return jsonResponse({ message: "Bad request" }, 400, request);
+        }
       }
-      return jsonResponse({ message: "Invalid event type" }, 400, request);
+      const parsed = parseAnalyticsIngest(body);
+      if (!parsed) {
+        return jsonResponse({ message: "Invalid event type" }, 400, request);
+      }
+      scheduleAnalyticsWork(ctx, storage.ingestAnalyticsEvent(parsed));
+      return jsonResponse({ ok: true }, 200, request);
     } catch {
       return jsonResponse({ message: "Bad request" }, 400, request);
     }
