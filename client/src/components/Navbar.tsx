@@ -143,6 +143,17 @@ export const Navbar: React.FC = () => {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isProfileOpen, isResourcesOpen]);
 
+  const [navSolid, setNavSolid] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      setNavSolid(window.scrollY > 0);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [location]);
+
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
 
@@ -177,8 +188,12 @@ export const Navbar: React.FC = () => {
   const desktopDropdownItem =
     "flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-blue-300 dark:hover:bg-white/[0.06] dark:hover:text-white";
 
-  const navShellClass =
-    "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
+  const navShellClass = [
+    "fixed top-0 left-0 right-0 z-50 overflow-visible pointer-events-auto transition-[background-color,box-shadow,border-color,backdrop-filter] duration-200",
+    navSolid
+      ? "bg-background/95 backdrop-blur-md border-b border-blue-100 shadow-[0_1px_6px_rgba(15,23,42,0.06)] dark:border-gray-800"
+      : "border-b border-transparent bg-transparent",
+  ].join(" ");
 
   const authCluster = user?.email || !isAuthRoute ? (
     user?.email ? (
