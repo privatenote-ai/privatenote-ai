@@ -36,8 +36,10 @@ import {
   PINNED_SUCCESS_SHARE_COUNT,
   moveShareShortcut,
   readShareShortcutOrder,
+  shareChannelCopiesLink,
   shareChannelHref,
   shareChannelKind,
+  shareChannelOpensInSameWindow,
   writeShareShortcutOrder,
   type SuccessShareChannelId,
 } from "@/utils/successShareShortcuts";
@@ -79,21 +81,6 @@ function WhatsAppGlyph() {
   );
 }
 
-function SlackGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
-      <path fill="#E01E5A" d="M6.3 14.1a2.1 2.1 0 1 1-2.1-2.1h2.1v2.1z" />
-      <path fill="#E01E5A" d="M7.4 14.1a2.1 2.1 0 1 1 4.2 0v5.3a2.1 2.1 0 0 1-4.2 0v-5.3z" />
-      <path fill="#36C5F0" d="M9.9 6.3a2.1 2.1 0 1 1 2.1-2.1v2.1H9.9z" />
-      <path fill="#36C5F0" d="M9.9 7.4a2.1 2.1 0 1 1 0 4.2H4.6a2.1 2.1 0 1 1 0-4.2h5.3z" />
-      <path fill="#2EB67D" d="M17.7 9.9a2.1 2.1 0 1 1 2.1 2.1h-2.1V9.9z" />
-      <path fill="#2EB67D" d="M16.6 9.9a2.1 2.1 0 1 1-4.2 0V4.6a2.1 2.1 0 1 1 4.2 0v5.3z" />
-      <path fill="#ECB22E" d="M14.1 17.7a2.1 2.1 0 1 1-2.1 2.1v-2.1h2.1z" />
-      <path fill="#ECB22E" d="M14.1 16.6a2.1 2.1 0 1 1 0-4.2h5.3a2.1 2.1 0 1 1 0 4.2h-5.3z" />
-    </svg>
-  );
-}
-
 function TelegramGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
@@ -116,17 +103,6 @@ function SignalGlyph() {
   );
 }
 
-function DiscordGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M19.3 5.3A17.4 17.4 0 0 0 15 4c-.2.4-.5.9-.6 1.3a15.4 15.4 0 0 0-4.8 0C9.4 4.9 9.1 4.4 8.9 4 7.4 4.3 6 4.8 4.7 5.4 2 9.5 1.3 13.4 1.6 17.3c1.8 1.3 3.5 2.1 5.2 2.7.4-.6.8-1.2 1.1-1.8-.6-.2-1.2-.5-1.7-.8.1-.1.3-.2.4-.3 3.4 1.6 7.1 1.6 10.5 0 .1.1.3.2.4.3-.5.3-1.1.6-1.7.8.3.6.7 1.2 1.1 1.8 1.7-.5 3.5-1.3 5.3-2.7.4-3.9-.7-7.8-3.1-12zm-11 9.6c-1 0-1.9-1-1.9-2.1s.8-2.2 1.9-2.2 1.9 1 1.9 2.2-.8 2.1-1.9 2.1zm6.9 0c-1 0-1.9-1-1.9-2.1s.8-2.2 1.9-2.2 1.9 1 1.9 2.2-.8 2.1-1.9 2.1z"
-      />
-    </svg>
-  );
-}
-
 function TeamsGlyph() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
@@ -144,16 +120,12 @@ function ShareChannelGlyph({ id }: { id: SuccessShareChannelId }) {
       return <Mail className="h-5 w-5" aria-hidden />;
     case "whatsapp":
       return <WhatsAppGlyph />;
-    case "slack":
-      return <SlackGlyph />;
     case "qr":
       return <QrCode className="h-5 w-5" aria-hidden />;
     case "telegram":
       return <TelegramGlyph />;
     case "signal":
       return <SignalGlyph />;
-    case "discord":
-      return <DiscordGlyph />;
     case "teams":
       return <TeamsGlyph />;
     case "sms":
@@ -171,8 +143,6 @@ function shareChannelIconClass(id: SuccessShareChannelId): string {
       return "text-[#229ED9]";
     case "signal":
       return "text-[#3A76F0]";
-    case "discord":
-      return "text-[#5865F2]";
     case "teams":
       return "text-[#6264A7]";
     case "sms":
@@ -341,14 +311,17 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
     "Encrypted in your browser. Only someone with this link can open it.";
   const copyLabel = t.successCopy ?? "Copy link";
   const copiedLabel = t.successCopied ?? t.copied ?? "Copied";
-  const nameActionLabel = t.successNameThisNote ?? "Name for Activity";
+  const nameActionLabel = t.successNameThisNote ?? t.successNoteLabelTitle ?? "Name this note";
   const namePrivacyHint =
     t.successNoteLabelHint ?? "Only visible to you. Never shared with the recipient.";
   const premiumUpgradeHref = localizedPath("/premium", language);
   const signInHref = localizedPath("/auth/sign-in", language);
   const deliverySent = recipientLinkDelivery?.status === "sent";
   const deliveryFailed = recipientLinkDelivery?.status === "failed";
-  const canSubmitDelivery = recipientLinkDeliveryGate === "ready" && Boolean(onDeliverRecipientLink);
+  const canSubmitDelivery =
+    recipientLinkDeliveryGate === "ready" &&
+    Boolean(onDeliverRecipientLink) &&
+    !noteRevoked;
   const burnLabel = t.successBurnThisOne ?? "Burn this one";
   const shareYourWay = t.successShareItYourWay ?? "Share it your way";
   const qrScanLabel = t.successQrScanToOpen ?? "Scan to open this secure note";
@@ -357,7 +330,9 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
   const showBurn = canRevoke || noteRevoked;
 
   const submitRecipientLinkDelivery = () => {
-    if (!onDeliverRecipientLink || !canSubmitDelivery || recipientLinkDeliveryRetrying) return;
+    if (!onDeliverRecipientLink || !canSubmitDelivery || recipientLinkDeliveryRetrying || noteRevoked) {
+      return;
+    }
     void onDeliverRecipientLink(deliverEmailInput.trim());
   };
 
@@ -434,16 +409,12 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         return t.successShareEmail ?? "Email";
       case "whatsapp":
         return t.successShareWhatsApp ?? "WhatsApp";
-      case "slack":
-        return t.successShareSlack ?? "Slack";
       case "qr":
         return t.qrCode ?? "QR Code";
       case "telegram":
         return t.successShareTelegram ?? "Telegram";
       case "signal":
         return t.successShareSignal ?? "Signal";
-      case "discord":
-        return t.successShareDiscord ?? "Discord";
       case "teams":
         return t.successShareTeams ?? "Teams";
       case "sms":
@@ -695,16 +666,16 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                     </>
                   );
                   if (kind === "link" && href) {
-                    const external = id !== "email" && id !== "sms" && id !== "signal";
+                    const sameWindow = shareChannelOpensInSameWindow(id);
                     return (
                       <a
                         key={id}
                         href={href}
                         className={shareActionClass}
-                        target={external ? "_blank" : undefined}
-                        rel={external ? "noopener noreferrer" : undefined}
+                        target={sameWindow ? undefined : "_blank"}
+                        rel={sameWindow ? undefined : "noopener noreferrer"}
                         onClick={
-                          id === "signal"
+                          shareChannelCopiesLink(id)
                             ? () => void copyLinkForApp(label)
                             : undefined
                         }
@@ -845,6 +816,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               <p className="mt-3 m-0 text-center text-xs leading-snug text-gray-500 dark:text-gray-400">
                 {t.successDeliveryLinkOnly ?? "We send the link, never the note contents."}
               </p>
+              {noteRevoked ? (
+                <p className="mt-2 m-0 text-center text-xs leading-snug text-rose-700 dark:text-rose-300" role="status">
+                  {t.notificationRevokeSuccessBody ?? "The link can no longer be opened."}
+                </p>
+              ) : null}
               {deliveryFailed && recipientLinkDelivery ? (
                 <p className="mt-2 m-0 text-xs leading-snug text-red-700 dark:text-red-300" role="alert">
                   {(
@@ -1115,13 +1091,17 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   {kind === "link" && href ? (
                     <a
                       href={href}
-                      target={id !== "email" && id !== "sms" && id !== "signal" ? "_blank" : undefined}
+                      target={shareChannelOpensInSameWindow(id) ? undefined : "_blank"}
                       rel={
-                        id !== "email" && id !== "sms" && id !== "signal"
-                          ? "noopener noreferrer"
+                        shareChannelOpensInSameWindow(id)
+                          ? undefined
+                          : "noopener noreferrer"
+                      }
+                      onClick={
+                        shareChannelCopiesLink(id)
+                          ? () => void copyLinkForApp(label)
                           : undefined
                       }
-                      onClick={id === "signal" ? () => void copyLinkForApp(label) : undefined}
                       className="success-share-action flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-inherit no-underline"
                     >
                       {shareInner}

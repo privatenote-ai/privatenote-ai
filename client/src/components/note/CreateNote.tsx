@@ -2328,7 +2328,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   const deliverRecipientLink = useCallback(
     async (rawEmail: string, noteUrl?: string) => {
       const url = noteUrl ?? createdNote?.url;
-      if (!url || recipientLinkDeliveryGate !== "ready") return;
+      if (!url || recipientLinkDeliveryGate !== "ready" || noteRevoked) return;
       const email = rawEmail.trim().toLowerCase();
       if (!isPlausibleEmailFormat(email)) {
         toast({
@@ -2402,6 +2402,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
             }
           } else if (error.status === 429) {
             description = "Too many email attempts. Please wait and try again.";
+          } else if (error.status === 409) {
+            setNoteRevoked(true);
+            description =
+              t.notificationRevokeSuccessBody ?? "The link can no longer be opened.";
           }
         }
         toast({
@@ -2415,6 +2419,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     },
     [
       createdNote?.url,
+      noteRevoked,
       recipientLinkDeliveryGate,
       t,
       toast,

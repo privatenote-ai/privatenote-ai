@@ -1469,7 +1469,7 @@ export default function AccountActivity() {
                                 onClick={(e) => openLabelEditor(ev, e)}
                                 disabled={deletingId === ev.id || Boolean(revokingNoteId)}
                                 className="rounded-xl p-2 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100"
-                                aria-label={tx("authActivityEditLabelAria", "Edit note label")}
+                                aria-label={tx("successNoteLabelTitle", "Name this note")}
                               >
                                 <Pencil className="h-4 w-4" aria-hidden />
                               </button>
@@ -1552,7 +1552,7 @@ export default function AccountActivity() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{tx("authActivityEditLabelTitle", "Edit note label")}</DialogTitle>
+            <DialogTitle>{tx("successNoteLabelTitle", "Name this note")}</DialogTitle>
             <DialogDescription>
               {tx(
                 "authActivityEditLabelBody",
@@ -1569,7 +1569,7 @@ export default function AccountActivity() {
           >
             <div className="space-y-1.5">
               <label htmlFor="activity-note-label" className="text-sm font-medium text-foreground">
-                {tx("authActivityNoteLabel", "Note label")}
+                {tx("successNoteLabelTitle", "Name this note")}
               </label>
               <Input
                 id="activity-note-label"

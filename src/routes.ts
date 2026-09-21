@@ -9941,6 +9941,16 @@ export async function registerRoutes(
       return jsonResponse({ error: parsedUrl.error }, 400, request);
     }
 
+    const existingSentNote = await getSentNoteByNoteId(env, id);
+    if (
+      existingSentNote &&
+      (existingSentNote.status === "revoked" ||
+        existingSentNote.status === "destroyed" ||
+        existingSentNote.status === "expired")
+    ) {
+      return jsonResponse({ error: "note_unavailable" }, 409, request);
+    }
+
     const mail = buildRecipientNoteLinkEmail({
       noteUrl: parsedUrl.href,
       senderEmail: user.email,

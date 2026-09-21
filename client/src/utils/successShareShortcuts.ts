@@ -1,15 +1,13 @@
-export const SUCCESS_SHARE_SHORTCUTS_KEY = "privatenote_success_share_shortcuts.v4";
+export const SUCCESS_SHARE_SHORTCUTS_KEY = "privatenote_success_share_shortcuts.v6";
 
 export const SUCCESS_SHARE_CHANNEL_IDS = [
   "email",
   "signal",
   "qr",
   "whatsapp",
-  "slack",
   "device",
-  "telegram",
-  "discord",
   "teams",
+  "telegram",
   "sms",
 ] as const;
 
@@ -20,15 +18,13 @@ export const DEFAULT_SUCCESS_SHARE_ORDER: readonly SuccessShareChannelId[] = [
   "signal",
   "qr",
   "whatsapp",
-  "slack",
+  "teams",
   "device",
   "telegram",
-  "discord",
-  "teams",
   "sms",
 ];
 
-/** Email, Signal, QR, WhatsApp, Slack, and Share from this device, plus More. */
+/** Email, Signal, QR, WhatsApp, Teams, and Share from this device, plus More. */
 export const PINNED_SUCCESS_SHARE_COUNT = 6;
 
 export type SuccessShareChannelKind = "link" | "qr" | "copy-app" | "native";
@@ -36,11 +32,9 @@ export type SuccessShareChannelKind = "link" | "qr" | "copy-app" | "native";
 const CHANNEL_KIND: Record<SuccessShareChannelId, SuccessShareChannelKind> = {
   email: "link",
   whatsapp: "link",
-  slack: "link",
   qr: "qr",
   telegram: "link",
   signal: "link",
-  discord: "copy-app",
   teams: "link",
   sms: "link",
   device: "native",
@@ -50,24 +44,39 @@ export function shareChannelKind(id: SuccessShareChannelId): SuccessShareChannel
   return CHANNEL_KIND[id];
 }
 
+/** Protocol URLs must not open a new browser tab. */
+export function shareChannelOpensInSameWindow(id: SuccessShareChannelId): boolean {
+  return (
+    id === "email" ||
+    id === "sms" ||
+    id === "signal" ||
+    id === "whatsapp" ||
+    id === "telegram" ||
+    id === "teams"
+  );
+}
+
+/** Teams compose can fail silently; copy so the link is still at hand. Signal copies as a fallback. */
+export function shareChannelCopiesLink(id: SuccessShareChannelId): boolean {
+  return id === "signal" || id === "teams";
+}
+
 export function shareChannelHref(id: SuccessShareChannelId, url: string): string | null {
+  const text = encodeURIComponent(url);
   switch (id) {
     case "email":
-      return `mailto:?body=${encodeURIComponent(url)}`;
+      return `mailto:?body=${text}`;
     case "whatsapp":
-      return `https://wa.me/?text=${encodeURIComponent(url)}`;
-    case "slack":
-      return `https://slack.com/share?url=${encodeURIComponent(url)}`;
+      return `whatsapp://send?text=${text}`;
     case "telegram":
-      return `https://t.me/share/url?url=${encodeURIComponent(url)}`;
+      return `tg://msg_url?url=${text}`;
     case "teams":
-      return `https://teams.microsoft.com/share?href=${encodeURIComponent(url)}&referrer=privatenote.ai`;
+      return `msteams://teams.microsoft.com/l/chat/0/0?message=${text}`;
     case "sms":
-      return `sms:?&body=${encodeURIComponent(url)}`;
+      return `sms:?&body=${text}`;
     case "signal":
-      return `sgnl://send?text=${encodeURIComponent(url)}`;
+      return `sgnl://send?text=${text}`;
     case "qr":
-    case "discord":
     case "device":
       return null;
   }
@@ -124,4 +133,3 @@ export function moveShareShortcut(
   next.splice(clamped, 0, id);
   return next;
 }
-

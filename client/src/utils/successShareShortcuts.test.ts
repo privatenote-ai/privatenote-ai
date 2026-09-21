@@ -6,51 +6,73 @@ import {
   PINNED_SUCCESS_SHARE_COUNT,
   moveShareShortcut,
   normalizeShareShortcutOrder,
+  shareChannelCopiesLink,
   shareChannelHref,
   shareChannelKind,
+  shareChannelOpensInSameWindow,
 } from "./successShareShortcuts";
 
 describe("successShareShortcuts", () => {
-  it("pins Email, Signal, QR, WhatsApp, Slack, and Share by default", () => {
+  it("pins Email, Signal, QR, WhatsApp, Teams, and Share by default", () => {
     assert.deepEqual(DEFAULT_SUCCESS_SHARE_ORDER.slice(0, PINNED_SUCCESS_SHARE_COUNT), [
       "email",
       "signal",
       "qr",
       "whatsapp",
-      "slack",
+      "teams",
       "device",
     ]);
     assert.equal(PINNED_SUCCESS_SHARE_COUNT, 6);
+    assert.equal(DEFAULT_SUCCESS_SHARE_ORDER.includes("slack" as never), false);
+    assert.equal(DEFAULT_SUCCESS_SHARE_ORDER.includes("discord" as never), false);
+    assert.ok(
+      DEFAULT_SUCCESS_SHARE_ORDER.indexOf("teams") <
+        DEFAULT_SUCCESS_SHARE_ORDER.indexOf("telegram"),
+    );
   });
 
-  it("fills missing channels and drops unknowns", () => {
-    assert.deepEqual(normalizeShareShortcutOrder(["slack", "nope", "email"]), [
-      "slack",
+  it("fills missing channels, drops unknowns, and ignores retired Slack/Discord ids", () => {
+    assert.deepEqual(normalizeShareShortcutOrder(["teams", "nope", "email", "slack", "discord"]), [
+      "teams",
       "email",
       "signal",
       "qr",
       "whatsapp",
       "device",
       "telegram",
-      "discord",
-      "teams",
       "sms",
     ]);
   });
 
   it("moves a shortcut without dropping others", () => {
-    const next = moveShareShortcut(DEFAULT_SUCCESS_SHARE_ORDER, "telegram", 0);
-    assert.equal(next[0], "telegram");
+    const next = moveShareShortcut(DEFAULT_SUCCESS_SHARE_ORDER, "sms", 0);
+    assert.equal(next[0], "sms");
     assert.equal(next[1], "email");
     assert.equal(next.length, DEFAULT_SUCCESS_SHARE_ORDER.length);
   });
 
-  it("builds share hrefs for messaging apps that have them", () => {
+  it("opens installed apps via protocols instead of marketing websites", () => {
     const url = "https://premium.privatenote.ai/note/abc#key";
-    assert.match(shareChannelHref("telegram", url) ?? "", /t\.me\/share/);
-    assert.match(shareChannelHref("teams", url) ?? "", /teams\.microsoft\.com\/share/);
-    assert.equal(shareChannelKind("signal"), "link");
-    assert.equal(shareChannelKind("discord"), "copy-app");
+    const encoded = encodeURIComponent(url);
+
+    assert.equal(shareChannelHref("whatsapp", url), `whatsapp://send?text=${encoded}`);
+    assert.equal(shareChannelHref("telegram", url), `tg://msg_url?url=${encoded}`);
+    assert.equal(
+      shareChannelHref("teams", url),
+      `msteams://teams.microsoft.com/l/chat/0/0?message=${encoded}`,
+    );
+    assert.equal(shareChannelHref("signal", url), `sgnl://send?text=${encoded}`);
+    assert.match(shareChannelHref("email", url) ?? "", /^mailto:/);
+    assert.match(shareChannelHref("sms", url) ?? "", /^sms:/);
+
+    for (const id of ["whatsapp", "telegram", "teams", "signal"] as const) {
+      assert.equal(shareChannelOpensInSameWindow(id), true);
+      assert.doesNotMatch(shareChannelHref(id, url) ?? "", /https:\/\//);
+    }
+
+    assert.equal(shareChannelCopiesLink("teams"), true);
+    assert.equal(shareChannelCopiesLink("signal"), true);
+    assert.equal(shareChannelCopiesLink("whatsapp"), false);
     assert.equal(shareChannelKind("device"), "native");
     assert.equal(shareChannelHref("qr", url), null);
     assert.equal(shareChannelHref("device", url), null);
