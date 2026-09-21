@@ -279,7 +279,6 @@ export const Navbar: React.FC = () => {
   ) : null;
 
   const resourceLinks: Array<{ href: string; label: string; icon: typeof Shield }> = [
-    { href: lp("/how-it-works"), label: t.howItWorks, icon: Shield },
     { href: lp("/security-resources"), label: t.security, icon: Sparkles },
     { href: lp("/blog"), label: t.blog, icon: FileText },
     { href: lp("/developers"), label: t.developers, icon: Code2 },
@@ -289,7 +288,7 @@ export const Navbar: React.FC = () => {
   return (
     <>
     <nav className={navShellClass}>
-      {/* Desktop ≥ xl only. Below xl the layout is too tight for 6 nav links + logo + auth,
+      {/* Desktop ≥ xl only. Below xl the layout is too tight for the primary links + logo + auth,
           so we keep the mobile hamburger menu through tablet / 13" laptop widths. */}
       <div className="hidden xl:block px-4 sm:px-6 lg:px-8">
         <div className="relative mx-auto flex h-16 max-w-4xl items-center gap-6">
@@ -305,7 +304,7 @@ export const Navbar: React.FC = () => {
 
           {/* Primary links — centered group aligned to the editor column */}
           <nav
-            className="flex min-w-0 flex-1 items-center justify-center gap-x-7 2xl:gap-x-8"
+            className="flex min-w-0 flex-1 items-center justify-center gap-x-5 2xl:gap-x-7"
             aria-label="Primary"
           >
             <NavLink href={lp("/")} closeMenu={closeMenu} className={desktopLink}>
@@ -316,6 +315,9 @@ export const Navbar: React.FC = () => {
             </NavLink>
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
+            </NavLink>
+            <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={desktopLink}>
+              {t.howItWorks}
             </NavLink>
             {PREMIUM_NAV_LINK_PUBLIC ? (
               <NavLink href={lp("/premium")} closeMenu={closeMenu} className={desktopLink}>
