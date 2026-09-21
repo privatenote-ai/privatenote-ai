@@ -7,6 +7,37 @@ import { useLanguage } from '@/context/LanguageContext';
 import { isLocaleSiteHomeHref, localizedPath } from '@/utils/localizedPath';
 import { shouldEagerPrefetchAuth } from '@/utils/authPrefetch';
 import { PREMIUM_NAV_LINK_PUBLIC } from '@shared/premiumPagePublic';
+import { isLocaleHomeRoute } from '@shared/homeSeoLinks';
+
+/** Home has no persistent bar. The real nav slides in only when scrolling up. */
+function useRevealNavbarOnScrollUp(enabled: boolean): boolean {
+  const [shown, setShown] = useState(() => (enabled ? window.scrollY > 48 : true));
+  const lastY = useRef(typeof window === "undefined" ? 0 : window.scrollY);
+
+  useEffect(() => {
+    if (!enabled) {
+      setShown(true);
+      return;
+    }
+    lastY.current = window.scrollY;
+    setShown(window.scrollY > 48);
+    const onScroll = () => {
+      const y = window.scrollY;
+      const prev = lastY.current;
+      lastY.current = y;
+      if (y < 24) {
+        setShown(false);
+        return;
+      }
+      if (y < prev - 4) setShown(true);
+      else if (y > prev + 8) setShown(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [enabled]);
+
+  return shown;
+}
 
 // Custom NavLink component that closes the menu when clicked
 interface NavLinkProps {
@@ -53,6 +84,8 @@ export const Navbar: React.FC = () => {
   const profileRef = useRef<HTMLDivElement>(null);
   const resourcesRef = useRef<HTMLDivElement>(null);
   const [location] = useLocation();
+  const onHome = isLocaleHomeRoute(location.split(/[?#]/)[0] ?? location);
+  const scrollRevealed = useRevealNavbarOnScrollUp(onHome);
 
   const closeMobileSheetsAndProfile = useCallback(() => {
     setMobileSheet("closed");
@@ -177,8 +210,11 @@ export const Navbar: React.FC = () => {
   const desktopDropdownItem =
     "flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-blue-300 dark:hover:bg-white/[0.06] dark:hover:text-white";
 
+  const navRevealed = !onHome || scrollRevealed || mobileSheet !== "closed" || isProfileOpen || isResourcesOpen;
   const navShellClass =
-    "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
+    `fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)] transition-transform duration-300 ease-out ${
+      navRevealed ? "translate-y-0 pointer-events-auto" : "-translate-y-full pointer-events-none"
+    }`;
 
   const authCluster = user?.email || !isAuthRoute ? (
     user?.email ? (
@@ -273,7 +309,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-    <nav className={navShellClass}>
+    <nav className={navShellClass} aria-hidden={!navRevealed}>
       {/* Desktop ≥ xl only. Below xl the layout is too tight for 6 nav links + logo + auth,
           so we keep the mobile hamburger menu through tablet / 13" laptop widths. */}
       <div className="hidden xl:block px-4 sm:px-6 lg:px-8">
