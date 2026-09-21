@@ -127,7 +127,7 @@ const TERMS_COPY: Record<TermsLocale, TermsCopy> = {
       billingList: [
         "Billing in advance: paid plans are charged when you subscribe and then at the start of each renewal period, monthly or annually as you choose. Prices are shown in USD or EUR based on your region, and the exact total appears at Stripe Checkout before you pay.",
         "Automatic renewal: your subscription renews automatically at the price then in force until you cancel it.",
-        "Cancelling: cancel at any time from Account → Manage billing. Cancellation takes effect at the end of the period you have already paid for. You keep your paid features until then, and that period is not refunded.",
+        "Cancelling: cancel at any time from Account → Cancel subscription. Cancellation takes effect at the end of the period you have already paid for. You keep your paid features until then, and that period is not refunded.",
         "Upgrading: an upgrade starts immediately. Stripe charges the difference for the rest of the current period and credits the unused part of your previous plan. Your renewal date does not change.",
         "Downgrading: a downgrade takes effect at the end of the current period, so you keep the higher plan until then.",
         "Failed payments: if a renewal payment fails we email you and keep your paid features for a grace period of at least three days while the payment is retried. If it still fails, the account returns to Free. Notes you already created keep the conditions under which they were created.",

@@ -8,6 +8,22 @@ CI enforces this (`FEATURES.md` job on pull requests). If capability files chang
 
 Baseline date: 2026-09-14.
 
+**New:** After create, a share card offers Email, Signal, WhatsApp, QR, Teams, this device, Telegram, and SMS. Shortcuts can be reordered; six stay pinned. Slack and Discord are omitted until they support compose-with-URL.
+
+**New:** Success headlines differ by type (note, file, password, photo). Mixed text + image uses the note headline.
+
+**Changed:** Anyone can burn a note from the success screen (Free included, via a one-time `burnToken`). Activity revoke of unopened notes stays Starter+. Emailing the link is blocked after burn, same as Copy.
+
+**Changed:** Activity stores how many times a note was opened (`N of M`) on the sent-note row after Reveal, and shows the real note UUID (the `/note/{id}` path id) with copy, not a short hash.
+
+**Changed:** Danger zone / schedule account deletion is on Account overview, not Security.
+
+**Changed:** Manage billing and Cancel subscription are only on Account overview, for paid accounts, using shared portal logic even without a linked Stripe customer id in the client.
+
+**Changed:** Home navbar stays visible but clear until you scroll, then gets a solid background. How it works is a primary nav link, not under Resources.
+
+**Changed:** Display type is Satoshi Bold (hero) with Inter on UI, from small latin woff2 files — not the 850KB Inter variable TTF.
+
 **Changed:** Delayed reveal is now **Scheduled reveal** in the UI, pricing, and docs. Same behavior (`opensAt`).
 
 **Changed:** Account preferred language accepts every PrivateNote UI language (`en`, `de`, `fr`, `es`, `it`, `nl`, `pt`, `sr`, `hr`, `tr`, `pl`), not only English, German, French, and Spanish.
@@ -139,10 +155,14 @@ Requires signed-in verified email for alerts.
 
 ## After create (success screen)
 
+- Headline by type: secure note / file / password / photo. Photo only when every attachment is an image and the body is empty; otherwise note.
+- **Name this note**: private device-local name (same field as Activity). Never sent with the link.
 - Copy link, native share (`navigator.share`), QR code show/hide and share as image.
+- Share shortcuts: Email, Signal, WhatsApp, QR, Teams, this device, Telegram, SMS. User can reorder; six remain pinned. Apps open via installed-app protocols, not marketing websites.
 - Copy / share the note password out of band (never sent to the server).
-- Optional: email the link to a recipient from the success page (Starter+, verified email).
+- Optional: email the link to a recipient from the success page (Starter+, verified email). Blocked after the note is burned, same as Copy.
 - Show whether the link was already emailed.
+- **Burn this note** from the success screen for everyone, including Free (one-time `burnToken`). Later revoke from Activity remains Starter+.
 - Success metadata: expiry, burn/open limit, password set, etc.
 
 ---
@@ -183,11 +203,11 @@ No navbar/footer. Anonymous. Click-to-reveal is always on.
 | `/auth/email-change` | Confirm email change |
 | `/auth/device` | Device-code approve for MCP / Chrome (no code to type; grant is in the URL) |
 | `/extension/connected` | Chrome extension connected landing |
-| `/account` | Overview: plan, billing portal, theme, branding shortcut |
-| `/account/activity` | Sent-notes dashboard, proof of access, revoke unopened, labels |
+| `/account` | Overview: plan, manage billing / cancel (paid), danger zone (schedule deletion), theme, branding shortcut |
+| `/account/activity` | Sent-notes dashboard, proof of access, revoke unopened, labels, open counts, note UUID |
 | `/account/preferences` | Theme, language, note defaults, hosted AI preference, voice format |
 | `/account/branding` | Business reveal branding studio |
-| `/account/security` | Passkeys, TOTP, recovery codes, sessions, change email, delete account |
+| `/account/security` | Passkeys, TOTP, recovery codes, sessions, change email |
 
 ### Auth and security
 
@@ -198,7 +218,7 @@ No navbar/footer. Anonymous. Click-to-reveal is always on.
 - Change email (confirm via emailed link).
 - Sessions: list devices, revoke one, log out of all other devices.
 - Step-up auth for sensitive actions.
-- Delete account.
+- Delete account is scheduled from Account overview (danger zone), not Security.
 - Theme: light / dark / system.
 - Preferred UI language stored on the account (same set as the product UI: English, German, French, Spanish, Italian, Dutch, Portuguese, Serbian, Croatian, Turkish, Polish).
 
@@ -206,9 +226,12 @@ No navbar/footer. Anonymous. Click-to-reveal is always on.
 
 - List sent notes as **events**, never contents: created, opened, expired, destroyed, revoked, receipt confirmed.
 - Chips: voice, attachment, password, expiry, open limit, alerts, verification, receipt.
+- Open counts (`N of M`) stay on the sent-note row after Reveal, when ciphertext is gone.
+- Real note UUID (the `/note/{id}` path id) with copy, not a short hash.
 - Proof-of-access timeline (coarse: when opened, device class, browser — not IP as a product promise).
-- Revoke an **unopened** note (Starter+).
+- Revoke an **unopened** note (Starter+). Free can still burn immediately after create via the success-screen token.
 - Device-only labels; Business can export / load / share labels as a portable file or PrivateNote (still never note content).
+- **Name this note** uses the same wording as the success screen.
 
 ### Branding studio (Business)
 
@@ -304,7 +327,8 @@ Admin (not a product feature for iOS): `/admin` (Cloudflare Access + token), blo
 
 - Languages: English, German, French, Spanish, Italian, Dutch, Portuguese, Serbian (Latin), Croatian, Turkish, Polish.
 - Theme: light, dark, system.
-- Navbar hidden on `/note/*` and most `/auth/*` (shown on magic / email-change / totp).
+- Navbar hidden on `/note/*` and most `/auth/*` (shown on magic / email-change / totp). On home the bar stays visible; it is transparent until scroll, then a solid background. How it works is a primary link.
+- Display type: Satoshi on the hero; Inter on UI.
 - Lazy-route error boundary with stale-chunk reload.
 - First-party page analytics (visits, engaged time, coarse funnel counts, and aggregate recipient Create New Note clicks after reveal; skipped on admin and iframes; no session ID or advertising).
 - `llms.txt` / `llms-full.txt` for agents.
@@ -340,6 +364,7 @@ These are web-runtime constraints, not missing product features. Native iOS can 
 | Receipt acknowledgment | — | Yes | Yes + custom statement |
 | Sent-notes dashboard | — | Yes | Yes |
 | Revoke unopened | — | Yes | Yes |
+| Burn from success screen | Yes | Yes | Yes |
 | Proof of access | — | Yes | Yes |
 | Saved note defaults | — | Yes | Yes |
 | Premium AI templates | — | Yes | Yes |

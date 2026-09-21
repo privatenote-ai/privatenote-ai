@@ -1088,6 +1088,7 @@ async function registerPremiumSentNote(
     alertCustomEmail?: string | null;
     label?: string | null;
     expiresAt?: string | null;
+    maxReads?: number | null;
   },
 ): Promise<SentNoteRegistration> {
   const notifyOnOpen = input.notifyOnOpen === true;
@@ -1136,6 +1137,7 @@ async function registerPremiumSentNote(
       unopenedReminderHours: input.unopenedReminderHours,
       expiresAt: input.expiresAt,
       proofEnabled: true,
+      maxReads: input.maxReads,
     });
     return {
       recipientGateRequired: requireRecipientVerification,
@@ -7371,6 +7373,10 @@ function getReservationKey(id: string): string {
   return `${NOTE_RESERVATION.KEY_PREFIX}${id}`;
 }
 
+function getNoteBurnKey(id: string): string {
+  return `note-burn:${id}`;
+}
+
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -9788,6 +9794,7 @@ export async function registerRoutes(
           typeof requestBody?.alertCustomEmail === "string" ? requestBody.alertCustomEmail : null,
         label: typeof requestBody?.label === "string" ? requestBody.label : null,
         expiresAt: noteForAnalytics?.expiresAt.toISOString() ?? null,
+        maxReads: maxReadsForCreate.maxReads,
       });
 
       if (registration.recipientGateRequired && !registration.recipientGateApplied) {
@@ -9830,6 +9837,33 @@ export async function registerRoutes(
 
 	    if (!doResponse.ok && requestBody?.attachment != null) {
 	      await cleanupNoteFileChunks(env, id, `note create failed with ${doResponse.status}`);
+	    }
+
+	    if (doResponse.ok) {
+	      let burnToken: string | undefined;
+	      if (env.NOTES_KV) {
+	        try {
+	          const token = bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+	          const ttl = Math.min(Math.max(expiryForCreate.seconds, 60), 60 * 60 * 24 * 31);
+	          await env.NOTES_KV.put(getNoteBurnKey(id), await sha256Hex(token), {
+	            expirationTtl: ttl,
+	          });
+	          burnToken = token;
+	        } catch (error) {
+	          console.warn("[ROUTES] Failed to store note burn token:", error);
+	        }
+	      }
+	      let payload: { id?: string } = { id };
+	      try {
+	        payload = (await doResponse.json()) as { id?: string };
+	      } catch {
+	        payload = { id };
+	      }
+	      return jsonResponse(
+	        { ...payload, id: payload.id ?? id, ...(burnToken ? { burnToken } : {}) },
+	        doResponse.status,
+	        request,
+	      );
 	    }
 
 	    return applyCorsHeaders(doResponse as unknown as Response, request);
@@ -9913,6 +9947,16 @@ export async function registerRoutes(
     const parsedUrl = parseDeliverableNoteUrl(noteUrl, id, { allowedHosts });
     if (!parsedUrl.ok) {
       return jsonResponse({ error: parsedUrl.error }, 400, request);
+    }
+
+    const existingSentNote = await getSentNoteByNoteId(env, id);
+    if (
+      existingSentNote &&
+      (existingSentNote.status === "revoked" ||
+        existingSentNote.status === "destroyed" ||
+        existingSentNote.status === "expired")
+    ) {
+      return jsonResponse({ error: "note_unavailable" }, 409, request);
     }
 
     const mail = buildRecipientNoteLinkEmail({
@@ -10234,6 +10278,8 @@ export async function registerRoutes(
 
     if (doResponse.ok) {
       let noteDestroyed = false;
+      let revealReadCount: number | null = null;
+      let revealMaxReads: number | null = null;
       try {
         type RevealJson = {
           content?: string;
@@ -10251,6 +10297,8 @@ export async function registerRoutes(
         // Note is "destroyed" when it has been read the maximum number of times
         const maxReads = data.maxReads ?? 0;
         const readCount = data.readCount ?? 0;
+        revealMaxReads = maxReads > 0 ? maxReads : null;
+        revealReadCount = readCount;
         const destroyed = maxReads > 0 && readCount >= maxReads;
         noteDestroyed = destroyed;
         const noteForAnalytics: Note = {
@@ -10285,6 +10333,7 @@ export async function registerRoutes(
             return result;
           },
           noteDestroyed,
+          { readCount: revealReadCount, maxReads: revealMaxReads },
         );
       } catch (error) {
         console.warn("[SENT_NOTES] Failed to process sent-note lifecycle:", error);
@@ -10349,28 +10398,48 @@ export async function registerRoutes(
     if (!isValidNoteId(id)) {
       return jsonResponse({ error: "Invalid note ID" }, 400, request);
     }
-    if (!env.AUTH_DB) {
+
+    let burnToken: string | null = null;
+    try {
+      const body = (await request.json()) as { burnToken?: unknown };
+      if (typeof body?.burnToken === "string" && body.burnToken.trim()) {
+        burnToken = body.burnToken.trim();
+      }
+    } catch {
+      burnToken = null;
+    }
+
+    const session = await getSessionFromRequest(env, request, { rotate: false });
+    const canRevokeByPlan =
+      Boolean(session?.id) &&
+      planFeaturesFor(await noteCreationAccountType(env, request)).revokeUnopened === true;
+
+    let authorizedByBurnToken = false;
+    if (!canRevokeByPlan) {
+      if (!burnToken || !env.NOTES_KV) {
+        return jsonResponse({ error: "Unauthorized" }, 401, request);
+      }
+      const storedHash = await env.NOTES_KV.get(getNoteBurnKey(id));
+      const presentedHash = await sha256Hex(burnToken);
+      if (!storedHash || !constantTimeEquals(storedHash, presentedHash)) {
+        return jsonResponse({ error: "Unauthorized" }, 401, request);
+      }
+      authorizedByBurnToken = true;
+    } else if (!env.AUTH_DB) {
       return jsonResponse({ error: "Auth database not configured" }, 501, request);
     }
-    const session = await getSessionFromRequest(env, request, { rotate: false });
-    if (!session?.id) {
-      return jsonResponse({ error: "Unauthorized" }, 401, request);
-    }
 
-    const accountType = await noteCreationAccountType(env, request);
-    if (!planFeaturesFor(accountType).revokeUnopened) {
-      return jsonResponse({ error: "premium_required" }, 403, request);
-    }
-
-    const revoked = await revokeSentNote(env, session.id, id);
-    if (!revoked.ok) {
-      if (revoked.error === "already_opened") {
-        return jsonResponse({ error: "already_opened" }, 409, request);
+    if (canRevokeByPlan && session?.id) {
+      const revoked = await revokeSentNote(env, session.id, id);
+      if (!revoked.ok) {
+        if (revoked.error === "already_opened") {
+          return jsonResponse({ error: "already_opened" }, 409, request);
+        }
+        if (revoked.error === "not_configured") {
+          return jsonResponse({ error: "Auth database not configured" }, 501, request);
+        }
+        return jsonResponse({ error: "not_found" }, 404, request);
       }
-      if (revoked.error === "not_configured") {
-        return jsonResponse({ error: "Auth database not configured" }, 501, request);
-      }
-      return jsonResponse({ error: "not_found" }, 404, request);
     }
 
     try {
@@ -10382,6 +10451,9 @@ export async function registerRoutes(
       if (doResponse.ok || doResponse.status === 404) {
         await cleanupNoteFileChunks(env, id, `note revoked (${doResponse.status})`);
         await clearRecipientGate(env, id);
+        if (authorizedByBurnToken) {
+          await env.NOTES_KV.delete(getNoteBurnKey(id));
+        }
       } else {
         console.warn(`[REVOKE] DO delete returned ${doResponse.status} for note ${id}`);
       }
@@ -10423,6 +10495,8 @@ export async function registerRoutes(
           expiresAt: row.expires_at,
           destroyedAt: row.destroyed_at,
           revokedAt: row.revoked_at,
+          openCount: typeof row.open_count === "number" ? row.open_count : 0,
+          maxReads: typeof row.max_reads === "number" ? row.max_reads : null,
         },
       },
       200,

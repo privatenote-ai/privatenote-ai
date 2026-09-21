@@ -327,7 +327,7 @@ export const PrivacyTools: React.FC = () => {
           <header className="mb-14 max-w-3xl lg:mb-16">
             <h1 className="page-title mb-6 max-w-3xl pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
               {t.privacyToolsPageHeroPrefix}{" "}
-              <span className="text-primary italic">{t.privacyToolsPageHeroAccent}</span>
+              <span className="text-primary not-italic">{t.privacyToolsPageHeroAccent}</span>
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400 md:text-xl">
               {t.privacyToolsPageHeroSubtitle}

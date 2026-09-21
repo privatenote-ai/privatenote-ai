@@ -11,13 +11,14 @@ import {
   ensureBlockingEntryStylesheet,
   stripStaleModulePreloads,
 } from "./scripts/deferEntryStylesheet.js";
+import { keepCriticalFontPreloads } from "./scripts/keepCriticalFontPreloads.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 /**
- * After production build: drop the Inter TTF preload (it starves CSS on mobile)
- * and keep the Tailwind stylesheet render-blocking so prerendered HTML does not
- * flash unstyled.
+ * After production build: keep only Satoshi 700 + Inter 400 latin preloads
+ * (small woff2; extra faces starve CSS on mobile) and keep the Tailwind
+ * stylesheet render-blocking so prerendered HTML does not flash unstyled.
  */
 function htmlCriticalPathPlugin(): Plugin {
   return {
@@ -28,10 +29,7 @@ function htmlCriticalPathPlugin(): Plugin {
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
       let html = fs.readFileSync(indexPath, "utf8");
-      html = html.replace(
-        /\s*<link rel="preload" href="[^"]*Inter-VariableFont[^"]*" as="font"[^>]*\s*\/?>/g,
-        "",
-      );
+      html = keepCriticalFontPreloads(html, path.join(distDir, "assets"));
       html = ensureBlockingEntryStylesheet(html);
       html = stripStaleModulePreloads(html);
       fs.writeFileSync(indexPath, html);

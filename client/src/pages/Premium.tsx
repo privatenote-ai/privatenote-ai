@@ -24,6 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAccountEntitlements } from "@/context/AccountEntitlementsContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
+import { useBillingPortal } from "@/hooks/useBillingPortal";
 import { ApiRequestError, apiRequest } from "@/lib/queryClient";
 import { localizedPath } from "@/utils/localizedPath";
 import {
@@ -45,6 +46,10 @@ type BillingStatus = {
   canChangeSubscription: boolean;
   configuredAccountType: AccountType;
   billingCurrency?: BillingCurrency;
+  billingCustomerLinked?: boolean;
+  billingSubscriptionLinked?: boolean;
+  subscriptionState?: string;
+  cancelAtPeriodEnd?: boolean;
 };
 
 const KB = 1024;
@@ -652,6 +657,7 @@ export default function Premium() {
   const { user } = useAuth();
   const { entitlements } = useAccountEntitlements();
   const { toast } = useToast();
+  const { openBillingPortal } = useBillingPortal();
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState<PaidPlanId | null>(null);
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null);
@@ -695,20 +701,9 @@ export default function Premium() {
   }, [user, entitlements.refreshedAt]);
 
   const openPortal = useCallback(async () => {
-    try {
-      const portal = await apiRequest<{ url: string }>("/api/auth/billing/portal", "POST", {
-        flow: "subscription_update",
-      });
-      window.location.assign(portal.url);
-    } catch {
-      toast({
-        title: t.pricingToastBillingTitle,
-        description: t.pricingToastBillingDesc,
-        variant: "destructive",
-      });
-      setCheckoutBusyPlan(null);
-    }
-  }, [t, toast]);
+    await openBillingPortal("manage");
+    setCheckoutBusyPlan(null);
+  }, [openBillingPortal]);
 
   const startCheckout = useCallback(
     async (plan: PaidPlanId, interval: BillingInterval = billingInterval) => {

@@ -100,7 +100,7 @@ export const Footer: React.FC = () => {
               aria-label="PrivateNote.ai home"
             >
               <Logo size={30} className="shrink-0" />
-              <span className="text-xl font-bold tracking-tight">
+              <span className="font-display text-xl font-bold tracking-[-0.035em]">
                 privateNote
                 <span className="ml-0.5 align-super text-xs font-semibold">.ai</span>
               </span>
@@ -190,7 +190,7 @@ export const Footer: React.FC = () => {
         className="relative z-10 mx-auto max-w-6xl overflow-hidden px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8"
         aria-hidden="true"
       >
-        <p className="select-none whitespace-nowrap text-left font-sans text-[clamp(3.5rem,16vw,14rem)] font-bold leading-[0.82] tracking-[-0.05em] text-white">
+        <p className="font-display select-none whitespace-nowrap text-left text-[clamp(3.5rem,16vw,14rem)] font-bold leading-[0.82] tracking-[-0.05em] text-white">
           PrivateNote
         </p>
       </div>

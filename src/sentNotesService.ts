@@ -60,6 +60,8 @@ export type SentNoteRow = {
   notification_deleted_at: string | null;
   alert_notify_account_email: number | null;
   alert_custom_email: string | null;
+  open_count: number | null;
+  max_reads: number | null;
 };
 
 export type CreateSentNoteInput = {
@@ -83,6 +85,8 @@ export type CreateSentNoteInput = {
   unopenedReminderHours?: number | null;
   proofEnabled?: boolean;
   expiresAt?: string | null;
+  /** Allowed Reveals for this note — stored so Activity can show N of M after ciphertext is gone. */
+  maxReads?: number | null;
 };
 
 type RecipientGatePayload = {
@@ -161,6 +165,19 @@ function maskEmailHint(email: string | null): string | null {
 
 function kv(env: Env): KVNamespace {
   return env.RATE_LIMIT_KV || env.ANALYTICS_KV || env.NOTES_KV;
+}
+
+function asStoredCount(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const n = Math.floor(value);
+    return n >= 0 ? n : null;
+  }
+  return null;
+}
+
+function asStoredMaxReads(value: unknown): number | null {
+  const n = asStoredCount(value);
+  return n != null && n > 0 ? n : null;
 }
 
 function parseUserAgent(ua: string | null): { deviceClass: string; browser: string } {
@@ -265,8 +282,8 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       notify_on_open, notify_on_destroyed, notify_on_attachment_download, require_recipient_verification,
       require_receipt_ack, receipt_ack_token_hash, receipt_ack_statement, receipt_ack_statement_id,
       proof_enabled, expires_at, unopened_reminder_at,
-      alert_notify_account_email, alert_custom_email
-    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      alert_notify_account_email, alert_custom_email, open_count, max_reads
+    ) VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
   )
     .bind(
       id,
@@ -287,6 +304,7 @@ export async function insertSentNote(env: Env, input: CreateSentNoteInput): Prom
       unopenedReminderAt,
       wantsOpenNotifications && alertNotifyAccountEmail ? 1 : 0,
       wantsOpenNotifications ? alertCustomEmail : null,
+      asStoredMaxReads(input.maxReads),
     )
     .run();
 
@@ -343,6 +361,8 @@ export type SentNoteNotificationItem = {
   tags: string[];
   unopenedReminderAt: string | null;
   unopenedRemindedAt: string | null;
+  openCount: number;
+  maxReads: number | null;
 };
 
 function timestampMs(value: string | null | undefined): number {
@@ -401,6 +421,8 @@ export function toSentNoteNotificationItem(
     tags,
     unopenedReminderAt: row.unopened_reminder_at ?? null,
     unopenedRemindedAt: row.unopened_reminded_at ?? null,
+    openCount: asStoredCount(row.open_count) ?? 0,
+    maxReads: asStoredMaxReads(row.max_reads),
   };
 }
 
@@ -893,6 +915,7 @@ export async function recordSentNoteOpened(
   request: Request,
   sendEmailFn: (to: string, subject: string, text: string, html: string) => Promise<unknown>,
   destroyed = false,
+  counts?: { readCount?: number | null; maxReads?: number | null },
 ): Promise<void> {
   const row = await getSentNoteByNoteId(env, noteId);
   if (!row || row.status === "revoked" || row.status === "destroyed" || row.status === "expired") return;
@@ -917,11 +940,18 @@ export async function recordSentNoteOpened(
   const { deviceClass, browser } = proofClient;
   const eventAt = new Date().toISOString();
   const nextStatus: SentNoteStatus = destroyed ? "destroyed" : row.status === "created" ? "opened" : row.status;
+  const previousOpenCount = asStoredCount(row.open_count) ?? 0;
+  const incomingReadCount = asStoredCount(counts?.readCount);
+  const nextOpenCount =
+    incomingReadCount != null ? Math.max(previousOpenCount, incomingReadCount) : previousOpenCount + 1;
+  const nextMaxReads = asStoredMaxReads(counts?.maxReads) ?? asStoredMaxReads(row.max_reads);
 
   await env.AUTH_DB!.prepare(
     `UPDATE sent_notes
      SET status = ?,
        opened_at = COALESCE(opened_at, ?),
+       open_count = ?,
+       max_reads = COALESCE(?, max_reads),
        destroyed_at = CASE WHEN ? = 1 THEN COALESCE(destroyed_at, ?) ELSE destroyed_at END,
        proof_enabled = CASE WHEN ? = 1 THEN 1 ELSE proof_enabled END,
        open_country = COALESCE(open_country, ?),
@@ -932,6 +962,8 @@ export async function recordSentNoteOpened(
     .bind(
       nextStatus,
       eventAt,
+      nextOpenCount,
+      nextMaxReads,
       destroyed ? 1 : 0,
       eventAt,
       proofEnabled ? 1 : 0,
