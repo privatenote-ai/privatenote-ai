@@ -107,6 +107,7 @@ import {
   acknowledgeSentNoteReceipt,
   clearRecipientGate,
   revokeSentNote,
+  toSentNoteNotificationItem,
   sendRecipientVerificationCode,
   verifyRecipientAccess,
 } from "./sentNotesService";
@@ -10481,6 +10482,7 @@ export async function registerRoutes(
     if (!row || row.user_id !== session.id) {
       return jsonResponse({ error: "Not found" }, 404, request);
     }
+    const delivery = toSentNoteNotificationItem(row);
     return jsonResponse(
       {
         ok: true,
@@ -10495,8 +10497,8 @@ export async function registerRoutes(
           expiresAt: row.expires_at,
           destroyedAt: row.destroyed_at,
           revokedAt: row.revoked_at,
-          openCount: typeof row.open_count === "number" ? row.open_count : 0,
-          maxReads: typeof row.max_reads === "number" ? row.max_reads : null,
+          openCount: delivery.openCount,
+          maxReads: delivery.maxReads,
         },
       },
       200,

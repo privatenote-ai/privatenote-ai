@@ -397,7 +397,7 @@ function timelineLabel(
     case "expired":
       return t.proofTimelineExpired ?? "Expired";
     case "revoked":
-      return t.proofTimelineRevoked ?? "Revoked by you";
+      return t.proofTimelineRevoked ?? "Burned by you";
   }
 }
 
@@ -527,7 +527,7 @@ function DeliveryDetail({
             </span>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {t.authActivityDeliveryUpsell ??
-                "Delivery status, proof of access, and revoke are available on Starter and Business."}
+                "Delivery status, proof of access, and burn are available on Starter and Business."}
             </p>
           </div>
           <Button asChild size="sm">
@@ -552,7 +552,7 @@ function DeliveryDetail({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {t.authActivityNoDeliveryTracking ??
-              "No delivery tracking for this note. On Starter and Business, newly created notes are tracked so you can revoke unopened links and view proof of access from Activity."}
+              "No delivery tracking for this note. On Starter and Business, newly created notes are tracked so you can burn unopened links and view proof of access from Activity."}
           </p>
         </div>
       </div>
@@ -795,7 +795,7 @@ function DeliveryDetail({
         <div className="space-y-3 rounded-2xl border border-rose-200/80 bg-rose-50/50 px-4 py-4 dark:border-rose-900/50 dark:bg-rose-950/20">
           <p className="text-sm text-muted-foreground">
             {t.notificationRevokeHint ??
-              "Still unopened — you can revoke the link so it can no longer be opened."}
+              "Still unopened — you can burn the link so it can no longer be opened."}
           </p>
           <Button
             type="button"
@@ -807,8 +807,8 @@ function DeliveryDetail({
           >
             <Ban className="mr-1.5 h-3.5 w-3.5" aria-hidden />
             {revoking
-              ? (t.notificationRevoking ?? "Revoking...")
-              : (t.notificationRevokeConfirm ?? "Revoke link")}
+              ? (t.notificationRevoking ?? "Burning...")
+              : (t.notificationRevokeConfirm ?? "Burn this note")}
           </Button>
         </div>
       ) : null}
@@ -1162,7 +1162,7 @@ export default function AccountActivity() {
       );
       setRevokeTarget(null);
       toast({
-        title: tx("notificationRevokeSuccessTitle", "Note revoked"),
+        title: tx("notificationRevokeSuccessTitle", "Note burned"),
         description: tx(
           "notificationRevokeSuccessBody",
           "The link can no longer be opened.",
@@ -1173,12 +1173,12 @@ export default function AccountActivity() {
         setError(
           tx(
             "notificationRevokeAlreadyOpened",
-            "This note was already opened and can no longer be revoked.",
+            "This note was already opened and can no longer be burned.",
           ),
         );
         void load();
       } else {
-        setError(tx("notificationRevokeError", "Could not revoke that note."));
+        setError(tx("notificationRevokeError", "Could not burn that note."));
       }
     } finally {
       setRevokingNoteId(null);
@@ -1648,12 +1648,12 @@ export default function AccountActivity() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {tx("notificationRevokeDialogTitle", "Revoke this note?")}
+              {tx("notificationRevokeDialogTitle", "Burn this note?")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tx(
                 "notificationRevokeDialogBody",
-                "The secret link will stop working immediately. This only works if the note has not been opened yet.",
+                "The secret link will stop working immediately.",
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1670,8 +1670,8 @@ export default function AccountActivity() {
               className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
             >
               {revokingNoteId
-                ? tx("notificationRevoking", "Revoking...")
-                : tx("notificationRevokeConfirm", "Revoke link")}
+                ? tx("notificationRevoking", "Burning...")
+                : tx("notificationRevokeConfirm", "Burn this note")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

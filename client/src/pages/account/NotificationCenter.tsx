@@ -80,7 +80,7 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
     case "expired":
       return t.proofTimelineExpired ?? "Expired";
     case "revoked":
-      return t.proofTimelineRevoked ?? "Revoked by you";
+      return t.proofTimelineRevoked ?? "Burned by you";
   }
 }
 
@@ -269,8 +269,8 @@ function NotificationCard({
             onClick={() => onRevoke(item)}
             disabled={revoking || deleting}
             className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-            aria-label={t.notificationRevokeAria ?? "Revoke unopened note"}
-            title={t.notificationRevokeAria ?? "Revoke unopened note"}
+            aria-label={t.notificationRevokeAria ?? "Burn unopened note"}
+            title={t.notificationRevokeAria ?? "Burn unopened note"}
           >
             <Ban className="h-4 w-4" aria-hidden />
           </button>
@@ -321,7 +321,7 @@ function NotificationCard({
         {canRevoke ? (
           <p className="pt-1 text-xs text-gray-500 dark:text-gray-400">
             {t.notificationRevokeHint ??
-              "Still unopened — you can revoke the link so it can no longer be opened."}
+              "Still unopened — you can burn the link so it can no longer be opened."}
           </p>
         ) : null}
       </div>
@@ -479,7 +479,7 @@ export default function NotificationCenter() {
       );
       setRevokeTarget(null);
       toast({
-        title: tx("notificationRevokeSuccessTitle", "Note revoked"),
+        title: tx("notificationRevokeSuccessTitle", "Note burned"),
         description: tx(
           "notificationRevokeSuccessBody",
           "The link can no longer be opened.",
@@ -490,12 +490,12 @@ export default function NotificationCenter() {
         setError(
           tx(
             "notificationRevokeAlreadyOpened",
-            "This note was already opened and can no longer be revoked.",
+            "This note was already opened and can no longer be burned from Activity.",
           ),
         );
         void load();
       } else {
-        setError(tx("notificationRevokeError", "Could not revoke that note."));
+        setError(tx("notificationRevokeError", "Could not burn that note."));
       }
     } finally {
       setRevokingNoteId(null);
@@ -676,7 +676,7 @@ export default function NotificationCenter() {
               Delivery tracking is available with Starter and Business
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Choose a paid plan to track when notes are viewed, burned, or downloaded — and revoke unopened links.
+              Choose a paid plan to track when notes are viewed, burned, or downloaded — and burn unopened links.
             </p>
             <Button asChild className="mt-4" size="sm">
               <Link href="/premium">Compare plans</Link>
@@ -890,12 +890,12 @@ export default function NotificationCenter() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {tx("notificationRevokeDialogTitle", "Revoke this note?")}
+              {tx("notificationRevokeDialogTitle", "Burn this note?")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tx(
                 "notificationRevokeDialogBody",
-                "The secret link will stop working immediately. This only works if the note has not been opened yet.",
+                "The secret link will stop working immediately.",
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -912,8 +912,8 @@ export default function NotificationCenter() {
               className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
             >
               {revokingNoteId
-                ? tx("notificationRevoking", "Revoking...")
-                : tx("notificationRevokeConfirm", "Revoke link")}
+                ? tx("notificationRevoking", "Burning...")
+                : tx("notificationRevokeConfirm", "Burn this note")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

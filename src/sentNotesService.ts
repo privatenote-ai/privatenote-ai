@@ -172,6 +172,14 @@ function asStoredCount(value: unknown): number | null {
     const n = Math.floor(value);
     return n >= 0 ? n : null;
   }
+  if (typeof value === "bigint") {
+    const n = Number(value);
+    return Number.isSafeInteger(n) && n >= 0 ? n : null;
+  }
+  if (typeof value === "string" && /^(?:0|[1-9]\d*)$/.test(value.trim())) {
+    const n = Number.parseInt(value.trim(), 10);
+    return Number.isSafeInteger(n) ? n : null;
+  }
   return null;
 }
 

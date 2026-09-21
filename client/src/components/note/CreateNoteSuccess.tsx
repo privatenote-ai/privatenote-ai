@@ -625,7 +625,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   >
                     <Ban className="h-4 w-4 shrink-0" aria-hidden />
                     <span className="truncate">
-                      {t.notificationRevokeSuccessTitle ?? "Note revoked"}
+                      {t.notificationRevokeSuccessTitle ?? "Note burned"}
                     </span>
                   </p>
                 ) : (
@@ -637,7 +637,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
                   >
                     <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
                     <span className="truncate">
-                      {revoking ? t.notificationRevoking ?? "Revoking..." : burnLabel}
+                      {revoking ? t.notificationRevoking ?? "Burning..." : burnLabel}
                     </span>
                   </button>
                 )
@@ -1189,11 +1189,11 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t.notificationRevokeDialogTitle ?? "Revoke this note?"}
+              {t.notificationRevokeDialogTitle ?? "Burn this note?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t.notificationRevokeDialogBody ??
-                "The secret link will stop working immediately. This only works if the note has not been opened yet."}
+                "The secret link will stop working immediately."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1215,7 +1215,7 @@ export const CreateNoteSuccess: React.FC<CreateNoteSuccessProps> = ({
               className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
             >
               {revoking
-                ? t.notificationRevoking ?? "Revoking..."
+                ? t.notificationRevoking ?? "Burning..."
                 : t.notificationRevokeConfirm ?? burnLabel}
             </AlertDialogAction>
           </AlertDialogFooter>

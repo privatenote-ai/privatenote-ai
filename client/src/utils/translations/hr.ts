@@ -2485,7 +2485,7 @@ export const hr: Translations = {
   pricingRowDelayedReveal: "Zakazano otkrivanje",
   pricingRowReceiptAcknowledgment: "Potvrda primitka",
   pricingRowSentNotesDashboard: "Pregled poslanih bilješki",
-  pricingRowRevokeUnopened: "Opoziv prije otvaranja",
+  pricingRowRevokeUnopened: "Uništi neotvorene bilješke",
   pricingRowRevealBodyFont: "Font na stranici otvaranja",
   pricingRowAttachmentViewOnly: "Samo za pregled",
   pricingRowRevealBranding: "Prilagodba stranice otvaranja",

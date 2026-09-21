@@ -2471,7 +2471,7 @@ export const de: Translations = {
   pricingRowDelayedReveal: "Geplante Freigabe",
   pricingRowReceiptAcknowledgment: "Empfangsbestätigung",
   pricingRowSentNotesDashboard: "Gesendete Notizen im Überblick",
-  pricingRowRevokeUnopened: "Widerruf vor dem Öffnen",
+  pricingRowRevokeUnopened: "Ungeöffnete Notizen verbrennen",
   pricingRowRevealBodyFont: "Eigene Schriftart auf der Abrufseite",
   pricingRowAttachmentViewOnly: "Nur-Ansicht",
   pricingRowRevealBranding: "Empfänger-Branding",
