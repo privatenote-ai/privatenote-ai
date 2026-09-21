@@ -461,12 +461,12 @@ const PasswordGenerator: React.FC = () => {
             <section className="px-4 pb-1 sm:px-6 lg:px-8 pt-2">
               <div className="text-center">
                 <h1 className="page-title text-gray-900 dark:text-white">
-                  {t.yourSecurePasswordIs} <span className="text-primary italic">{t.ready}</span>
+                  {t.yourPasswordIs ?? t.yourSecurePasswordIs}{" "}
+                  <span className="text-primary not-italic">{t.readyToShare ?? t.ready}</span>
                 </h1>
-                <div className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl space-y-1 md:space-y-2">
-                  <p className="m-0">{t.passwordEncryptedInPrivateNote}</p>
-                  <p className="m-0">{t.onlySomeoneWithLinkCanRead}</p>
-                </div>
+                <p className="mt-3 mx-auto max-w-md text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:max-w-3xl">
+                  {t.successReadySubtitle ?? t.passwordEncryptedInPrivateNote}
+                </p>
               </div>
             </section>
 
@@ -671,7 +671,7 @@ const PasswordGenerator: React.FC = () => {
       <section className="px-4 pb-0 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div className="text-center">
           <h1 className="page-title text-gray-900 dark:text-white">
-            {t.strongPasswordTitlePrefix} <span className="text-primary">{t.passwordTitleWord} </span> {t.generatorTitleWord}
+            {t.strongPasswordTitlePrefix} <span className="text-primary not-italic">{t.passwordTitleWord} </span> {t.generatorTitleWord}
           </h1>
           <p className="mt-3 max-w-md mx-auto text-base text-gray-500 dark:text-gray-400 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
             {t.passwordGeneratorSubtitle}
@@ -926,7 +926,7 @@ const PasswordGenerator: React.FC = () => {
         <div className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto relative z-10">
             <div className="mb-10">
-              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-transparent">
+              <h2 className="bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-4xl font-display font-bold tracking-[-0.035em] text-transparent sm:text-5xl">
                 {t.faq}
               </h2>
               <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">

@@ -143,6 +143,17 @@ export const Navbar: React.FC = () => {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isProfileOpen, isResourcesOpen]);
 
+  const [navSolid, setNavSolid] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      setNavSolid(window.scrollY > 0);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [location]);
+
   const isAuthRoute = location.startsWith('/auth');
   const lp = (path: string) => localizedPath(path, language);
 
@@ -157,7 +168,7 @@ export const Navbar: React.FC = () => {
   const logoInner = (
     <>
       <Logo size={30} className="shrink-0" />
-      <span className="font-bold text-xl sm:text-2xl text-primary dark:text-blue-300">
+      <span className="font-display text-xl font-bold tracking-[-0.035em] text-primary sm:text-2xl dark:text-blue-300">
         privateNote
         <span className="text-xs text-primary align-super ml-0.5 dark:text-blue-300">.ai</span>
       </span>
@@ -177,8 +188,12 @@ export const Navbar: React.FC = () => {
   const desktopDropdownItem =
     "flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 hover:text-gray-950 dark:text-blue-300 dark:hover:bg-white/[0.06] dark:hover:text-white";
 
-  const navShellClass =
-    "fixed top-0 left-0 right-0 z-50 overflow-visible bg-background/95 pointer-events-auto backdrop-blur-md border-b border-blue-100 dark:border-gray-800 shadow-[0_1px_6px_rgba(15,23,42,0.06)]";
+  const navShellClass = [
+    "fixed top-0 left-0 right-0 z-50 overflow-visible pointer-events-auto transition-[background-color,box-shadow,border-color,backdrop-filter] duration-200",
+    navSolid
+      ? "bg-background/95 backdrop-blur-md border-b border-blue-100 shadow-[0_1px_6px_rgba(15,23,42,0.06)] dark:border-gray-800"
+      : "border-b border-transparent bg-transparent",
+  ].join(" ");
 
   const authCluster = user?.email || !isAuthRoute ? (
     user?.email ? (
@@ -264,7 +279,6 @@ export const Navbar: React.FC = () => {
   ) : null;
 
   const resourceLinks: Array<{ href: string; label: string; icon: typeof Shield }> = [
-    { href: lp("/how-it-works"), label: t.howItWorks, icon: Shield },
     { href: lp("/security-resources"), label: t.security, icon: Sparkles },
     { href: lp("/blog"), label: t.blog, icon: FileText },
     { href: lp("/developers"), label: t.developers, icon: Code2 },
@@ -274,7 +288,7 @@ export const Navbar: React.FC = () => {
   return (
     <>
     <nav className={navShellClass}>
-      {/* Desktop ≥ xl only. Below xl the layout is too tight for 6 nav links + logo + auth,
+      {/* Desktop ≥ xl only. Below xl the layout is too tight for the primary links + logo + auth,
           so we keep the mobile hamburger menu through tablet / 13" laptop widths. */}
       <div className="hidden xl:block px-4 sm:px-6 lg:px-8">
         <div className="relative mx-auto flex h-16 max-w-4xl items-center gap-6">
@@ -290,7 +304,7 @@ export const Navbar: React.FC = () => {
 
           {/* Primary links — centered group aligned to the editor column */}
           <nav
-            className="flex min-w-0 flex-1 items-center justify-center gap-x-7 2xl:gap-x-8"
+            className="flex min-w-0 flex-1 items-center justify-center gap-x-5 2xl:gap-x-7"
             aria-label="Primary"
           >
             <NavLink href={lp("/")} closeMenu={closeMenu} className={desktopLink}>
@@ -301,6 +315,9 @@ export const Navbar: React.FC = () => {
             </NavLink>
             <NavLink href={lp("/password-generator")} closeMenu={closeMenu} className={desktopLink}>
               {t.sharePassword}
+            </NavLink>
+            <NavLink href={lp("/how-it-works")} closeMenu={closeMenu} className={desktopLink}>
+              {t.howItWorks}
             </NavLink>
             {PREMIUM_NAV_LINK_PUBLIC ? (
               <NavLink href={lp("/premium")} closeMenu={closeMenu} className={desktopLink}>

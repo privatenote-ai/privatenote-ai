@@ -1094,7 +1094,7 @@ export default function AccountBranding() {
 
   if (authLoading || (user && prefsLoading)) {
     return (
-      <AccountSettingsShell wide>
+      <AccountSettingsShell>
         <div className="animate-pulse space-y-4">
           <div className="h-6 w-36 rounded bg-gray-200 dark:bg-gray-800" />
           <div className="h-28 rounded-xl bg-gray-100 dark:bg-gray-800/60" />
@@ -1106,7 +1106,7 @@ export default function AccountBranding() {
 
   if (!user) {
     return (
-      <AccountSettingsShell wide>
+      <AccountSettingsShell>
         <div className="space-y-6">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
@@ -1127,7 +1127,7 @@ export default function AccountBranding() {
   }
 
   return (
-    <AccountSettingsShell wide>
+    <AccountSettingsShell>
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>

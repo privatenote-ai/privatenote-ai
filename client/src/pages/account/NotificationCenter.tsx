@@ -51,6 +51,7 @@ import {
   buildProofTimeline,
   formatDeviceClass,
   formatNotificationTimestamp,
+  formatOpenCountLabel,
   formatProofTimestamp,
   groupNotifications,
   hasProofReport,
@@ -102,12 +103,13 @@ function ProofReportDialog({
     noteLabel?.trim() ||
     item.label?.trim() ||
     item.recipientEmail?.trim() ||
-    item.displayNoteId;
+    item.noteId;
   const timeline = buildProofTimeline(item);
   const country = item.openCountry?.trim() || (t.proofUnavailable ?? "Not available");
   const device = formatDeviceClass(item.openDeviceClass, t);
   const browser = item.openBrowser?.trim() || (t.proofUnavailable ?? "Not available");
   const accessed = Boolean(item.openedAt);
+  const opensLabel = formatOpenCountLabel(item.openCount ?? 0, item.maxReads, t);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,12 +125,15 @@ function ProofReportDialog({
         <div className="space-y-5 text-sm">
           <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/40">
             <p className="font-semibold text-gray-900 dark:text-white">{headline}</p>
-            <p className="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">
-              {item.displayNoteId}
+            <p className="mt-1 break-all font-mono text-xs text-gray-500 dark:text-gray-400">
+              {item.noteId}
             </p>
             <p className={`mt-2 text-sm font-semibold ${statusTone(item.status)}`}>
               {statusLabel(item.status, t)}
             </p>
+            {opensLabel ? (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{opensLabel}</p>
+            ) : null}
           </div>
 
           <section>
@@ -236,6 +241,7 @@ function NotificationCard({
   const headline = noteLabel?.trim() || item.label?.trim() || recipient;
   const canRevoke = canRevokeUnopened && item.status === "created";
   const canViewProof = Boolean(item.proofEnabled) && hasProofReport(item);
+  const opensLabel = formatOpenCountLabel(item.openCount ?? 0, item.maxReads, t);
   const proofSummaryParts: string[] = [];
   if (item.openCountry?.trim()) proofSummaryParts.push(item.openCountry.trim());
   if (item.openDeviceClass?.trim()) {
@@ -285,7 +291,10 @@ function NotificationCard({
         {noteLabel?.trim() || item.label?.trim() ? (
           <p className="truncate text-xs text-gray-500 dark:text-gray-400">{recipient}</p>
         ) : null}
-        <p className="font-mono text-xs text-gray-400 dark:text-gray-500">{item.displayNoteId}</p>
+        <p className="break-all font-mono text-xs text-gray-400 dark:text-gray-500">{item.noteId}</p>
+        {opensLabel ? (
+          <p className="text-xs text-gray-500 dark:text-gray-400">{opensLabel}</p>
+        ) : null}
         <p className={`pt-1 text-sm font-semibold ${statusTone(item.status)}`}>
           {statusLabel(item.status, t)}
         </p>

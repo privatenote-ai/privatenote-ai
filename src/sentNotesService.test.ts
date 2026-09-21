@@ -9,6 +9,7 @@ import {
   insertSentNote,
   noteRequiresRecipientVerification,
   recordSentNoteAttachmentDownloaded,
+  recordSentNoteOpened,
   revokeSentNote,
   sendRecipientVerificationCode,
   toSentNoteNotificationItem,
@@ -128,6 +129,8 @@ function sentNote(overrides: Partial<SentNoteRow> = {}): SentNoteRow {
     notification_deleted_at: null,
     alert_notify_account_email: 1,
     alert_custom_email: null,
+    open_count: 0,
+    max_reads: null,
     ...overrides,
   };
 }
@@ -222,6 +225,7 @@ describe("recipient verification gate creation", () => {
     assert.equal(gate.recipientEmail, "recipient@example.com");
     assert.equal(db.runs.length, 1);
     assert.match(db.runs[0]?.sql ?? "", /INSERT INTO sent_notes/);
+    assert.match(db.runs[0]?.sql ?? "", /open_count, max_reads/);
   });
 });
 
@@ -269,6 +273,79 @@ describe("sent note notification service", () => {
     assert.equal(item.folder, "Client A");
     assert.deepEqual(item.tags, ["credentials", "urgent"]);
     assert.equal(item.unopenedReminderAt, "2026-06-15T09:00:00.000Z");
+    assert.equal(item.openCount, 0);
+    assert.equal(item.maxReads, null);
+  });
+
+  it("maps persisted open counts onto notification items", () => {
+    const item = toSentNoteNotificationItem(sentNote({
+      status: "opened",
+      opened_at: "2026-06-14T10:00:00.000Z",
+      open_count: 3,
+      max_reads: 10,
+    }));
+    assert.equal(item.noteId, "550e8400-e29b-41d4-a716-446655440000");
+    assert.equal(item.openCount, 3);
+    assert.equal(item.maxReads, 10);
+  });
+
+  it("persists reveal readCount and maxReads on the sent-note row", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [sentNote({ notify_on_open: 0, proof_enabled: 1, open_count: 2, max_reads: 10 })];
+    const request = new Request("https://privatenote.ai/api/notes/550e8400-e29b-41d4-a716-446655440000/reveal", {
+      method: "POST",
+      headers: { "User-Agent": "Mozilla/5.0 Chrome/125.0" },
+    });
+
+    await recordSentNoteOpened(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      request,
+      async () => {
+        throw new Error("should not email");
+      },
+      false,
+      { readCount: 3, maxReads: 10 },
+    );
+
+    const sql = db.runs[0]?.sql ?? "";
+    assert.match(sql, /open_count = \?/);
+    assert.match(sql, /max_reads = COALESCE\(\?, max_reads\)/);
+    assert.equal(db.runs[0]?.bindings[2], 3);
+    assert.equal(db.runs[0]?.bindings[3], 10);
+    assert.equal(db.runs.length, 1);
+  });
+
+  it("keeps the last reveal count when ciphertext is destroyed", async () => {
+    const db = new FakeD1Database();
+    db.firstRows = [
+      sentNote({
+        status: "opened",
+        notify_on_open: 0,
+        notify_on_destroyed: 0,
+        proof_enabled: 1,
+        open_count: 9,
+        max_reads: 10,
+        opened_at: "2026-06-14T10:00:00.000Z",
+      }),
+    ];
+
+    await recordSentNoteOpened(
+      envWithDb(db),
+      "550e8400-e29b-41d4-a716-446655440000",
+      new Request("https://privatenote.ai/api/notes/550e8400-e29b-41d4-a716-446655440000/reveal", {
+        method: "POST",
+      }),
+      async () => {
+        throw new Error("should not email");
+      },
+      true,
+      { readCount: 10, maxReads: 10 },
+    );
+
+    assert.equal(db.runs[0]?.bindings[0], "destroyed");
+    assert.equal(db.runs[0]?.bindings[2], 10);
+    assert.equal(db.runs[0]?.bindings[3], 10);
   });
 
   it("shows an overdue unopened note as expired before scheduled cleanup runs", async () => {
