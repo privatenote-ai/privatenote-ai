@@ -1857,7 +1857,7 @@ export const fr: Translations = {
   documentMetaContactDescription: "Contactez PrivateNote.ai pour obtenir de l’aide, partager un retour, poser une question produit, signaler un souci de sécurité ou utiliser les notes chiffrées.",
   documentMetaPrivacyPolicyDescription: "Lisez comment PrivateNote.ai traite les données personnelles, les notes chiffrées, les cookies, les journaux de sécurité et vos droits de confidentialité.",
   documentMetaTermsDescription: "Consultez les conditions d’utilisation de PrivateNote.ai, les règles d’usage acceptable, les limites du service, les mentions légales et responsabilités.",
-  documentMetaTermsTitle: "Conditions d’utilisation des notes chiffrées",
+  documentMetaTermsTitle: "Conditions d’utilisation des notes",
   documentMetaNotFoundTitle: "Page introuvable",
   documentMetaNotFoundDescription: "Cette URL n’existe pas sur PrivateNote.ai.",
   documentMetaViewNoteDescription: "Ouvrez une note chiffrée à usage unique dans votre navigateur. La clé de déchiffrement reste dans le fragment d’URL.",

@@ -62,7 +62,8 @@ test("resolveDocumentMeta keeps public marketing meta descriptions within SEO le
 });
 
 const META_TITLE_MAX_EN = 60;
-const META_TITLE_MAX_LOCALE = 70;
+/** Locale titles add ` (DE) · PrivateNote.ai`; keep SERP-safe at 65. */
+const META_TITLE_MAX_LOCALE = 65;
 /** Ahrefs flags `<title>` tags shorter than 30 characters. */
 const META_TITLE_MIN = 30;
 
@@ -92,6 +93,27 @@ test("resolveDocumentMeta keeps public marketing titles within SEO length", () =
   }
   assert.deepEqual(over, [], `Trim document titles for: ${over.join(", ")}`);
   assert.deepEqual(under, [], `Lengthen document titles for: ${under.join(", ")}`);
+});
+
+test("reported too-long locale titles stay within the SERP budget", () => {
+  const reported = [
+    "/de/premium",
+    "/de/terms",
+    "/es/blog",
+    "/fr/terms",
+    "/hr/blog",
+    "/nl/contact",
+    "/nl/premium",
+    "/nl/terms",
+  ];
+  const over: string[] = [];
+  for (const route of reported) {
+    const { title } = resolveDocumentMeta(route, translationsForRoute(route));
+    if (title.length > META_TITLE_MAX_LOCALE) {
+      over.push(`${route} title (${title.length}): ${title}`);
+    }
+  }
+  assert.deepEqual(over, [], `Trim document titles for: ${over.join(", ")}`);
 });
 
 test("public marketing titles are unique across locales", () => {

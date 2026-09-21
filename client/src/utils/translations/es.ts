@@ -2049,7 +2049,7 @@ export const es: Translations = {
   documentMetaNotFoundDescription: "Esta URL no existe en PrivateNote.ai.",
   documentMetaViewNoteDescription: "Abre una nota cifrada de un solo uso en tu navegador. La clave de descifrado permanece en el fragmento de la URL.",
   documentMetaBlogLoadingDescription: "Explora artículos de PrivateNote.ai sobre cifrado, comunicación privada, seguridad de contraseñas, uso compartido seguro y protección digital.",
-  documentMetaBlogTitle: "Blog: notas cifradas y uso compartido seguro",
+  documentMetaBlogTitle: "Blog: notas cifradas y compartir seguro",
   documentMetaRecoveryTitle: "Recuperación de cuenta",
   documentMetaRecoveryDescription: "Inicia sesión con un código de recuperación si perdiste el acceso a tus passkeys o al correo.",
   documentMetaEmailChangeTitle: "Cambiar correo",

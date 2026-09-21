@@ -2031,7 +2031,7 @@ export const de: Translations = {
   documentMetaContactDescription: "Kontaktieren Sie PrivateNote.ai für Support, Feedback, Produktfragen, Sicherheitsmeldungen oder Hilfe beim sicheren Teilen verschlüsselter Einmal-Notizen.",
   documentMetaPrivacyPolicyDescription: "Lesen Sie, wie PrivateNote.ai personenbezogene Daten, verschlüsselte Notizen, Cookies, Analysen, Sicherheitsprotokolle und Datenschutzrechte behandelt.",
   documentMetaTermsDescription: "Prüfen Sie die Nutzungsbedingungen von PrivateNote.ai, Regeln zur zulässigen Nutzung, Servicegrenzen, Haftungsausschlüsse und rechtliche Verantwortlichkeiten.",
-  documentMetaTermsTitle: "Nutzungsbedingungen für verschlüsselte Notizen",
+  documentMetaTermsTitle: "Nutzungsbedingungen für Einmal-Notizen",
   documentMetaNotFoundTitle: "Seite nicht gefunden",
   documentMetaNotFoundDescription: "Diese URL existiert nicht auf PrivateNote.ai.",
   documentMetaViewNoteDescription: "Öffnen Sie eine einmalige verschlüsselte Notiz im Browser. Der Entschlüsselungsschlüssel bleibt im URL-Fragment.",
@@ -2273,7 +2273,7 @@ export const de: Translations = {
   localAiPreparingPrivateAttempt: "Private KI wird vorbereitet ({label})…",
   aiComposerLocalAiUnavailableDialogTitle: "Private AI ist auf diesem Gerät nicht verfügbar",
 
-  documentMetaPremiumTitle: "Preise für verschlüsselte Notizen und Dateien",
+  documentMetaPremiumTitle: "Preise für verschlüsselte Notizen & Dateien",
   documentMetaPremiumDescription: "Free, Starter und Business im Vergleich. Verschlüsselte Notizen und Dateien, höhere Limits und FAQ zu Checkout, Rechnungen und USt-IdNr.",
   pricingHeroTitle: "Einfache Tarife für sicheres Teilen.",
   pricingHeroSubtitle: "Versenden Sie verschlüsselte Notizen, Passwörter und Dateien kostenlos. Wechseln Sie zu einem höheren Tarif, wenn Sie Empfänger verifizieren, Zugriffe nachweisen, höhere Limits nutzen oder Ihren eigenen Markenauftritt hinzufügen möchten.",

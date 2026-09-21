@@ -1799,7 +1799,7 @@ export const hr: Translations = {
   documentMetaNotFoundDescription: "Ovaj URL ne postoji na PrivateNote.ai.",
   documentMetaViewNoteDescription: "Otvorite jednokratnu šifriranu bilješku u svom pregledniku. Vaš ključ za dešifriranje ostaje u fragmentu URL.",
   documentMetaBlogLoadingDescription: "Pregledajte PrivateNote.ai članke o enkripciji, privatnoj komunikaciji, sigurnosti lozinki, sigurnom dijeljenju i praktičnim navikama digitalne sigurnosti.",
-  documentMetaBlogTitle: "Blog: šifrirane bilješke i sigurno dijeljenje",
+  documentMetaBlogTitle: "Blog: šifrirane bilješke i dijeljenje",
   documentMetaRecoveryTitle: "Oporavak računa",
   documentMetaRecoveryDescription: "Prijavite se s kodom za oporavak ako ste izgubili pristup svojim pristupnim ključevima ili e-pošti.",
   documentMetaEmailChangeTitle: "Promjena e-pošte",
