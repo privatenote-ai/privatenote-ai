@@ -18,6 +18,7 @@ import AccountBranding from "@/pages/account/AccountBranding";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
+import { LaunchNestBadge } from "./components/LaunchNestBadge";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import {
@@ -424,7 +425,12 @@ function Router() {
           <Route component={() => <LazyRoute component={NotFound} />} />
         </Switch>
       </main>
-      {!isAuthRoute && !isNoteRoute && <Footer />}
+      {!isAuthRoute && !isNoteRoute && (
+        <>
+          <LaunchNestBadge />
+          <Footer />
+        </>
+      )}
       <NativePageAnalytics />
     </div>
   );
