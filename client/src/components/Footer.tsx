@@ -90,7 +90,27 @@ export const Footer: React.FC = () => {
         <div className="absolute bottom-0 left-1/4 h-56 w-56 rounded-full bg-white/7 blur-[120px]" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 pt-16 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto flex max-w-6xl justify-center px-4 pt-8 pb-2 sm:px-6 lg:px-8">
+        <a
+          href="https://launchnest.io/p/privatenote"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="PrivateNote on LaunchNest"
+          className="inline-flex rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        >
+          <img
+            src="https://launchnest.io/badge/privatenote.svg?variant=featured&theme=light"
+            alt="PrivateNote on LaunchNest"
+            width={220}
+            height={56}
+            className="h-14 w-[220px]"
+            loading="lazy"
+            decoding="async"
+          />
+        </a>
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pt-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-12">
           {/* Brand */}
           <div className="col-span-2 md:col-span-4">
@@ -184,26 +204,6 @@ export const Footer: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="relative z-10 mx-auto flex max-w-6xl justify-center px-4 pt-10 sm:px-6 lg:px-8">
-        <a
-          href="https://launchnest.io/p/privatenote"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="PrivateNote on LaunchNest"
-          className="inline-flex rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-        >
-          <img
-            src="https://launchnest.io/badge/privatenote.svg?variant=featured&theme=light"
-            alt="PrivateNote on LaunchNest"
-            width={220}
-            height={56}
-            className="h-14 w-[220px]"
-            loading="lazy"
-            decoding="async"
-          />
-        </a>
       </div>
 
       <div
