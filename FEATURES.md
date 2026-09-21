@@ -12,7 +12,7 @@ Baseline date: 2026-09-14.
 
 **New:** Success headlines differ by type (note, file, password, photo). Mixed text + image uses the note headline.
 
-**Changed:** Anyone can burn a note from the success screen (Free included, via a one-time `burnToken`). Activity revoke of unopened notes stays Starter+. Emailing the link is blocked after burn, same as Copy.
+**Changed:** Sender destroy is **Burn** everywhere (success screen and Activity). Anyone can burn from the success screen (Free included, via a one-time `burnToken`). Burning an unopened note later from Activity stays Starter+. Emailing the link is blocked after burn, same as Copy.
 
 **Changed:** Activity stores how many times a note was opened (`N of M`) on the sent-note row after Reveal, and shows the real note UUID (the `/note/{id}` path id) with copy, not a short hash.
 
@@ -162,7 +162,7 @@ Requires signed-in verified email for alerts.
 - Copy / share the note password out of band (never sent to the server).
 - Optional: email the link to a recipient from the success page (Starter+, verified email). Blocked after the note is burned, same as Copy.
 - Show whether the link was already emailed.
-- **Burn this note** from the success screen for everyone, including Free (one-time `burnToken`). Later revoke from Activity remains Starter+.
+- **Burn this note** from the success screen for everyone, including Free (one-time `burnToken`). Later burn from Activity remains Starter+.
 - Success metadata: expiry, burn/open limit, password set, etc.
 
 ---
@@ -204,7 +204,7 @@ No navbar/footer. Anonymous. Click-to-reveal is always on.
 | `/auth/device` | Device-code approve for MCP / Chrome (no code to type; grant is in the URL) |
 | `/extension/connected` | Chrome extension connected landing |
 | `/account` | Overview: plan, manage billing / cancel (paid), danger zone (schedule deletion), theme, branding shortcut |
-| `/account/activity` | Sent-notes dashboard, proof of access, revoke unopened, labels, open counts, note UUID |
+| `/account/activity` | Sent-notes dashboard, proof of access, burn unopened, labels, open counts, note UUID |
 | `/account/preferences` | Theme, language, note defaults, hosted AI preference, voice format |
 | `/account/branding` | Business reveal branding studio |
 | `/account/security` | Passkeys, TOTP, recovery codes, sessions, change email |
@@ -222,14 +222,14 @@ No navbar/footer. Anonymous. Click-to-reveal is always on.
 - Theme: light / dark / system.
 - Preferred UI language stored on the account (same set as the product UI: English, German, French, Spanish, Italian, Dutch, Portuguese, Serbian, Croatian, Turkish, Polish).
 
-### Activity / Notification Center (Starter+ for dashboard and revoke)
+### Activity / Notification Center (Starter+ for dashboard and burn)
 
-- List sent notes as **events**, never contents: created, opened, expired, destroyed, revoked, receipt confirmed.
+- List sent notes as **events**, never contents: created, opened, expired, destroyed/burned, receipt confirmed.
 - Chips: voice, attachment, password, expiry, open limit, alerts, verification, receipt.
 - Open counts (`N of M`) stay on the sent-note row after Reveal, when ciphertext is gone.
 - Real note UUID (the `/note/{id}` path id) with copy, not a short hash.
 - Proof-of-access timeline (coarse: when opened, device class, browser — not IP as a product promise).
-- Revoke an **unopened** note (Starter+). Free can still burn immediately after create via the success-screen token.
+- Burn an **unopened** note from Activity (Starter+). Free can still burn immediately after create via the success-screen token.
 - Device-only labels; Business can export / load / share labels as a portable file or PrivateNote (still never note content).
 - **Name this note** uses the same wording as the success screen.
 
@@ -363,7 +363,7 @@ These are web-runtime constraints, not missing product features. Native iOS can 
 | Scheduled reveal | — | Yes | Yes |
 | Receipt acknowledgment | — | Yes | Yes + custom statement |
 | Sent-notes dashboard | — | Yes | Yes |
-| Revoke unopened | — | Yes | Yes |
+| Burn unopened from Activity | — | Yes | Yes |
 | Burn from success screen | Yes | Yes | Yes |
 | Proof of access | — | Yes | Yes |
 | Saved note defaults | — | Yes | Yes |

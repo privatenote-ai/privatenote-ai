@@ -2476,7 +2476,7 @@ export const nl: Translations = {
   pricingRowDelayedReveal: "Geplande onthulling",
   pricingRowReceiptAcknowledgment: "Ontvangstbevestiging",
   pricingRowSentNotesDashboard: "Overzicht verstuurde notities",
-  pricingRowRevokeUnopened: "Intrekken vóór opening",
+  pricingRowRevokeUnopened: "Ongeopende notities vernietigen",
   pricingRowRevealBodyFont: "Lettertype op de openingspagina",
   pricingRowAttachmentViewOnly: "Alleen bekijken",
   pricingRowRevealBranding: "Huisstijl op de openingspagina",

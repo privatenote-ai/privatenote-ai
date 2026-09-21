@@ -2486,7 +2486,7 @@ export const es: Translations = {
   pricingRowDelayedReveal: "Revelación programada",
   pricingRowReceiptAcknowledgment: "Confirmación de recepción",
   pricingRowSentNotesDashboard: "Seguimiento de notas enviadas",
-  pricingRowRevokeUnopened: "Revocación antes de abrir",
+  pricingRowRevokeUnopened: "Destruir notas no abiertas",
   pricingRowRevealBodyFont: "Tipografía de la página de apertura",
   pricingRowAttachmentViewOnly: "Solo lectura",
   pricingRowRevealBranding: "Personalización de la página de apertura",

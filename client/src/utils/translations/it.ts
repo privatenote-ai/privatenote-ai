@@ -2479,7 +2479,7 @@ export const it: Translations = {
   pricingRowDelayedReveal: "Rivelazione programmata",
   pricingRowReceiptAcknowledgment: "Conferma di ricezione",
   pricingRowSentNotesDashboard: "Monitoraggio delle note inviate",
-  pricingRowRevokeUnopened: "Revoca prima dell’apertura",
+  pricingRowRevokeUnopened: "Brucia note non aperte",
   pricingRowRevealBodyFont: "Messaggio della pagina di apertura",
   pricingRowAttachmentViewOnly: "Sola lettura",
   pricingRowRevealBranding: "Personalizzazione della pagina di apertura",

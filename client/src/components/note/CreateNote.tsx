@@ -2454,7 +2454,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       })();
     if (!noteId) {
       toast({
-        title: t.notificationRevokeError ?? "Could not revoke that note.",
+        title: t.notificationRevokeError ?? "Could not burn that note.",
         variant: "destructive",
       });
       throw new Error("note_id_missing");
@@ -2469,7 +2469,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       );
       setNoteRevoked(true);
       toast({
-        title: t.notificationRevokeSuccessTitle ?? "Note revoked",
+        title: t.notificationRevokeSuccessTitle ?? "Note burned",
         description: t.notificationRevokeSuccessBody ?? "The link can no longer be opened.",
       });
     } catch (error) {
@@ -2479,17 +2479,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
           title: t.notificationRevokeAlreadyOpened ?? "Already opened",
           description:
             t.notificationRevokeAlreadyOpened ??
-            "This note was already opened and can no longer be revoked.",
+            "This note was already opened and can no longer be burned.",
           variant: "destructive",
         });
         return;
       }
       toast({
-        title: t.notificationRevokeError ?? "Could not revoke that note.",
+        title: t.notificationRevokeError ?? "Could not burn that note.",
         description:
           error instanceof ApiRequestError && error.status === 403
             ? (t.recipientLinkDeliveryUpgradeHint ??
-              "Starter and Business can revoke unopened notes.")
+              "Starter and Business can burn unopened notes from Activity.")
             : undefined,
         variant: "destructive",
       });

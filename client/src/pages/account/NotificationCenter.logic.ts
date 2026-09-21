@@ -196,7 +196,7 @@ export function statusLabel(
     case "burned":
       return t.notificationStatusBurned ?? "Burned";
     case "revoked":
-      return t.notificationStatusRevoked ?? "Revoked";
+      return t.notificationStatusRevoked ?? "Burned";
     case "expired":
       return t.notificationStatusExpired ?? "Expired";
     case "attachment_downloaded":

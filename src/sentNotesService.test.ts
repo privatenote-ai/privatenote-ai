@@ -289,6 +289,17 @@ describe("sent note notification service", () => {
     assert.equal(item.maxReads, 10);
   });
 
+  it("accepts D1 integer counts returned as strings", () => {
+    const item = toSentNoteNotificationItem(sentNote({
+      status: "opened",
+      opened_at: "2026-06-14T10:00:00.000Z",
+      open_count: "3" as unknown as number,
+      max_reads: "10" as unknown as number,
+    }));
+    assert.equal(item.openCount, 3);
+    assert.equal(item.maxReads, 10);
+  });
+
   it("persists reveal readCount and maxReads on the sent-note row", async () => {
     const db = new FakeD1Database();
     db.firstRows = [sentNote({ notify_on_open: 0, proof_enabled: 1, open_count: 2, max_reads: 10 })];

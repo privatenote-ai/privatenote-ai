@@ -77,6 +77,7 @@ describe("NotificationCenter helpers", () => {
     }), "Got it");
     assert.equal(statusLabel("viewed", {}), "Viewed");
     assert.equal(statusLabel("created", {}), "Active · Unopened");
+    assert.equal(statusLabel("revoked", {}), "Burned");
     assert.match(statusTone("attachment_downloaded"), /indigo/);
     assert.match(statusTone("receipt_confirmed"), /teal/);
     assert.match(statusTone("burned"), /amber/);
