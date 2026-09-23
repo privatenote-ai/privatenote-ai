@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  deferEntryStylesheet,
   ensureBlockingEntryStylesheet,
   stripStaleModulePreloads,
 } from "./deferEntryStylesheet.js";
@@ -49,6 +50,20 @@ describe("ensureBlockingEntryStylesheet", () => {
     assert.doesNotMatch(out, /media="not all"/);
     assert.doesNotMatch(out, /load-stylesheet/);
     assert.doesNotMatch(out, /rel="preload"/);
+  });
+});
+
+describe("deferEntryStylesheet", () => {
+  it("defers the entry stylesheet without a noscript fallback", () => {
+    const html =
+      '<head><link rel="stylesheet" crossorigin href="/assets/index-d53jlgIE.css"></head>';
+    const out = deferEntryStylesheet(html);
+    assert.match(out, /rel="preload"/);
+    assert.match(out, /media="not all"/);
+    assert.match(out, /data-pn-defer-css/);
+    assert.match(out, /load-stylesheet\.js/);
+    assert.doesNotMatch(out, /<noscript>/);
+    assert.equal((out.match(/index-d53jlgIE\.css/g) || []).length, 2);
   });
 });
 

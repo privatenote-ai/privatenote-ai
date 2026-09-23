@@ -289,9 +289,7 @@ export default function Blog() {
   return (
     <div className={pageContainerClass}>
       <header className="py-10 text-center">
-        <h1 className="page-title mx-auto max-w-4xl text-primary">
-          <span className="line-clamp-2">{t.blog}</span>
-        </h1>
+        <h1 className="page-title mx-auto max-w-4xl text-primary">{t.blog}</h1>
         <p className="mx-auto mt-4 max-w-[670px] text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-[17px] sm:leading-7">
           {t.blogSubtitle}
         </p>

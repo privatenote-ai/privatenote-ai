@@ -10,65 +10,186 @@
  *
  * React's usePrefillFromFragment hook reads from sessionStorage instead of
  * location.hash, and deletes the entry after the editor mount commits.
+ *
+ * Home hero copy must match client/src/utils/translations (mobile + desktop)
+ * so unhiding #pn-home-prerender does not change line count (CLS).
  */
 (function () {
   var HOME_HERO = {
     en: {
       l1: "Your Messages,",
       l2: "Your Privacy",
-      sub: "End-to-end encrypted notes that self-destruct after reading. More secure than alternatives, with client-side encryption ensuring your messages stay private.",
+      sub: "Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.",
+      subMobile: "Encrypted notes and files that disappear.",
+      write: "Write",
+      privateAi: "Private AI",
+      writeWithPrivateAi: "Write with Private AI",
+      typeHere: "Type your confidential message here...",
+      share: "Share Private Note",
+      attach: "Attach",
+      recordAudio: "Record audio",
+      recordVideo: "Record video",
     },
     de: {
       l1: "Ihre Nachrichten,",
       l2: "Ihre Privatsphäre",
-      sub: "Ende-zu-Ende-verschlüsselte Notizen, die sich nach dem Lesen selbst löschen. Sicherer als Alternativen, mit clientseitiger Verschlüsselung, damit Ihre Nachrichten privat bleiben.",
+      sub: "Teilen Sie Passwörter, sensible Nachrichten und Dateien über Ende-zu-Ende-verschlüsselte Links, die nach dem Öffnen verschwinden. Keine Empfängerkonten. Keine Werbung. Kein Profiling.",
+      subMobile: "Verschlüsselte Notizen und Dateien, die verschwinden.",
+      write: "Schreiben",
+      privateAi: "Private AI",
+      writeWithPrivateAi: "Mit Private AI schreiben",
+      typeHere: "Geben Sie hier Ihre vertrauliche Nachricht ein...",
+      share: "Private Notiz teilen",
+      attach: "Anhängen",
+      recordAudio: "Audio aufnehmen",
+      recordVideo: "Video aufnehmen",
     },
     fr: {
       l1: "Vos messages,",
       l2: "votre vie privée",
-      sub: "Des notes chiffrées de bout en bout qui s’autodétruisent après lecture. Plus sûr que les alternatives, avec un chiffrement côté client qui garde vos messages privés.",
+      sub: "Partagez mots de passe, messages sensibles et fichiers via des liens chiffrés de bout en bout qui disparaissent après ouverture. Pas de compte destinataire. Pas de publicité. Zéro profilage.",
+      subMobile: "Notes et fichiers chiffrés qui disparaissent.",
+      write: "Écrire",
+      privateAi: "Private AI",
+      writeWithPrivateAi: "Écrire avec Private AI",
+      typeHere: "Tapez votre message confidentiel ici...",
+      share: "Partager la note privée",
+      attach: "Joindre",
+      recordAudio: "Enregistrer l’audio",
+      recordVideo: "Enregistrer une vidéo",
     },
     es: {
       l1: "Tus mensajes,",
       l2: "tu privacidad",
-      sub: "Notas cifradas de extremo a extremo que se autodestruyen después de leerse. Más seguras que las alternativas, con cifrado del lado del cliente para mantener privados tus mensajes.",
+      sub: "Comparte contraseñas, mensajes sensibles y archivos mediante enlaces cifrados de extremo a extremo que desaparecen al abrirlos. Sin cuentas para destinatarios. Sin anuncios. Cero perfilado.",
+      subMobile: "Notas y archivos cifrados que desaparecen.",
+      write: "Escribir",
+      privateAi: "Private AI",
+      writeWithPrivateAi: "Escribir con Private AI",
+      typeHere: "Escribe aquí tu mensaje confidencial...",
+      share: "Compartir nota privada",
+      attach: "Adjuntar",
+      recordAudio: "Grabar audio",
+      recordVideo: "Grabar vídeo",
     },
     it: {
       l1: "I tuoi messaggi,",
       l2: "la tua privacy",
-      sub: "Note crittografate end-to-end che si autodistruggono dopo la lettura. Piu sicure delle alternative, con crittografia lato client che mantiene privati i tuoi messaggi.",
+      sub: "Condividi password, messaggi sensibili e file tramite link cifrati end-to-end che scompaiono dopo l'apertura. Nessun account per i destinatari. Niente pubblicità. Zero profilazione.",
+      subMobile: "Note e file cifrati che scompaiono.",
+      write: "Scrivi",
+      privateAi: "IA privata",
+      writeWithPrivateAi: "Scrivi con l'intelligenza artificiale privata",
+      typeHere: "Scrivi qui il tuo messaggio confidenziale...",
+      share: "Condividi nota privata",
+      attach: "Allega",
+      recordAudio: "Registra audio",
+      recordVideo: "Registra video",
     },
     nl: {
-      l1: "Uw berichten,",
-      l2: "uw privacy",
-      sub: "End-to-end versleutelde notities die zichzelf vernietigen na het lezen. Veiliger dan alternatieven, met client-side versleuteling die uw berichten prive houdt.",
+      l1: "Jouw berichten,",
+      l2: "jouw privacy",
+      sub: "Deel wachtwoorden, gevoelige berichten en bestanden via end-to-end versleutelde links die na opening verdwijnen. Geen accounts voor ontvangers. Geen advertenties. Geen profilering.",
+      subMobile: "Versleutelde notities en bestanden die verdwijnen.",
+      write: "Schrijven",
+      privateAi: "Privé AI",
+      writeWithPrivateAi: "Schrijf met Private AI",
+      typeHere: "Typ hier uw vertrouwelijke bericht...",
+      share: "Deel privénotitie",
+      attach: "Bijvoegen",
+      recordAudio: "Audio opnemen",
+      recordVideo: "Video opnemen",
+    },
+    pt: {
+      l1: "Suas mensagens,",
+      l2: "Sua privacidade",
+      sub: "Compartilhe senhas, mensagens sensíveis e arquivos por meio de links criptografados de ponta a ponta que desaparecem após a abertura. Sem contas para destinatários. Sem anúncios. Zero criação de perfil.",
+      subMobile: "Notas e arquivos criptografados que desaparecem.",
+      write: "Escrever",
+      privateAi: "IA privada",
+      writeWithPrivateAi: "Escrever com IA privada",
+      typeHere: "Digite sua mensagem confidencial aqui...",
+      share: "Compartilhar nota privada",
+      attach: "Anexar",
+      recordAudio: "Gravar áudio",
+      recordVideo: "Gravar vídeo",
+    },
+    sr: {
+      l1: "Vaše poruke,",
+      l2: "Vaša privatnost",
+      sub: "Delite lozinke, osetljive poruke i fajlove putem end-to-end šifrovanih linkova koji nestaju nakon otvaranja. Bez naloga za primaoca. Bez oglasa. Nula profilisanja.",
+      subMobile: "Šifrovane poruke i datoteke koje nestaju.",
+      write: "Pišite",
+      privateAi: "Privatna AI",
+      writeWithPrivateAi: "Pišite uz privatnu AI",
+      typeHere: "Unesite svoju poverljivu poruku ovde...",
+      share: "Podelite privatnu poruku",
+      attach: "Priloži",
+      recordAudio: "Snimite audio",
+      recordVideo: "Snimite video",
+    },
+    hr: {
+      l1: "Vaše poruke,",
+      l2: "Vaša privatnost",
+      sub: "Podijelite lozinke, osjetljive poruke i datoteke putem end-to-end šifriranih poveznica koje nestaju nakon otvaranja. Bez računa za primatelje. Bez oglasa. Nula profiliranja.",
+      subMobile: "Šifrirane bilješke i datoteke koje nestaju.",
+      write: "Pisati",
+      privateAi: "Privatna AI",
+      writeWithPrivateAi: "Pišite uz privatnu AI",
+      typeHere: "Ovdje upišite svoju povjerljivu poruku...",
+      share: "Podijelite privatnu bilješku",
+      attach: "Priloži",
+      recordAudio: "Snimi audio",
+      recordVideo: "Snimi video",
+    },
+    tr: {
+      l1: "Mesajlarınız,",
+      l2: "Gizliliğiniz",
+      sub: "Şifreleri, hassas mesajları ve dosyaları açıldıktan sonra kaybolan uçtan uca şifreli bağlantılarla paylaşın. Alıcı hesabı yok. Reklam yok. Profilleme yok.",
+      subMobile: "Kaybolan şifreli notlar ve dosyalar.",
+      write: "Yazın",
+      privateAi: "Private AI",
+      writeWithPrivateAi: "Private AI ile yazın",
+      typeHere: "Gizli mesajınızı buraya yazın...",
+      share: "Özel notu paylaş",
+      attach: "Ekle",
+      recordAudio: "Ses kaydet",
+      recordVideo: "Video kaydet",
+    },
+    pl: {
+      l1: "Twoje wiadomości,",
+      l2: "Twoja prywatność",
+      sub: "Udostępniaj hasła, poufne wiadomości i pliki przez szyfrowane end-to-end linki, które znikają po otwarciu. Bez kont odbiorców. Bez reklam. Zero profilowania.",
+      subMobile: "Szyfrowane notatki i pliki, które znikają.",
+      write: "Napisz",
+      privateAi: "Private AI",
+      writeWithPrivateAi: "Pisz z Private AI",
+      typeHere: "Wpisz tu poufną wiadomość...",
+      share: "Udostępnij prywatną notatkę",
+      attach: "Dołącz",
+      /* pl has no recordAudio/recordVideo yet — CreateNote falls back to English too. */
+      recordAudio: "Record audio",
+      recordVideo: "Record video",
     },
   };
 
+  var HOME_LOCALES = "de|fr|es|it|nl|pt|sr|hr|tr|pl";
+
   function pathHomeLocale() {
     var seg = (location.pathname || "/").split("/").filter(Boolean)[0];
-    if (seg === "de" || seg === "fr" || seg === "es" || seg === "it" || seg === "nl") return seg;
+    if (seg && HOME_HERO[seg]) return seg;
     return "en";
   }
 
   function isHomePath() {
     var p = location.pathname || "/";
     if (p === "/") return true;
-    var seg = p.split("/").filter(Boolean)[0];
-    var rest = p.split("/").filter(Boolean).slice(1);
-    if (!seg || rest.length > 0) return false;
-    return (
-      seg === "de" ||
-      seg === "fr" ||
-      seg === "es" ||
-      seg === "it" ||
-      seg === "nl" ||
-      seg === "pt" ||
-      seg === "sr" ||
-      seg === "hr" ||
-      seg === "tr" ||
-      seg === "pl"
-    );
+    return new RegExp("^/(" + HOME_LOCALES + ")/?$").test(p);
+  }
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
   }
 
   function applyHomeHeroPrerender() {
@@ -78,16 +199,23 @@
       shell.remove();
       return;
     }
-    var copy = HOME_HERO[pathHomeLocale()];
-    if (copy && pathHomeLocale() !== "en") {
-      var l1 = document.getElementById("pn-hero-l1");
-      var l2 = document.getElementById("pn-hero-l2");
-      var sub = document.getElementById("pn-hero-sub");
-      if (l1) l1.textContent = copy.l1;
-      if (l2) l2.textContent = copy.l2;
-      if (sub) sub.textContent = copy.sub;
-    }
-    shell.removeAttribute("hidden");
+    var copy = HOME_HERO[pathHomeLocale()] || HOME_HERO.en;
+    setText("pn-hero-l1", copy.l1);
+    setText("pn-hero-l2", copy.l2);
+    setText("pn-hero-l1-wide", copy.l1);
+    setText("pn-hero-l2-wide", copy.l2);
+    setText("pn-hero-sub-narrow", copy.subMobile);
+    setText("pn-hero-sub-wide", copy.sub);
+    // Back-compat if an older snapshot still has a single subtitle node.
+    setText("pn-hero-sub", copy.subMobile);
+    setText("pn-editor-tab-write", copy.write || "Write");
+    setText("pn-editor-tab-ai", copy.privateAi || "Private AI");
+    setText("pn-editor-tab-ai-wide", copy.writeWithPrivateAi || "Write with Private AI");
+    setText("pn-editor-placeholder", copy.typeHere || "Type your confidential message here...");
+    setText("pn-editor-share", copy.share || "Share Private Note");
+    setText("pn-editor-attach", copy.attach || "Attach");
+    setText("pn-editor-record-audio", copy.recordAudio || "Record audio");
+    setText("pn-editor-record-video", copy.recordVideo || "Record video");
   }
 
   try {

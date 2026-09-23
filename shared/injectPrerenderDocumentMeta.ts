@@ -151,12 +151,27 @@ function replaceMetaContent(html: string, attr: "name" | "property", key: string
   return html.replace("</head>", `<meta ${attr}="${key}" content="${escaped}" /></head>`);
 }
 
-/** Remove the static home hero snapshot block from prerender HTML. */
+/** Remove the static home boot overlay from prerender HTML.
+ *  Scans balanced `<div>` tags rather than matching a fixed inner shape, so
+ *  the composer shell after the hero section is removed with the title. */
 export function stripPnHomePrerenderBlock(html: string): string {
-  return html.replace(
-    /<div\s+id=["']pn-home-prerender["'][^>]*>[\s\S]*?<\/section>\s*<\/div>\s*/gi,
-    "",
-  );
+  const open = /<div\s+id=["']pn-home-prerender["'][^>]*>/i.exec(html);
+  if (!open || open.index === undefined) return html;
+
+  const openEnd = open.index + open[0].length;
+  const tag = /<(\/?)div\b[^>]*>/gi;
+  tag.lastIndex = openEnd;
+  let depth = 1;
+
+  for (let match = tag.exec(html); match; match = tag.exec(html)) {
+    depth += match[1] ? -1 : 1;
+    if (depth === 0) {
+      const after = html.slice(match.index + match[0].length).replace(/^\s*/, "");
+      return stripPnHomePrerenderBlock(html.slice(0, open.index) + after);
+    }
+  }
+
+  return html;
 }
 
 /** Remove static home hero snapshot so crawlers do not see duplicate H1 on inner pages. */

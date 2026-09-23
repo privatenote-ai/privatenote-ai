@@ -5,6 +5,7 @@ import {
   Suspense,
   lazy,
   useEffect,
+  useLayoutEffect,
   type ComponentType,
   type ReactNode,
 } from "react";
@@ -436,6 +437,27 @@ function Router() {
   );
 }
 
+/** Drop the nav and composer shell once React and the entry CSS are both ready.
+ *  The hero title stays in #pn-home-prerender so its paint time remains LCP. */
+function HideHomeBootOverlay() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const reveal = () => root.classList.add("pn-app-ready");
+    if (root.classList.contains("pn-css-ready") || !root.classList.contains("pn-home-route")) {
+      reveal();
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      if (!root.classList.contains("pn-css-ready")) return;
+      observer.disconnect();
+      reveal();
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -443,6 +465,7 @@ function App() {
         <AuthProvider>
           <AccountEntitlementsProvider>
             <ThemePreferenceRoot />
+            <HideHomeBootOverlay />
             <Router />
             <DeferredToaster />
           </AccountEntitlementsProvider>

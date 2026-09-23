@@ -8,6 +8,7 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
 import { buildDevPageContentSecurityPolicy } from "./shared/pageContentSecurityPolicy";
 import {
+  deferEntryStylesheet,
   ensureBlockingEntryStylesheet,
   stripStaleModulePreloads,
 } from "./scripts/deferEntryStylesheet.js";
@@ -17,8 +18,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 /**
  * After production build: keep only Satoshi 700 + Inter 400 latin preloads
- * (small woff2; extra faces starve CSS on mobile) and keep the Tailwind
- * stylesheet render-blocking so prerendered HTML does not flash unstyled.
+ * (small woff2; extra faces starve CSS on mobile). The homepage defers the
+ * Tailwind bundle so the inline hero can paint; spa-shell.html stays blocking.
  */
 function htmlCriticalPathPlugin(): Plugin {
   return {
@@ -30,7 +31,7 @@ function htmlCriticalPathPlugin(): Plugin {
       if (!fs.existsSync(indexPath)) return;
       let html = fs.readFileSync(indexPath, "utf8");
       html = keepCriticalFontPreloads(html, path.join(distDir, "assets"));
-      html = ensureBlockingEntryStylesheet(html);
+      html = deferEntryStylesheet(html);
       html = stripStaleModulePreloads(html);
       fs.writeFileSync(indexPath, html);
     },
@@ -51,10 +52,11 @@ function spaShellCopyPlugin(): Plugin {
       const indexPath = path.join(distDir, "index.html");
       if (!fs.existsSync(indexPath)) return;
       const html = fs.readFileSync(indexPath, "utf8");
-      const spa = html.replace(
+      const stripped = html.replace(
         /<div id="pn-home-prerender"[\s\S]*?<div id="root">/,
         '<div id="root">',
       );
+      const spa = ensureBlockingEntryStylesheet(stripped);
       fs.writeFileSync(path.join(distDir, "spa-shell.html"), spa);
     },
   };
