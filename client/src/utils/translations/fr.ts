@@ -2027,6 +2027,15 @@ export const fr: Translations = {
     "Instructions sans historique durable",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Canal d’envoi chiffré aux couleurs du cabinet, ouvert dans le navigateur du client. Sans application. Découvrez l’offre Business pour cabinets.",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote : pourquoi l’endroit du chiffrement compte",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret chiffre sur ses serveurs. PrivateNote chiffre avant que le secret ne quitte votre appareil.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Les deux produits livrent un lien secret temporaire, mais leurs modèles de confiance sont fondamentalement différents. OneTimeSecret chiffre sur ses serveurs : le service reçoit donc le secret en texte clair et doit être digne de confiance pour le traiter avant chiffrement. Si une phrase secrète est utilisée, elle est aussi soumise au service dans le cadre de la protection côté serveur. PrivateNote chiffre le secret localement avant qu’il ne quitte l’appareil de l’expéditeur. Le service reçoit du texte chiffré plutôt que le secret en clair, et une phrase secrète optionnelle protège localement la clé côté client, ajoutant une protection si le lien lui-même est exposé.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote : où le chiffrement a lieu",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret chiffre sur ses serveurs, donc une phrase secrète atteint encore ce serveur. PrivateNote chiffre d’abord en local, et une phrase secrète protège en plus localement la clé côté client si le canal du lien est compromis.",
   blogSocialMediaBansTitle: "Les interdictions de réseaux sociaux pour les enfants fonctionneront-elles ?",
   blogSocialMediaBansSubtitle: "Ce que dit la science",
   blogSocialMediaBansExcerpt:

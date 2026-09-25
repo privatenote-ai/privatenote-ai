@@ -1725,6 +1725,15 @@ export const tr: Translations = {
   blogTagCryptography: "kriptografi",
   blogTagWorkplace: "iş yeri",
   blogTagAi: "ai",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: şifrelemenin nerede yapıldığı neden önemli",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret sunucularında şifreler. PrivateNote, sır cihazınızı terk etmeden önce şifreler.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Her iki ürün de geçici bir gizli bağlantı sunar, ancak güven modelleri temelden farklıdır. OneTimeSecret sunucularında şifreler; bu da hizmetin sırrı düz metin olarak aldığı ve şifrelemeden önce güvenli işlemesi gerektiği anlamına gelir. Bir parola kullanılırsa, bu parola da sunucu tarafı koruma mekanizmasının parçası olarak hizmete gönderilir. PrivateNote sırrı gönderenin cihazını terk etmeden önce yerelde şifreler. Hizmet düz metin sır yerine şifreli metin alır ve isteğe bağlı bir parola, bağlantının kendisi ifşa olursa istemci tarafı anahtarı yerelde ek olarak korur.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: şifreleme nerede gerçekleşir",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret sunucularında şifreler, bu yüzden bir parola yine o sunucuya ulaşır. PrivateNote önce yerelde şifreler ve bir parola, bağlantının kanalı ele geçirilirse istemci tarafı anahtarı yerelde ek olarak korur.",
   aboutPageTitle: "Hakkımızda",
   documentMetaAboutTitle: "Hakkımızda: şifreli tek kullanımlık notlar",
   aboutPageSubtitle: "PrivateNote.ai’nin neden var olduğunu, ürünün gizlilik değerlerini ve basit şifreli araçların hassas iletişimi nasıl daha güvenli kıldığını öğrenin.",

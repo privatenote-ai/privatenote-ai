@@ -1725,6 +1725,15 @@ export const pl: Translations = {
   blogTagCryptography: "kryptografia",
   blogTagWorkplace: "praca",
   blogTagAi: "ai",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: dlaczego miejsce szyfrowania ma znaczenie",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret szyfruje na swoich serwerach. PrivateNote szyfruje, zanim tajemnica opuści Twoje urządzenie.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Oba produkty dostarczają tymczasowy tajny link, ale ich modele zaufania różnią się zasadniczo. OneTimeSecret szyfruje na swoich serwerach, co oznacza, że usługa otrzymuje tajemnicę jako tekst jawny i trzeba jej zaufać, że obsłuży ją bezpiecznie przed szyfrowaniem. Jeśli używana jest fraza hasła, ta fraza też jest przesyłana do usługi w ramach mechanizmu ochrony po stronie serwera. PrivateNote szyfruje tajemnicę lokalnie, zanim opuści urządzenie nadawcy. Usługa otrzymuje szyfrogram zamiast tajemnicy w postaci tekstu jawnego, a opcjonalna fraza hasła chroni lokalnie klucz po stronie klienta, dodając ochronę, gdy sam link zostanie ujawniony.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: gdzie zachodzi szyfrowanie",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret szyfruje na swoich serwerach, więc fraza hasła i tak dociera do tego serwera. PrivateNote najpierw szyfruje lokalnie, a fraza hasła dodatkowo chroni lokalnie klucz po stronie klienta, jeśli kanał linku zostanie skompromitowany.",
   aboutPageTitle: "O nas",
   documentMetaAboutTitle: "O nas: szyfrowane notatki jednorazowe",
   aboutPageSubtitle: "Dlaczego istnieje PrivateNote.ai, wartości prywatności stojące za produktem i jak proste szyfrowane narzędzia mogą uczynić poufną komunikację bezpieczniejszą.",

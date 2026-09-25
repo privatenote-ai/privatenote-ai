@@ -40,6 +40,7 @@ const BLOG_TITLE_KEY_BY_SLUG: Record<BlogCanonicalSlug, keyof Translations> = {
   "delayed-reveal-scheduled-secret-links": "blogDelayedRevealTitle",
   "how-to-send-nudes-safely": "blogHowToSendNudesSafelyTitle",
   "secure-client-delivery-for-lawyers": "blogSecureClientDeliveryForLawyersTitle",
+  "onetimesecret-vs-privatenote": "blogOnetimesecretVsPrivateNoteTitle",
 };
 
 export function blogPostTitleForSlug(slug: BlogCanonicalSlug, t: Translations): string {

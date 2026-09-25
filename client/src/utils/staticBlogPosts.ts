@@ -41,6 +41,7 @@ export const STATIC_BLOG_PUBLISHED_AT: Record<string, string> = {
   "delayed-reveal-scheduled-secret-links": "2026-08-06T12:00:00.000Z",
   "how-to-send-nudes-safely": "2026-09-03T12:00:00.000Z",
   "secure-client-delivery-for-lawyers": "2026-09-08T12:00:00.000Z",
+  "onetimesecret-vs-privatenote": "2026-09-23T12:00:00.000Z",
 };
 
 export const STATIC_BLOG_SLUGS = Object.keys(STATIC_BLOG_PUBLISHED_AT) as readonly string[];
@@ -83,6 +84,7 @@ const STATIC_BLOG_READ_MINUTES: Record<string, 4 | 5 | 6 | 7> = {
   "delayed-reveal-scheduled-secret-links": 6,
   "how-to-send-nudes-safely": 7,
   "secure-client-delivery-for-lawyers": 7,
+  "onetimesecret-vs-privatenote": 6,
 };
 
 export function getStaticBlogReadTime(slug: string, t: Translations): string | undefined {
@@ -118,6 +120,20 @@ export function buildStaticBlogPosts(t: Translations): BlogPost[] {
   const at = (slug: string) => staticBlogPublishedAt(slug);
 
   return [
+    {
+      id: -38,
+      title: t.blogOnetimesecretVsPrivateNoteTitle,
+      excerpt: t.blogOnetimesecretVsPrivateNoteExcerpt,
+      author: "PrivateNote.ai",
+      slug: "onetimesecret-vs-privatenote",
+      publishedAt: at("onetimesecret-vs-privatenote"),
+      tags: JSON.stringify([t.blogTagSecurity, t.blogTagCryptography, t.blogTagPasswords]),
+      content: "",
+      coverImage: null,
+      published: true,
+      createdAt: at("onetimesecret-vs-privatenote"),
+      updatedAt: at("onetimesecret-vs-privatenote"),
+    },
     {
       id: -37,
       title: t.blogSecureClientDeliveryForLawyersTitle,

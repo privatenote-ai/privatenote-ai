@@ -1672,6 +1672,15 @@ export const de: Translations = {
     "Mandatsgeheimnis ohne Chat-Verlauf",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Vertrauliche Weisungen und Dateien über einen Ende-zu-Ende-verschlüsselten Link übermitteln. Keine App für Mandanten. Kanzleikonto: PrivateNote Business.",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: Warum der Ort der Verschlüsselung zählt",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret verschlüsselt auf seinen Servern. PrivateNote verschlüsselt, bevor das Geheimnis Ihr Gerät verlässt.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Beide Produkte liefern einen temporären Geheimlink, aber ihre Vertrauensmodelle unterscheiden sich grundlegend. OneTimeSecret verschlüsselt auf seinen Servern — der Dienst erhält das Geheimnis also im Klartext und muss vertrauenswürdig damit umgehen, bevor verschlüsselt wird. Wird eine Passphrase genutzt, wird auch sie als Teil des serverseitigen Schutzes an den Dienst übermittelt. PrivateNote verschlüsselt das Geheimnis lokal, bevor es das Gerät des Absenders verlässt. Der Dienst erhält Chiffretext statt Klartext, und eine optionale Passphrase schützt den clientseitigen Schlüssel lokal zusätzlich, falls der Link selbst preisgegeben wird.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: wo die Verschlüsselung stattfindet",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret verschlüsselt auf seinen Servern, daher erreicht eine Passphrase diesen Server weiterhin. PrivateNote verschlüsselt zuerst lokal, und eine Passphrase schützt den clientseitigen Schlüssel zusätzlich lokal, wenn der Kanal des Links kompromittiert ist.",
   blogSocialMediaBansTitle: "Wirken Social-Media-Verbote für Kinder?",
   blogSocialMediaBansSubtitle: "Was die Evidenz sagt",
   blogSocialMediaBansExcerpt:

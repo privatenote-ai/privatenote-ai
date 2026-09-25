@@ -2031,6 +2031,15 @@ export const sr: Translations = {
     "Advokatska tajna bez istorije poruka",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Sigurna dostava uputstava i dokumenata klijentima — bez instaliranja dodatnih aplikacija. Pogledajte Business paket.",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: zašto je važno gde šifrujete",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret enkriptuje na svojim serverima. PrivateNote enkriptuje pre nego što tajna napusti vaš uređaj.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Oba proizvoda isporučuju privremeni tajni link, ali njihovi modeli poverenja se suštinski razlikuju. OneTimeSecret enkriptuje na svojim serverima, što znači da usluga prima tajnu u otvorenom tekstu i mora joj se verovati da će je bezbedno obraditi pre enkripcije. Ako se koristi passphrase, ta se passphrase takođe šalje usluzi kao deo mehanizma zaštite na serveru. PrivateNote enkriptuje tajnu lokalno pre nego što napusti uređaj pošiljaoca. Usluga prima ciphertext umesto tajne u otvorenom tekstu, a opcionalni passphrase lokalno štiti klijentski ključ, dodajući zaštitu ako je sam link izložen.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: gde se enkripcija dešava",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret enkriptuje na svojim serverima, pa passphrase i dalje stiže do tog servera. PrivateNote prvo enkriptuje lokalno, a passphrase dodatno lokalno štiti klijentski ključ ako je kanal linka kompromitovan.",
   blogSocialMediaBansTitle: "Da li će zabrane društvenih mreža za decu delovati?",
   blogSocialMediaBansSubtitle: "Šta kaže evidencija",
   blogSocialMediaBansExcerpt:

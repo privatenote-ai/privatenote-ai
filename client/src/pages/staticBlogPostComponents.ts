@@ -154,4 +154,8 @@ export const STATIC_BLOG_POST_BY_SLUG: Record<string, LazyExoticComponent<Compon
     () => import("@/components/blog/SecureClientDeliveryForLawyersPost"),
     "SecureClientDeliveryForLawyersPost",
   ),
+  "onetimesecret-vs-privatenote": lazyPost(
+    () => import("@/components/blog/OnetimesecretVsPrivateNotePost"),
+    "OnetimesecretVsPrivateNotePost",
+  ),
 };

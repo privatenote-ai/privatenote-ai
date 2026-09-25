@@ -38,6 +38,7 @@ export const BLOG_CANONICAL_SLUGS = [
   "delayed-reveal-scheduled-secret-links",
   "how-to-send-nudes-safely",
   "secure-client-delivery-for-lawyers",
+  "onetimesecret-vs-privatenote",
 ] as const;
 
 export type BlogCanonicalSlug = (typeof BLOG_CANONICAL_SLUGS)[number];
@@ -541,6 +542,19 @@ export const LOCALIZED_BLOG_SLUGS: Record<BlogCanonicalSlug, Record<SupportedLan
     hr: "sigurna-dostava-klijentima-za-odvjetnike",
     tr: "secure-client-delivery-for-lawyers",
     pl: "secure-client-delivery-for-lawyers",
+  },
+  "onetimesecret-vs-privatenote": {
+    en: "onetimesecret-vs-privatenote",
+    de: "onetimesecret-vs-privatenote-wo-die-verschluesselung-entscheidet",
+    fr: "onetimesecret-vs-privatenote-ou-le-chiffrement-compte",
+    es: "onetimesecret-vs-privatenote-donde-importa-el-cifrado",
+    it: "onetimesecret-vs-privatenote-dove-conta-la-cifratura",
+    nl: "onetimesecret-vs-privatenote-waar-versleuteling-telt",
+    pt: "onetimesecret-vs-privatenote-onde-a-cifragem-importa",
+    sr: "onetimesecret-vs-privatenote-gde-sifrovanje-odlucuje",
+    hr: "onetimesecret-vs-privatenote-gdje-sifriranje-odlucuje",
+    tr: "onetimesecret-vs-privatenote-sifreleme-nerede",
+    pl: "onetimesecret-vs-privatenote-gdzie-szyfrowanie",
   },
 
 };

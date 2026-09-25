@@ -2030,6 +2030,15 @@ export const en: Translations = {
     "Secure client delivery for lawyers",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Deliver privileged instructions without a Signal or WhatsApp transcript. Branded one-time links for counsel and clients—no app install. See Business.",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: Why Where You Encrypt Matters",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret encrypts on its servers. PrivateNote encrypts before the secret leaves your device.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Both products deliver a temporary secret link, but their trust models are fundamentally different. OneTimeSecret performs encryption on its servers, which means the service receives the secret in plaintext and must be trusted to handle it securely before encryption. If a passphrase is used, that passphrase is also submitted to the service as part of the server-side protection mechanism. PrivateNote encrypts the secret locally before it leaves the sender’s device. The service receives ciphertext rather than the plaintext secret, and an optional passphrase protects the client-side encryption key locally, adding protection if the link itself is exposed.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: where encryption happens",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret encrypts on its servers, so a passphrase still reaches that server. PrivateNote encrypts locally first, and a passphrase additionally protects the client-side key locally if the link’s channel is compromised.",
   blogSocialMediaBansTitle: "Will Social Media Bans for Children Work?",
   blogSocialMediaBansSubtitle: "What the evidence says",
   blogSocialMediaBansExcerpt:

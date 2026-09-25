@@ -228,6 +228,12 @@ export const BLOG_TAKEAWAYS_EN: Record<string, string[]> = {
     "Burn-after-read and expiry avoid a permanent copy remaining by default in a messenger history.",
     "Business adds firm branding, view-only files, and professional delivery controls.",
   ],
+  "onetimesecret-vs-privatenote": [
+    "Both encrypt temporary links. The difference is where encryption happens.",
+    "OneTimeSecret encrypts on the server, so the secret and passphrase reach the service at creation and again at retrieval.",
+    "PrivateNote encrypts on the device first. The key stays client-side; a passphrase wraps it locally if the link is exposed.",
+    "That changes the trust boundary: PrivateNote’s server does not need plaintext. A stolen database still lacks the keys; a compromised browser during use is a different risk.",
+  ],
 };
 
 export type BlogTakeawaysLocaleMap = Partial<

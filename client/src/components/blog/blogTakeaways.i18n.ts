@@ -217,6 +217,12 @@ export const BLOG_TAKEAWAYS_DE: Record<string, string[]> = {
     "Vernichtung nach dem Lesen und Ablauf vermeiden, dass eine Kopie standardmäßig im Chatverlauf bleibt.",
     "Business ergänzt Kanzlei-Branding, Ansicht ohne Download und professionelle Übermittlungskontrollen.",
   ],
+  "onetimesecret-vs-privatenote": [
+    "Beide verschlüsseln temporäre Links. Der Unterschied ist, wo die Verschlüsselung stattfindet.",
+    "OneTimeSecret verschlüsselt auf dem Server, daher erreichen Geheimnis und Passphrase den Dienst bei der Erstellung und erneut bei der Abholung.",
+    "PrivateNote verschlüsselt zuerst auf dem Gerät. Der Schlüssel bleibt clientseitig; eine Passphrase umhüllt ihn lokal, wenn der Link offengelegt wird.",
+    "Das verschiebt die Vertrauensgrenze: Der Server von PrivateNote braucht keinen Klartext. Eine gestohlene Datenbank enthält die Schlüssel nicht; ein kompromittierter Browser während der Nutzung ist ein anderes Risiko.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
@@ -435,6 +441,12 @@ export const BLOG_TAKEAWAYS_FR: Record<string, string[]> = {
     "Le client n’installe ni Signal ni WhatsApp ; il ouvre un lien à l’image du cabinet dans le navigateur.",
     "Lecture unique et expiration évitent qu’une copie permanente reste par défaut dans l’historique d’une messagerie.",
     "L’offre Business rend la page d’ouverture identifiable (cabinet, logo) — sans authentifier cryptographiquement l’expéditeur.",
+  ],
+  "onetimesecret-vs-privatenote": [
+    "Les deux chiffrent des liens temporaires. La différence est l’endroit où le chiffrement a lieu.",
+    "OneTimeSecret chiffre sur le serveur, donc le secret et la phrase secrète atteignent le service à la création et à nouveau à la récupération.",
+    "PrivateNote chiffre d’abord sur l’appareil. La clé reste côté client ; une phrase secrète l’enveloppe localement si le lien est exposé.",
+    "Cela déplace la frontière de confiance : le serveur de PrivateNote n’a pas besoin du clair. Une base volée ne contient pas les clés ; un navigateur compromis pendant l’usage est un risque distinct.",
   ],
 };
 
@@ -655,6 +667,12 @@ export const BLOG_TAKEAWAYS_ES: Record<string, string[]> = {
     "La lectura única y la caducidad reducen las copias que permanecen por defecto en un historial de mensajería.",
     "Business añade marca del despacho, archivos en modo de solo visualización y controles de entrega — sin autenticar criptográficamente al remitente.",
   ],
+  "onetimesecret-vs-privatenote": [
+    "Ambos cifran enlaces temporales. La diferencia es dónde ocurre el cifrado.",
+    "OneTimeSecret cifra en el servidor, así que el secreto y la frase de contraseña llegan al servicio en la creación y otra vez en la recuperación.",
+    "PrivateNote cifra primero en el dispositivo. La clave permanece del lado del cliente; una frase de contraseña la envuelve localmente si el enlace queda expuesto.",
+    "Eso cambia el límite de confianza: el servidor de PrivateNote no necesita texto en claro. Una base robada no tiene las claves; un navegador comprometido durante el uso es un riesgo distinto.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
@@ -873,6 +891,12 @@ export const BLOG_TAKEAWAYS_IT: Record<string, string[]> = {
     "Il cliente non installa Signal o WhatsApp; apre un link con l’identità dello studio nel browser.",
     "Lettura unica e scadenza riducono le copie che rimangono per impostazione predefinita nella cronologia di una messaggistica.",
     "Business aggiunge l’identità dello studio, file in sola visualizzazione e controlli di consegna — senza autenticare crittograficamente il mittente.",
+  ],
+  "onetimesecret-vs-privatenote": [
+    "Entrambi cifrano link temporanei. La differenza è dove avviene la cifratura.",
+    "OneTimeSecret cifra sul server, quindi il segreto e la passphrase raggiungono il servizio alla creazione e di nuovo al recupero.",
+    "PrivateNote cifra prima sul dispositivo. La chiave resta lato client; una passphrase la avvolge localmente se il link viene esposto.",
+    "Questo sposta il confine di fiducia: il server di PrivateNote non ha bisogno del testo in chiaro. Un database rubato non ha le chiavi; un browser compromesso durante l’uso è un rischio diverso.",
   ],
 };
 
@@ -1093,6 +1117,12 @@ export const BLOG_TAKEAWAYS_NL: Record<string, string[]> = {
     "Eenmalige toegang en verval verminderen de kopieën die standaard in een chatgeschiedenis achterblijven.",
     "Business voegt kantoorhuisstijl, alleen-lezen bestanden en professionele overdrachtscontroles toe — zonder cryptografische authenticatie van de afzender.",
   ],
+  "onetimesecret-vs-privatenote": [
+    "Beide versleutelen tijdelijke links. Het verschil is waar de versleuteling plaatsvindt.",
+    "OneTimeSecret versleutelt op de server, dus het geheim en de wachtwoordzin bereiken de dienst bij aanmaken en opnieuw bij ophalen.",
+    "PrivateNote versleutelt eerst op het apparaat. De sleutel blijft aan de clientzijde; een wachtwoordzin wikkelt die lokaal in als de link blootligt.",
+    "Dat verschuift de vertrouwensgrens: de server van PrivateNote heeft geen platte tekst nodig. Een gestolen database bevat de sleutels niet; een gecompromitteerde browser tijdens gebruik is een ander risico.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
@@ -1311,6 +1341,12 @@ export const BLOG_TAKEAWAYS_PT: Record<string, string[]> = {
     "O cliente não instala Signal nem WhatsApp; abre uma hiperligação com a identidade do escritório no navegador.",
     "A leitura única e a caducidade reduzem as cópias que ficam, por defeito, num historial de mensagens.",
     "O Business acrescenta a identidade do escritório, ficheiros em modo apenas de visualização e controlos de entrega — sem autenticar criptograficamente o remetente.",
+  ],
+  "onetimesecret-vs-privatenote": [
+    "Ambos cifram ligações temporárias. A diferença é onde a cifragem acontece.",
+    "O OneTimeSecret cifra no servidor, por isso o segredo e a frase-passe chegam ao serviço na criação e outra vez na recuperação.",
+    "A PrivateNote cifra primeiro no dispositivo. A chave permanece do lado do cliente; uma frase-passe envolve-a localmente se a ligação for exposta.",
+    "Isto muda o limite de confiança: o servidor da PrivateNote não precisa de texto em claro. Uma base roubada não tem as chaves; um navegador comprometido durante o uso é um risco diferente.",
   ],
 };
 
@@ -1531,6 +1567,12 @@ export const BLOG_TAKEAWAYS_SR: Record<string, string[]> = {
     "Jednokratno čitanje i istek smanjuju broj kopija koje podrazumevano ostaju u istoriji komunikacije.",
     "Business paket dodaje identitet kancelarije, režim pregleda bez preuzimanja i profesionalne kontrole dostave.",
   ],
+  "onetimesecret-vs-privatenote": [
+    "Oba šifruju privremene linkove. Razlika je gde se šifrovanje dešava.",
+    "OneTimeSecret šifruje na serveru, pa tajna i lozinka stižu do servisa pri kreiranju i ponovo pri preuzimanju.",
+    "PrivateNote prvo šifruje na uređaju. Ključ ostaje na klijentu; lozinka ga lokalno obavija ako se link otkrije.",
+    "To pomera granicu poverenja: server PrivateNote-a ne treba otvoreni tekst. Ukradena baza nema ključeve; kompromitovan pregledač tokom korišćenja drugi je rizik.",
+  ],
 };
 
 export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
@@ -1749,5 +1791,11 @@ export const BLOG_TAKEAWAYS_HR: Record<string, string[]> = {
     "Klijenti ne moraju instalirati Signal ili WhatsApp; poveznicu otvaraju izravno u pregledniku.",
     "Jednokratno čitanje i istek smanjuju broj kopija koje prema zadanim postavkama ostaju u povijesti komunikacije.",
     "Business dodaje identitet ureda, način pregleda bez preuzimanja i profesionalne kontrole dostave.",
+  ],
+  "onetimesecret-vs-privatenote": [
+    "Oba šifriraju privremene poveznice. Razlika je gdje se šifriranje događa.",
+    "OneTimeSecret šifrira na poslužitelju, pa tajna i lozinka stižu do servisa pri stvaranju i ponovo pri preuzimanju.",
+    "PrivateNote prvo šifrira na uređaju. Ključ ostaje na klijentu; lozinka ga lokalno omata ako se poveznica otkrije.",
+    "To pomiče granicu povjerenja: poslužitelj PrivateNotea ne treba otvoreni tekst. Ukradena baza nema ključeve; kompromitiran preglednik tijekom korištenja zaseban je rizik.",
   ],
 };

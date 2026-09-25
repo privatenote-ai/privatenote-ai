@@ -2024,6 +2024,15 @@ export const it: Translations = {
     "Segreto professionale senza cronologia",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Canale cifrato monouso, con l’identità dello studio, aperto nel browser del cliente. Senza applicazione. Vedi Business.",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: perché conta dove si cifra",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret cifra sui suoi server. PrivateNote cifra prima che il segreto lasci il tuo dispositivo.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Entrambi i prodotti consegnano un link segreto temporaneo, ma i loro modelli di fiducia sono fondamentalmente diversi. OneTimeSecret cifra sui suoi server: il servizio riceve quindi il segreto in chiaro e deve essere affidabile nel gestirlo in modo sicuro prima della cifratura. Se si usa una passphrase, anche quella viene inviata al servizio come parte del meccanismo di protezione lato server. PrivateNote cifra il segreto in locale prima che lasci il dispositivo del mittente. Il servizio riceve testo cifrato anziché il segreto in chiaro, e una passphrase opzionale protegge localmente la chiave lato client, aggiungendo protezione se il link stesso viene esposto.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: dove avviene la cifratura",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret cifra sui suoi server, quindi una passphrase raggiunge comunque quel server. PrivateNote cifra prima in locale, e una passphrase protegge inoltre localmente la chiave lato client se il canale del link è compromesso.",
   blogSocialMediaBansTitle: "I divieti sui social media per i minori funzioneranno?",
   blogSocialMediaBansSubtitle: "Cosa dice l'evidenza",
   blogSocialMediaBansExcerpt:

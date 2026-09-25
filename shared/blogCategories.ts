@@ -50,6 +50,7 @@ export const BLOG_POST_CATEGORY: Record<BlogCanonicalSlug, BlogCategory> = {
 
   // Encryption — educational concepts
   "what-is-end-to-end-encryption": "encryption",
+  "onetimesecret-vs-privatenote": "encryption",
   "android-iphone-rcs-end-to-end-encryption": "encryption",
   "myth-good-enough-security": "encryption",
   "mythos-ai-cryptanalysis-hawk": "encryption",

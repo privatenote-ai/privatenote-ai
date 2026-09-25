@@ -1624,6 +1624,15 @@ export const nl: Translations = {
     "Beroepsgeheim zonder chatgeschiedenis",
   blogSecureClientDeliveryForLawyersMetaDescription:
     "Eenmalig versleuteld kanaal in de huisstijl van het kantoor, te openen in de browser van de cliënt. Geen extra app. Zie Business.",
+  blogOnetimesecretVsPrivateNoteTitle:
+    "OneTimeSecret vs PrivateNote: waarom het ertoe doet waar je versleutelt",
+  blogOnetimesecretVsPrivateNoteSubtitle:
+    "OneTimeSecret versleutelt op zijn servers. PrivateNote versleutelt voordat het geheim je apparaat verlaat.",
+  blogOnetimesecretVsPrivateNoteExcerpt:
+    "Beide producten leveren een tijdelijke geheime link, maar hun vertrouwensmodellen verschillen fundamenteel. OneTimeSecret versleutelt op zijn servers, wat betekent dat de dienst het geheim in plaintext ontvangt en erop moet worden vertrouwd dat het veilig wordt behandeld vóór versleuteling. Als een passphrase wordt gebruikt, wordt die passphrase ook aan de dienst aangeboden als onderdeel van de server-side bescherming. PrivateNote versleutelt het geheim lokaal voordat het het apparaat van de afzender verlaat. De dienst ontvangt ciphertext in plaats van het plaintext-geheim, en een optionele passphrase beschermt de client-side sleutel lokaal, met extra bescherming als de link zelf wordt blootgesteld.",
+  blogOnetimesecretVsPrivateNoteMetaTitle: "OneTimeSecret vs PrivateNote: waar versleuteling plaatsvindt",
+  blogOnetimesecretVsPrivateNoteMetaDescription:
+    "OneTimeSecret versleutelt op zijn servers, dus een passphrase bereikt die server nog steeds. PrivateNote versleutelt eerst lokaal, en een passphrase beschermt de client-side sleutel bovendien lokaal als het kanaal van de link is gecompromitteerd.",
   blogSocialMediaBansTitle: "Werken socialmediaverboden voor kinderen?",
   blogSocialMediaBansSubtitle: "Wat het bewijs zegt",
   blogSocialMediaBansExcerpt:
