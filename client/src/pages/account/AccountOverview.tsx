@@ -7,6 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/lib/queryClient";
 import { parseActivityCreatedAt } from "@/lib/parseActivityCreatedAt";
+import { useBillingPortal } from "@/hooks/useBillingPortal";
+import {
+  canCancelSubscription as subscriptionCanCancel,
+  canManageBilling,
+} from "@/utils/billingPortalAccess";
+import { AccountDangerZone } from "./AccountDangerZone";
 import { AccountSettingsShell } from "./AccountSettingsShell";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -59,8 +65,6 @@ type AccountSummary = {
   };
 };
 
-type BillingPortalFlow = "manage" | "cancel";
-
 type MeResponse = {
   id: string;
   email: string | null;
@@ -76,15 +80,6 @@ type ActivityEvent = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Keep in sync with STRIPE_CHANGEABLE_SUBSCRIPTION_STATUSES on the API. */
-const CANCELLABLE_SUBSCRIPTION_STATUSES = new Set([
-  "active",
-  "trialing",
-  "past_due",
-  "unpaid",
-  "paused",
-]);
 
 const PLAN_BADGE_CLASS: Record<AccountType, string> = {
   free: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
@@ -149,7 +144,7 @@ export default function AccountOverview() {
   const [recentEvents, setRecentEvents] = useState<ActivityEvent[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [billingPortalFlow, setBillingPortalFlow] = useState<BillingPortalFlow | null>(null);
+  const { billingPortalFlow, openBillingPortal } = useBillingPortal();
   const [themePref, setThemePref] = useState(getThemePreference());
 
   // Keep theme label in sync with storage changes
@@ -228,29 +223,6 @@ export default function AccountOverview() {
     }
   }, [summary?.id, toast]);
 
-  const openBillingPortal = useCallback(async (flow: BillingPortalFlow = "manage") => {
-    setBillingPortalFlow(flow);
-    try {
-      const result = await apiRequest<{ ok: boolean; url?: string }>(
-        "/api/auth/billing/portal",
-        "POST",
-        { flow },
-      );
-      if (result.url) {
-        window.location.assign(result.url);
-        return;
-      }
-      throw new Error("Missing portal URL");
-    } catch {
-      toast({
-        title: tx("authBillingPortalFailedTitle", "Billing portal unavailable"),
-        description: tx("authBillingPortalFailedDesc", "Could not open billing management. Please try again later."),
-        variant: "destructive",
-      });
-      setBillingPortalFlow(null);
-    }
-  }, [toast]);
-
   // ── Loading state ──────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
@@ -297,14 +269,18 @@ export default function AccountOverview() {
   const cancelAtPeriodEnd = summary?.billing?.cancelAtPeriodEnd === true;
   const periodEnd = summary?.billing?.subscriptionCurrentPeriodEnd ?? null;
   const periodEndLabel = periodEnd ? formatDate(periodEnd, dateFormatter) : null;
-  // Mirrors the statuses the API will actually let us change or cancel, so a
-  // subscription that already ended never offers a cancel button.
-  const canCancelSubscription =
-    subscriptionLinked &&
-    CANCELLABLE_SUBSCRIPTION_STATUSES.has(
-      summary?.billing?.subscriptionStatus?.toLowerCase() ?? "",
-    ) &&
-    !cancelAtPeriodEnd;
+  const showBillingActions = canManageBilling({
+    stripeCustomerLinked,
+    accountType,
+  });
+  const canCancelSubscription = subscriptionCanCancel({
+    canManage: showBillingActions,
+    subscriptionState: entitlements.subscriptionState,
+    subscriptionStatus: summary?.billing?.subscriptionStatus,
+    subscriptionLinked:
+      summary?.billing?.stripeSubscriptionLinked === true || stripeCustomerLinked,
+    cancelAtPeriodEnd,
+  });
   const showPlanOptions = accountType === "free" || cancelAtPeriodEnd;
 
   // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -603,7 +579,7 @@ export default function AccountOverview() {
                 "Starter and Business unlock higher limits, not private AI. Hosted drafts are opt-in and never encrypted on our servers while processing.",
               )}
             </p>
-            {stripeCustomerLinked ? (
+            {showBillingActions ? (
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
@@ -674,6 +650,8 @@ export default function AccountOverview() {
             </div>
           )}
         </section>
+
+        <AccountDangerZone />
       </div>
     </AccountSettingsShell>
   );

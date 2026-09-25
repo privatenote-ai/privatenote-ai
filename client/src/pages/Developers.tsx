@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -23,6 +23,7 @@ import { MarketingDocShell } from "@/components/layout/MarketingDocShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { CHROME_EXTENSION_STORE_URL } from "@/utils/chromeExtensionOnboarding";
 import { localizedPath } from "@/utils/localizedPath";
+import { trackNamedEvent } from "@/utils/productAnalytics";
 
 const HUB_TOOL_ORDER = ["web", "cli", "vscode", "chrome", "mcp", "codex"] as const;
 type HubToolId = (typeof HUB_TOOL_ORDER)[number];
@@ -38,6 +39,10 @@ const HUB_CARD_KEYS: Record<Exclude<HubToolId, "web">, { titleKey: string; jtbdK
 export default function Developers() {
   const { language, t } = useLanguage();
   const lp = (path: string) => localizedPath(path, language);
+
+  useEffect(() => {
+    trackNamedEvent("developer_page_viewed");
+  }, []);
   const [hubView, setHubView] = useState<"cards" | "compare">("cards");
 
   const hubNavEntries = [

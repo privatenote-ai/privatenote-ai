@@ -34,6 +34,27 @@ test("injectPrerenderDocumentMeta injects blog H1 when hidden home snapshot H1 i
   assert.doesNotMatch(out, /id="pn-home-prerender"/);
 });
 
+test("injectPrerenderDocumentMeta strips a nested home overlay on inner pages and keeps it on home", () => {
+  const html = [
+    "<html><head><title>old</title></head><body>",
+    '<div id="pn-home-prerender" class="pn-home-prerender">',
+    '<section><h1 class="page-title">Your Messages,</h1></section>',
+    '<div class="pn-home-editor-wrap"><div class="pn-editor-col">Type here</div></div>',
+    "</div>",
+    '<div id="root"><main><h1>About</h1></main></div>',
+    "</body></html>",
+  ].join("");
+
+  const about = injectPrerenderDocumentMeta(html, "/about");
+  assert.doesNotMatch(about, /pn-home-prerender/);
+  assert.doesNotMatch(about, /pn-home-editor-wrap/);
+  assert.match(about, /<h1>About<\/h1>/);
+
+  const home = injectPrerenderDocumentMeta(html, "/");
+  assert.match(home, /id="pn-home-prerender"/);
+  assert.match(home, /pn-home-editor-wrap/);
+});
+
 test("injectPrerenderDocumentMeta injects blog H1 when snapshot has empty root", () => {
   const html = [
     '<html lang="en"><head>',

@@ -11,7 +11,7 @@ import {
   Eye,
   FilePlus2,
   Globe2,
-  Hash,
+  Copy,
   KeyRound,
   Lock,
   Mail,
@@ -66,6 +66,7 @@ import {
   buildProofTimeline,
   deliveryStatusFilterFor,
   formatDeviceClass,
+  formatOpenCountLabel,
   formatProofTimestamp,
   statusLabel,
   type NotificationItem,
@@ -174,30 +175,44 @@ function formatExpiryLabel(seconds: number, t: Record<string, string>): string {
 function createOptionChips(
   metadata: AccountActivityCreateMetadata | null | undefined,
   t: Record<string, string>,
+  counts?: { openCount?: number | null; maxReads?: number | null },
 ): OptionChip[] {
-  if (!metadata) return [];
+  if (!metadata && counts == null) return [];
   const chips: OptionChip[] = [];
-  if (metadata.hasVoiceMessage) {
+  if (metadata?.hasVoiceMessage) {
     chips.push({
       key: "voice",
       label: t.authActivityChipVoiceMessage ?? "Voice recording",
       Icon: Mic,
     });
-  } else if (metadata.hasAttachment) {
+  } else if (metadata?.hasAttachment) {
     chips.push({
       key: "attachment",
       label: t.authActivityChipAttachment ?? "Encrypted file",
       Icon: Paperclip,
     });
   }
-  if (metadata.passwordProtected) {
+  if (metadata?.passwordProtected) {
     chips.push({
       key: "password",
       label: t.authActivityChipPassword ?? "Password",
       Icon: KeyRound,
     });
   }
-  if (typeof metadata.maxReads === "number") {
+  const trackedMax =
+    typeof counts?.maxReads === "number" && counts.maxReads > 0 ? counts.maxReads : null;
+  const trackedUsed = typeof counts?.openCount === "number" ? counts.openCount : null;
+  const maxReads = trackedMax ?? (typeof metadata?.maxReads === "number" ? metadata.maxReads : null);
+  if (trackedMax != null || trackedUsed != null) {
+    const label = formatOpenCountLabel(trackedUsed ?? 0, maxReads, t);
+    if (label) {
+      chips.push({
+        key: "reads",
+        label,
+        Icon: Eye,
+      });
+    }
+  } else if (typeof metadata?.maxReads === "number") {
     chips.push({
       key: "reads",
       label:
@@ -207,7 +222,7 @@ function createOptionChips(
       Icon: Eye,
     });
   }
-  if (typeof metadata.expirySeconds === "number") {
+  if (typeof metadata?.expirySeconds === "number") {
     chips.push({
       key: "expiry",
       label: (t.authActivityChipExpiry ?? "Expires in {v}").replace(
@@ -217,7 +232,7 @@ function createOptionChips(
       Icon: Timer,
     });
   }
-  if (metadata.aiEnhanced) {
+  if (metadata?.aiEnhanced) {
     chips.push({
       key: "ai",
       label:
@@ -229,35 +244,35 @@ function createOptionChips(
       Icon: Sparkles,
     });
   }
-  if (metadata.notifyOnOpen) {
+  if (metadata?.notifyOnOpen) {
     chips.push({
       key: "alert-open",
       label: t.authActivityChipAlertOpen ?? "Open alerts",
       Icon: Bell,
     });
   }
-  if (metadata.notifyOnDestroyed) {
+  if (metadata?.notifyOnDestroyed) {
     chips.push({
       key: "alert-destroy",
       label: t.authActivityChipAlertDestroy ?? "Destroy alerts",
       Icon: Bell,
     });
   }
-  if (metadata.notifyOnAttachmentDownload) {
+  if (metadata?.notifyOnAttachmentDownload) {
     chips.push({
       key: "alert-download",
       label: t.authActivityChipAlertDownload ?? "Download alerts",
       Icon: Download,
     });
   }
-  if (metadata.requireRecipientVerification) {
+  if (metadata?.requireRecipientVerification) {
     chips.push({
       key: "verification",
       label: t.authActivityChipVerification ?? "Recipient verification",
       Icon: ShieldCheck,
     });
   }
-  if (metadata.requireReceiptAck) {
+  if (metadata?.requireReceiptAck) {
     chips.push({
       key: "receipt",
       label: t.authActivityChipReceipt ?? "Receipt confirmation",
@@ -382,7 +397,7 @@ function timelineLabel(
     case "expired":
       return t.proofTimelineExpired ?? "Expired";
     case "revoked":
-      return t.proofTimelineRevoked ?? "Revoked by you";
+      return t.proofTimelineRevoked ?? "Burned by you";
   }
 }
 
@@ -426,12 +441,14 @@ function timelineIconTone(entry: ProofTimelineEntry): string {
 
 function CreateOptionsSection({
   metadata,
+  counts,
   t,
 }: {
   metadata?: AccountActivityCreateMetadata | null;
+  counts?: { openCount?: number | null; maxReads?: number | null };
   t: Record<string, string>;
 }) {
-  const chips = createOptionChips(metadata, t);
+  const chips = createOptionChips(metadata, t, counts);
   if (chips.length === 0) return null;
   return (
     <section className="space-y-3 rounded-2xl border border-border/70 bg-muted/25 px-4 py-4">
@@ -481,7 +498,14 @@ function DeliveryDetail({
   onRevoke: (item: NotificationItem) => void;
   t: Record<string, string>;
 }) {
-  const createOptions = <CreateOptionsSection metadata={event.metadata} t={t} />;
+  const { toast } = useToast();
+  const deliveryCounts = event.delivery
+    ? {
+        openCount: event.delivery.openCount,
+        maxReads: event.delivery.maxReads ?? event.metadata?.maxReads,
+      }
+    : undefined;
+  const createOptions = <CreateOptionsSection metadata={event.metadata} counts={deliveryCounts} t={t} />;
 
   if (event.type === "note_opened") {
     return (
@@ -503,7 +527,7 @@ function DeliveryDetail({
             </span>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {t.authActivityDeliveryUpsell ??
-                "Delivery status, proof of access, and revoke are available on Starter and Business."}
+                "Delivery status, proof of access, and burn are available on Starter and Business."}
             </p>
           </div>
           <Button asChild size="sm">
@@ -528,7 +552,7 @@ function DeliveryDetail({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {t.authActivityNoDeliveryTracking ??
-              "No delivery tracking for this note. On Starter and Business, newly created notes are tracked so you can revoke unopened links and view proof of access from Activity."}
+              "No delivery tracking for this note. On Starter and Business, newly created notes are tracked so you can burn unopened links and view proof of access from Activity."}
           </p>
         </div>
       </div>
@@ -548,6 +572,25 @@ function DeliveryDetail({
   const country = delivery.openCountry?.trim() || unavailable;
   const device = formatDeviceClass(delivery.openDeviceClass, t);
   const browser = delivery.openBrowser?.trim() || unavailable;
+  const noteId = delivery.noteId?.trim() || event.noteId?.trim() || "";
+  const opensLabel = formatOpenCountLabel(
+    delivery.openCount ?? 0,
+    delivery.maxReads ?? event.metadata?.maxReads,
+    t,
+  );
+
+  const copyNoteId = async () => {
+    if (!noteId) return;
+    try {
+      await navigator.clipboard.writeText(noteId);
+      toast({ title: t.authActivityNoteIdCopied ?? "Note ID copied" });
+    } catch {
+      toast({
+        title: t.authActivityNoteIdCopyFailed ?? "Could not copy note ID",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -579,11 +622,29 @@ function DeliveryDetail({
                 />
                 {statusLabel(delivery.status, t, { hasVoiceMessage })}
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-                <Hash className="h-3 w-3" aria-hidden />
-                {delivery.displayNoteId.replace(/^#/, "")}
-              </span>
+              {opensLabel ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  <Eye className="h-3 w-3" aria-hidden />
+                  {opensLabel}
+                </span>
+              ) : null}
             </div>
+            {noteId ? (
+              <div className="flex min-w-0 items-start gap-1.5">
+                <p className="min-w-0 flex-1 break-all font-mono text-[11px] leading-relaxed text-muted-foreground">
+                  {noteId}
+                </p>
+                <button
+                  type="button"
+                  className="mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-background/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  onClick={() => void copyNoteId()}
+                  aria-label={t.authActivityCopyNoteId ?? "Copy note ID"}
+                  title={t.authActivityCopyNoteId ?? "Copy note ID"}
+                >
+                  <Copy className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+            ) : null}
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               {hasRecipientEmail ? (
                 <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -734,7 +795,7 @@ function DeliveryDetail({
         <div className="space-y-3 rounded-2xl border border-rose-200/80 bg-rose-50/50 px-4 py-4 dark:border-rose-900/50 dark:bg-rose-950/20">
           <p className="text-sm text-muted-foreground">
             {t.notificationRevokeHint ??
-              "Still unopened — you can revoke the link so it can no longer be opened."}
+              "Still unopened — you can burn the link so it can no longer be opened."}
           </p>
           <Button
             type="button"
@@ -746,8 +807,8 @@ function DeliveryDetail({
           >
             <Ban className="mr-1.5 h-3.5 w-3.5" aria-hidden />
             {revoking
-              ? (t.notificationRevoking ?? "Revoking...")
-              : (t.notificationRevokeConfirm ?? "Revoke link")}
+              ? (t.notificationRevoking ?? "Burning...")
+              : (t.notificationRevokeConfirm ?? "Burn this note")}
           </Button>
         </div>
       ) : null}
@@ -935,7 +996,9 @@ export default function AccountActivity() {
     const exportRows = events
       .filter((event) => event.delivery)
       .map((event) => ({
-        reference: event.delivery!.displayNoteId,
+        reference: event.delivery!.noteId,
+        openCount: event.delivery!.openCount ?? 0,
+        maxReads: event.delivery!.maxReads ?? event.metadata?.maxReads ?? null,
         label: noteLabels[event.noteId ?? ""] ?? event.delivery!.label ?? null,
         folder: event.delivery!.folder ?? null,
         tags: event.delivery!.tags ?? [],
@@ -1099,7 +1162,7 @@ export default function AccountActivity() {
       );
       setRevokeTarget(null);
       toast({
-        title: tx("notificationRevokeSuccessTitle", "Note revoked"),
+        title: tx("notificationRevokeSuccessTitle", "Note burned"),
         description: tx(
           "notificationRevokeSuccessBody",
           "The link can no longer be opened.",
@@ -1110,12 +1173,12 @@ export default function AccountActivity() {
         setError(
           tx(
             "notificationRevokeAlreadyOpened",
-            "This note was already opened and can no longer be revoked.",
+            "This note was already opened and can no longer be burned.",
           ),
         );
         void load();
       } else {
-        setError(tx("notificationRevokeError", "Could not revoke that note."));
+        setError(tx("notificationRevokeError", "Could not burn that note."));
       }
     } finally {
       setRevokingNoteId(null);
@@ -1287,7 +1350,16 @@ export default function AccountActivity() {
                     }
                     const desc = eventDescription(ev);
                     const delivery = canTrackDelivery ? ev.delivery : null;
-                    const chips = createOptionChips(ev.metadata, t).slice(0, 4);
+                    const chips = createOptionChips(
+                      ev.metadata,
+                      t,
+                      delivery
+                        ? {
+                            openCount: delivery.openCount,
+                            maxReads: delivery.maxReads ?? ev.metadata?.maxReads,
+                          }
+                        : undefined,
+                    ).slice(0, 4);
                     const selected = selectedId === ev.id;
                     const namedLabel =
                       (ev.noteId ? noteLabels[ev.noteId]?.trim() : "") ||
@@ -1319,6 +1391,11 @@ export default function AccountActivity() {
                               {namedLabel ? (
                                 <p className="truncate text-sm font-semibold tracking-tight text-foreground">
                                   {namedLabel}
+                                </p>
+                              ) : null}
+                              {ev.noteId ? (
+                                <p className="truncate font-mono text-[11px] text-muted-foreground" title={ev.noteId}>
+                                  {ev.noteId}
                                 </p>
                               ) : null}
                               {delivery?.folder || delivery?.tags?.length ? (
@@ -1392,7 +1469,7 @@ export default function AccountActivity() {
                                 onClick={(e) => openLabelEditor(ev, e)}
                                 disabled={deletingId === ev.id || Boolean(revokingNoteId)}
                                 className="rounded-xl p-2 text-muted-foreground/60 transition-all hover:bg-primary/10 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-40 sm:opacity-0 sm:focus:opacity-100 sm:group-hover:opacity-100"
-                                aria-label={tx("authActivityEditLabelAria", "Edit note label")}
+                                aria-label={tx("successNoteLabelTitle", "Name this note")}
                               >
                                 <Pencil className="h-4 w-4" aria-hidden />
                               </button>
@@ -1475,7 +1552,7 @@ export default function AccountActivity() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{tx("authActivityEditLabelTitle", "Edit note label")}</DialogTitle>
+            <DialogTitle>{tx("successNoteLabelTitle", "Name this note")}</DialogTitle>
             <DialogDescription>
               {tx(
                 "authActivityEditLabelBody",
@@ -1492,7 +1569,7 @@ export default function AccountActivity() {
           >
             <div className="space-y-1.5">
               <label htmlFor="activity-note-label" className="text-sm font-medium text-foreground">
-                {tx("authActivityNoteLabel", "Note label")}
+                {tx("successNoteLabelTitle", "Name this note")}
               </label>
               <Input
                 id="activity-note-label"
@@ -1571,12 +1648,12 @@ export default function AccountActivity() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {tx("notificationRevokeDialogTitle", "Revoke this note?")}
+              {tx("notificationRevokeDialogTitle", "Burn this note?")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tx(
                 "notificationRevokeDialogBody",
-                "The secret link will stop working immediately. This only works if the note has not been opened yet.",
+                "The secret link will stop working immediately.",
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1593,8 +1670,8 @@ export default function AccountActivity() {
               className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
             >
               {revokingNoteId
-                ? tx("notificationRevoking", "Revoking...")
-                : tx("notificationRevokeConfirm", "Revoke link")}
+                ? tx("notificationRevoking", "Burning...")
+                : tx("notificationRevokeConfirm", "Burn this note")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

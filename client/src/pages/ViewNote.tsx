@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useRoute } from 'wouter';
 import { NoteDisplay } from '@/components/note/NoteDisplay';
 import { isLikelyTruncatedNoteUrlFragmentKey } from '@shared/urlFragmentKey';
+import { markAnalyticsOpenedNote } from '@/utils/analyticsSession';
+import { trackNamedEvent } from '@/utils/productAnalytics';
 
 type NoteLinkCapture = { encryptionKey: string | null; linkKeyMissing: boolean };
 
@@ -36,6 +38,8 @@ const ViewNote: React.FC = () => {
 
   useEffect(() => {
     if (!match || !params?.id) return;
+    markAnalyticsOpenedNote();
+    trackNamedEvent("note_open_page_loaded");
     if (encryptionKey) {
       history.replaceState(null, '', window.location.pathname);
     }

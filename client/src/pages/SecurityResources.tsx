@@ -604,7 +604,7 @@ const SecurityOverview: React.FC = () => {
           <header className="mb-16 max-w-3xl lg:mb-20">
             <h1 className="page-title mb-6 max-w-3xl pb-2 leading-[1.05] bg-clip-text text-transparent bg-gradient-to-b from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
               {t.securityHeroPrefix}{' '}
-              <span className="text-primary italic">{t.securityHeroAccent}</span>
+              <span className="text-primary not-italic">{t.securityHeroAccent}</span>
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400 md:text-xl">
               {t.securityHeroSubtitle}

@@ -51,6 +51,7 @@ import {
   buildProofTimeline,
   formatDeviceClass,
   formatNotificationTimestamp,
+  formatOpenCountLabel,
   formatProofTimestamp,
   groupNotifications,
   hasProofReport,
@@ -79,7 +80,7 @@ function timelineLabel(entry: ProofTimelineEntry, t: Record<string, string>): st
     case "expired":
       return t.proofTimelineExpired ?? "Expired";
     case "revoked":
-      return t.proofTimelineRevoked ?? "Revoked by you";
+      return t.proofTimelineRevoked ?? "Burned by you";
   }
 }
 
@@ -102,12 +103,13 @@ function ProofReportDialog({
     noteLabel?.trim() ||
     item.label?.trim() ||
     item.recipientEmail?.trim() ||
-    item.displayNoteId;
+    item.noteId;
   const timeline = buildProofTimeline(item);
   const country = item.openCountry?.trim() || (t.proofUnavailable ?? "Not available");
   const device = formatDeviceClass(item.openDeviceClass, t);
   const browser = item.openBrowser?.trim() || (t.proofUnavailable ?? "Not available");
   const accessed = Boolean(item.openedAt);
+  const opensLabel = formatOpenCountLabel(item.openCount ?? 0, item.maxReads, t);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,12 +125,15 @@ function ProofReportDialog({
         <div className="space-y-5 text-sm">
           <div className="rounded-lg border border-gray-200 bg-gray-50/80 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/40">
             <p className="font-semibold text-gray-900 dark:text-white">{headline}</p>
-            <p className="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">
-              {item.displayNoteId}
+            <p className="mt-1 break-all font-mono text-xs text-gray-500 dark:text-gray-400">
+              {item.noteId}
             </p>
             <p className={`mt-2 text-sm font-semibold ${statusTone(item.status)}`}>
               {statusLabel(item.status, t)}
             </p>
+            {opensLabel ? (
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{opensLabel}</p>
+            ) : null}
           </div>
 
           <section>
@@ -236,6 +241,7 @@ function NotificationCard({
   const headline = noteLabel?.trim() || item.label?.trim() || recipient;
   const canRevoke = canRevokeUnopened && item.status === "created";
   const canViewProof = Boolean(item.proofEnabled) && hasProofReport(item);
+  const opensLabel = formatOpenCountLabel(item.openCount ?? 0, item.maxReads, t);
   const proofSummaryParts: string[] = [];
   if (item.openCountry?.trim()) proofSummaryParts.push(item.openCountry.trim());
   if (item.openDeviceClass?.trim()) {
@@ -263,8 +269,8 @@ function NotificationCard({
             onClick={() => onRevoke(item)}
             disabled={revoking || deleting}
             className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
-            aria-label={t.notificationRevokeAria ?? "Revoke unopened note"}
-            title={t.notificationRevokeAria ?? "Revoke unopened note"}
+            aria-label={t.notificationRevokeAria ?? "Burn unopened note"}
+            title={t.notificationRevokeAria ?? "Burn unopened note"}
           >
             <Ban className="h-4 w-4" aria-hidden />
           </button>
@@ -285,7 +291,10 @@ function NotificationCard({
         {noteLabel?.trim() || item.label?.trim() ? (
           <p className="truncate text-xs text-gray-500 dark:text-gray-400">{recipient}</p>
         ) : null}
-        <p className="font-mono text-xs text-gray-400 dark:text-gray-500">{item.displayNoteId}</p>
+        <p className="break-all font-mono text-xs text-gray-400 dark:text-gray-500">{item.noteId}</p>
+        {opensLabel ? (
+          <p className="text-xs text-gray-500 dark:text-gray-400">{opensLabel}</p>
+        ) : null}
         <p className={`pt-1 text-sm font-semibold ${statusTone(item.status)}`}>
           {statusLabel(item.status, t)}
         </p>
@@ -312,7 +321,7 @@ function NotificationCard({
         {canRevoke ? (
           <p className="pt-1 text-xs text-gray-500 dark:text-gray-400">
             {t.notificationRevokeHint ??
-              "Still unopened — you can revoke the link so it can no longer be opened."}
+              "Still unopened — you can burn the link so it can no longer be opened."}
           </p>
         ) : null}
       </div>
@@ -470,7 +479,7 @@ export default function NotificationCenter() {
       );
       setRevokeTarget(null);
       toast({
-        title: tx("notificationRevokeSuccessTitle", "Note revoked"),
+        title: tx("notificationRevokeSuccessTitle", "Note burned"),
         description: tx(
           "notificationRevokeSuccessBody",
           "The link can no longer be opened.",
@@ -481,12 +490,12 @@ export default function NotificationCenter() {
         setError(
           tx(
             "notificationRevokeAlreadyOpened",
-            "This note was already opened and can no longer be revoked.",
+            "This note was already opened and can no longer be burned from Activity.",
           ),
         );
         void load();
       } else {
-        setError(tx("notificationRevokeError", "Could not revoke that note."));
+        setError(tx("notificationRevokeError", "Could not burn that note."));
       }
     } finally {
       setRevokingNoteId(null);
@@ -667,7 +676,7 @@ export default function NotificationCenter() {
               Delivery tracking is available with Starter and Business
             </p>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Choose a paid plan to track when notes are viewed, burned, or downloaded — and revoke unopened links.
+              Choose a paid plan to track when notes are viewed, burned, or downloaded — and burn unopened links.
             </p>
             <Button asChild className="mt-4" size="sm">
               <Link href="/premium">Compare plans</Link>
@@ -881,12 +890,12 @@ export default function NotificationCenter() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {tx("notificationRevokeDialogTitle", "Revoke this note?")}
+              {tx("notificationRevokeDialogTitle", "Burn this note?")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {tx(
                 "notificationRevokeDialogBody",
-                "The secret link will stop working immediately. This only works if the note has not been opened yet.",
+                "The secret link will stop working immediately.",
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -903,8 +912,8 @@ export default function NotificationCenter() {
               className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
             >
               {revokingNoteId
-                ? tx("notificationRevoking", "Revoking...")
-                : tx("notificationRevokeConfirm", "Revoke link")}
+                ? tx("notificationRevoking", "Burning...")
+                : tx("notificationRevokeConfirm", "Burn this note")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

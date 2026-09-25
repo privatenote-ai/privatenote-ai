@@ -74,7 +74,7 @@ const UNIQUE_TITLE_CHECKS = [
   { file: "de/one-time-link.html", mustContain: "Einmal-Link" },
   { file: "fr/one-time-link.html", mustContain: "usage unique" },
   { file: "privnote-alternative.html", mustContain: "Privnote Alternative" },
-  { file: "de/privnote-alternative.html", mustContain: "Alternative zu Privnote" },
+  { file: "de/privnote-alternative.html", mustContain: "Privnote-Alternative" },
   { file: "de/secure-file-transfer.html", mustContain: "Dateiübertragung" },
   { file: "it/secure-file-transfer.html", mustContain: "Trasferimento" },
   { file: "sr/secure-file-transfer.html", mustContain: "prenos datoteka" },

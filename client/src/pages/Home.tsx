@@ -25,9 +25,21 @@ const Home: React.FC = () => {
   const { t, language } = useLanguage();
 
   useLayoutEffect(() => {
-    const shell = document.getElementById('pn-home-prerender');
-    if (shell) shell.hidden = true;
-  }, []);
+    const root = document.documentElement;
+    root.classList.toggle("pn-lcp-released", isCreateSuccessView);
+    const set = (id: string, value: string | undefined) => {
+      const el = document.getElementById(id);
+      if (!el || !value || el.textContent === value) return;
+      el.textContent = value;
+    };
+    set("pn-hero-l1", t.homeHeroMobileLine1 ?? t.homeHeroLine1);
+    set("pn-hero-l2", t.homeHeroMobileLine2 ?? t.homeHeroLine2);
+    set("pn-hero-l1-wide", t.homeHeroLine1);
+    set("pn-hero-l2-wide", t.homeHeroLine2);
+    set("pn-hero-sub-narrow", t.homeHeroMobileSubtitle ?? t.homeHeroSubtitle);
+    set("pn-hero-sub-wide", t.homeHeroSubtitle);
+    return () => root.classList.add("pn-lcp-released");
+  }, [isCreateSuccessView, t]);
   /** Tight margins so lazy chunks are not requested during initial navigation on typical viewports. */
   const [keyFeaturesRef, keyFeaturesMounted] = useMountWhenInView({ rootMargin: '0px' });
   const [belowFoldRef, belowFoldMounted] = useMountWhenInView({ rootMargin: '80px' });
@@ -108,7 +120,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="pn-home min-w-0 max-w-full overflow-x-clip pt-0 pb-28 sm:pt-20 sm:pb-32 h-short:!pt-4">
+    <div className="pn-home min-w-0 max-w-full overflow-x-clip pt-0 pb-0 sm:pt-20 h-short:!pt-4">
       <div
         className={
           isCreateSuccessView
@@ -124,7 +136,7 @@ const Home: React.FC = () => {
                   <span className="block">
                     {t.homeHeroMobileLine1 ?? t.homeHeroLine1}
                   </span>
-                  <span className="pn-hero-l2 mt-0.5 block text-primary">
+                  <span className="pn-hero-l2 mt-0.5 block text-primary not-italic">
                     {t.homeHeroMobileLine2 ?? t.homeHeroLine2}
                   </span>
                 </span>
@@ -132,7 +144,7 @@ const Home: React.FC = () => {
                   <span className="block">
                     {t.homeHeroLine1}
                   </span>
-                  <span className="pn-hero-l2 mt-1 block text-primary">
+                  <span className="pn-hero-l2 mt-1 block text-primary not-italic">
                     {t.homeHeroLine2}
                   </span>
                 </span>

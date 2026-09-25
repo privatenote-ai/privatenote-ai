@@ -242,7 +242,7 @@ const SecureFileTransfer: React.FC = () => {
             <div className="relative z-10 mx-auto max-w-4xl">
               <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h2 className="bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent sm:text-5xl">
+                  <h2 className="bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-4xl font-display font-bold tracking-[-0.035em] text-transparent sm:text-5xl">
                     {t.sftFaqHeading}
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm text-gray-600 dark:text-gray-300">

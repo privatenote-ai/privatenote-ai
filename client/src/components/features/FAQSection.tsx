@@ -70,11 +70,11 @@ export const FAQSection: React.FC = () => {
         <div className="absolute -top-24 right-1/4 h-72 w-72 rounded-full bg-primary/10 blur-[120px]" />
         <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
-      <div className="px-4 py-16 sm:px-6 lg:px-8">
+      <div className="px-4 pt-16 pb-8 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto relative z-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-10">
           <div>
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-transparent">
+            <h2 className="bg-gradient-to-r from-primary via-violet-500 to-blue-500 bg-clip-text text-4xl font-display font-bold tracking-[-0.035em] text-transparent sm:text-5xl">
               {t.faq}
             </h2>
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 max-w-2xl">

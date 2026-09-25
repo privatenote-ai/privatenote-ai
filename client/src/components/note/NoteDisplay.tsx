@@ -78,6 +78,8 @@ import {
 } from '@/components/note/RecipientPortal';
 import { SecurityRecommendations } from '@/components/features/SecurityRecommendations';
 import { useLanguage } from '@/context/LanguageContext';
+import { markAnalyticsRevealedNote } from '@/utils/analyticsSession';
+import { trackCta, trackNamedEvent } from '@/utils/productAnalytics';
 import {
   getTranslations,
   loadTranslations,
@@ -1312,6 +1314,8 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
     setIsLoading(true);
     setError(null);
     setKeyMismatchError(false);
+    markAnalyticsRevealedNote();
+    trackNamedEvent("note_reveal_requested");
 
     try {
       const data = await apiRequest(`/api/notes/${id}/reveal`, "POST");
@@ -1770,6 +1774,7 @@ export const NoteDisplay: React.FC<NoteDisplayProps> = ({
   const attachmentOverlayOpen = Boolean(showInlinePreview && previewAttachmentIndex != null);
 
   const handleCreateNew = () => {
+    trackCta("recipient_create_note", "/note", true);
     window.location.href = '/';
   };
 

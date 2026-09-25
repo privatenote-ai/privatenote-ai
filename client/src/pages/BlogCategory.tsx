@@ -200,9 +200,7 @@ export default function BlogCategory() {
       </div>
 
       <header className="mb-10 max-w-3xl">
-        <h1 className="page-title text-primary">
-          <span className="line-clamp-2">{label}</span>
-        </h1>
+        <h1 className="page-title text-primary">{label}</h1>
         <p className="mt-4 text-base leading-relaxed text-gray-600 dark:text-gray-400 sm:text-[17px] sm:leading-7">
           {description}
         </p>

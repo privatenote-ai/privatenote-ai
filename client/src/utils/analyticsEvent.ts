@@ -2,12 +2,17 @@
  * Fire a lightweight analytics event to the backend.
  * Always non-blocking — never throws, never awaited in critical paths.
  */
-export function fireAnalyticsEvent(event: "qr_share" | "wrong_password"): void {
-  const base = (import.meta.env.VITE_API_URL || "").trim();
-  fetch(`${base}/api/analytics/event`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event }),
-    credentials: "include",
-  }).catch(() => {});
+import {
+  CLIENT_ANALYTICS_EVENTS,
+  isClientAnalyticsEvent,
+  type ClientAnalyticsEvent,
+} from "@shared/clientAnalyticsEvents";
+import { trackNamedEvent } from "@/utils/productAnalytics";
+
+export type { ClientAnalyticsEvent };
+export { CLIENT_ANALYTICS_EVENTS, isClientAnalyticsEvent };
+
+export function fireAnalyticsEvent(event: ClientAnalyticsEvent): void {
+  if (!isClientAnalyticsEvent(event)) return;
+  trackNamedEvent(event);
 }

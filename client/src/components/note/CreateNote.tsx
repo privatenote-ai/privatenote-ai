@@ -106,6 +106,12 @@ import { isVideoMessageFile } from "@/utils/videoMessageRecording";
 import { isCameraCaptureSupported, isCapturedPhotoFile } from "@/utils/photoCapture";
 import { readVoiceRecordingFormatPreference } from "@/utils/voiceRecordingFormatPreference";
 import { recordWebNoteCreated } from "@/utils/chromeExtensionOnboarding";
+import {
+  markAnalyticsCreatedNote,
+  markAnalyticsCreationStarted,
+} from "@/utils/analyticsSession";
+import { trackNamedEvent } from "@/utils/productAnalytics";
+import { deriveSuccessHeadlineKind } from "@/utils/successHeadline";
 import { CreateNoteSuccess } from "./CreateNoteSuccess";
 import type { CreatedNoteState } from "./CreateNoteSuccess";
 import type { AiPostGenTransform } from "./AiComposer";
@@ -1711,6 +1717,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     }
 
     setIsLoading(true);
+    if (markAnalyticsCreationStarted()) {
+      trackNamedEvent("note_creation_started");
+    }
     setAttachmentProgress(
       hasAttachments
         ? {
@@ -2109,8 +2118,9 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         }
       }
 
-      const { id } = await apiRequest<{
+      const { id, burnToken } = await apiRequest<{
         id: string;
+        burnToken?: string;
       }>("/api/notes", "POST", {
         id: reservedId,
         content: encryptedBase64,
@@ -2197,6 +2207,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
       clearCreateNoteAuthDraft();
       recordWebNoteCreated();
+      markAnalyticsCreatedNote();
 
       const deliveryEmailForCreate = applyEmailLinkToRecipient
         ? trimmedLinkDeliveryEmail.toLowerCase()
@@ -2206,6 +2217,13 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       setRevokingNote(false);
       setCreatedNote({
         url,
+        headlineKind: deriveSuccessHeadlineKind({
+          isFileTransfer: isFileTransferMode,
+          creationEntryPoint: creationEntryPointProp,
+          files: selectedFiles,
+          noteBody: noteContent,
+        }),
+        burnToken,
         meta: {
           expiryValue,
           readCount,
@@ -2285,6 +2303,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     try {
       await navigator.clipboard.writeText(noteUrl);
       setSuccessLinkCopied(true);
+      trackNamedEvent("note_link_copied");
     } catch {
       toast({
         title: t.toastCouldNotCopyLinkTitle,
@@ -2296,6 +2315,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
   const shareLink = async () => {
     if (!noteUrl) return;
+    trackNamedEvent("share_action_selected");
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ url: noteUrl });
@@ -2319,7 +2339,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   const deliverRecipientLink = useCallback(
     async (rawEmail: string, noteUrl?: string) => {
       const url = noteUrl ?? createdNote?.url;
-      if (!url || recipientLinkDeliveryGate !== "ready") return;
+      if (!url || recipientLinkDeliveryGate !== "ready" || noteRevoked) return;
       const email = rawEmail.trim().toLowerCase();
       if (!isPlausibleEmailFormat(email)) {
         toast({
@@ -2393,6 +2413,10 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
             }
           } else if (error.status === 429) {
             description = "Too many email attempts. Please wait and try again.";
+          } else if (error.status === 409) {
+            setNoteRevoked(true);
+            description =
+              t.notificationRevokeSuccessBody ?? "The link can no longer be opened.";
           }
         }
         toast({
@@ -2406,6 +2430,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     },
     [
       createdNote?.url,
+      noteRevoked,
       recipientLinkDeliveryGate,
       t,
       toast,
@@ -2414,7 +2439,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
   const revokeCreatedNote = useCallback(async () => {
     if (!createdNote?.url || noteRevoked || revokingNote) return;
-    if (!planCapabilities.revokeUnopened) return;
+    const canRevokeByPlan = Boolean(planCapabilities.revokeUnopened);
+    if (!canRevokeByPlan && !createdNote.burnToken) return;
 
     const noteId =
       createdNote.meta?.noteId ??
@@ -2428,7 +2454,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       })();
     if (!noteId) {
       toast({
-        title: t.notificationRevokeError ?? "Could not revoke that note.",
+        title: t.notificationRevokeError ?? "Could not burn that note.",
         variant: "destructive",
       });
       throw new Error("note_id_missing");
@@ -2436,10 +2462,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
     setRevokingNote(true);
     try {
-      await apiRequest(`/api/notes/${encodeURIComponent(noteId)}/revoke`, "POST");
+      await apiRequest(
+        `/api/notes/${encodeURIComponent(noteId)}/revoke`,
+        "POST",
+        canRevokeByPlan ? undefined : { burnToken: createdNote.burnToken },
+      );
       setNoteRevoked(true);
       toast({
-        title: t.notificationRevokeSuccessTitle ?? "Note revoked",
+        title: t.notificationRevokeSuccessTitle ?? "Note burned",
         description: t.notificationRevokeSuccessBody ?? "The link can no longer be opened.",
       });
     } catch (error) {
@@ -2449,17 +2479,17 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
           title: t.notificationRevokeAlreadyOpened ?? "Already opened",
           description:
             t.notificationRevokeAlreadyOpened ??
-            "This note was already opened and can no longer be revoked.",
+            "This note was already opened and can no longer be burned.",
           variant: "destructive",
         });
         return;
       }
       toast({
-        title: t.notificationRevokeError ?? "Could not revoke that note.",
+        title: t.notificationRevokeError ?? "Could not burn that note.",
         description:
           error instanceof ApiRequestError && error.status === 403
             ? (t.recipientLinkDeliveryUpgradeHint ??
-              "Starter and Business can revoke unopened notes.")
+              "Starter and Business can burn unopened notes from Activity.")
             : undefined,
         variant: "destructive",
       });
@@ -3138,7 +3168,11 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         onShareQrCode={shareQrCode}
         onDownloadQrCode={downloadQrCode}
         onCreateNewNote={createNewNote}
-        canRevoke={Boolean(user) && planCapabilities.revokeUnopened && !noteRevoked}
+        canRevoke={
+          Boolean(
+            (planCapabilities.revokeUnopened || createdNote.burnToken) && !noteRevoked,
+          )
+        }
         noteRevoked={noteRevoked}
         revoking={revokingNote}
         onRevoke={revokeCreatedNote}
@@ -3147,7 +3181,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
         }
         noteLabel={noteLabel}
         onNoteLabelChange={
-          createdNote.meta?.tracksDelivery && createdNote.meta.noteId
+          createdNote.meta?.noteId
             ? (value) => {
                 setNoteLabel(value);
                 saveNoteLabel(createdNote.meta!.noteId!, value);
