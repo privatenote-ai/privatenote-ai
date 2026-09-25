@@ -75,12 +75,11 @@ export async function handleSignIn(args: z.infer<typeof signInSchema>) {
           text: JSON.stringify(
             {
               status: "authorization_pending",
-              userCode: started.userCode,
               verificationUriComplete: started.verificationUriComplete,
               pollDeviceCode: started.deviceCode,
               expiresIn: started.expiresIn,
               message:
-                "Open verificationUriComplete in the browser (a window may already have opened), sign in if needed, and approve this device. Show the user the URL and userCode. Then call sign_in again with pollDeviceCode until status is signed_in.",
+                "A browser window should have opened to approve this MCP client. Ask the user to sign in if needed and click Approve. Do not ask them to type or confirm a code — the link already carries it. Then call sign_in again with pollDeviceCode until status is signed_in. If no window opened, share verificationUriComplete.",
             },
             null,
             2,
@@ -139,11 +138,10 @@ export async function handleSignIn(args: z.infer<typeof signInSchema>) {
         text: JSON.stringify(
           {
             status: "authorization_pending",
-            userCode: started.userCode,
             verificationUriComplete: started.verificationUriComplete,
             pollDeviceCode: started.deviceCode,
             message:
-              "Open verificationUriComplete in the browser, sign in if needed, and approve the code. Then call sign_in again with pollDeviceCode.",
+              "Ask the user to click Approve in the browser (no code to type). Then call sign_in again with pollDeviceCode. If the page is missing, share verificationUriComplete.",
           },
           null,
           2,

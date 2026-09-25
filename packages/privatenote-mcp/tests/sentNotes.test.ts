@@ -26,6 +26,8 @@ function mockFetch() {
               revokedAt: null,
               expiresAt: "2026-09-11T00:00:00.000Z",
               label: null,
+              openCount: 0,
+              maxReads: 10,
             },
           ],
         }),
@@ -77,9 +79,11 @@ describe("sent notes tools", () => {
     const { handleListSentNotes } = await import("../src/tools/sentNotes.ts");
     const result = await handleListSentNotes({ limit: 10 });
     const payload = JSON.parse(result.content[0]!.text as string) as {
-      notes: Array<{ noteId: string }>;
+      notes: Array<{ noteId: string; openCount?: number; maxReads?: number | null }>;
     };
     assert.equal(payload.notes[0]?.noteId, "00000000-0000-0000-0000-000000000099");
+    assert.equal(payload.notes[0]?.openCount, 0);
+    assert.equal(payload.notes[0]?.maxReads, 10);
     assert.ok(fetchCalls.some((call) => call.url.includes("/api/auth/account/notifications")));
   });
 

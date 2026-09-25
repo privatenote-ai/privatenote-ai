@@ -9,7 +9,7 @@ export const listSentNotesSchema = z.object({
     .min(1)
     .max(50)
     .optional()
-    .describe("How many recent sent notes to return (1–50, default 25). Requires sign_in."),
+    .describe("How many recent sent notes to return (1–50, default 25). Status, openedAt, openCount, and maxReads only — no note contents. Requires sign_in."),
 });
 
 export const revokeSentNoteSchema = z.object({

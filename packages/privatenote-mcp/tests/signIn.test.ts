@@ -83,17 +83,19 @@ describe("handleSignIn", () => {
     assert.equal(result.isError, undefined);
     const payload = JSON.parse(result.content[0]!.text as string) as {
       status: string;
-      userCode: string;
+      userCode?: string;
       verificationUriComplete: string;
       pollDeviceCode: string;
+      message: string;
     };
     assert.equal(payload.status, "authorization_pending");
-    assert.equal(payload.userCode, "ABCD-2345");
+    assert.equal(payload.userCode, undefined);
     assert.equal(
       payload.verificationUriComplete,
       "https://privatenote.ai/auth/device?user_code=ABCD-2345&client=mcp",
     );
     assert.equal(payload.pollDeviceCode, "device-code-test-value-32charsxx");
+    assert.match(payload.message, /Do not ask them to type/i);
     assert.ok(fetchCalls.some((call) => call.url.includes("/api/auth/device/start")));
     assert.equal(fetchCalls.some((call) => call.url.includes("/api/auth/device/poll")), false);
   });

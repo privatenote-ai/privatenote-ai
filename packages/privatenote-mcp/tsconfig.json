@@ -28,6 +28,7 @@
     "../../shared/storedNotePayload.ts",
     "../../shared/noteFileLimits.ts",
     "../../shared/noteFileUploadAuth.ts",
-    "../../shared/planCatalog.ts"
+    "../../shared/planCatalog.ts",
+    "../../shared/kdfParamsV2.ts"
   ]
 }

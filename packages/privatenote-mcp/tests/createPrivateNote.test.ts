@@ -71,7 +71,28 @@ function restoreFetch() {
   if (globalFetchOriginal) globalThis.fetch = globalFetchOriginal;
 }
 
-const { createPrivateNote, mcpExpiresInToExpirySeconds, isMcpExpiresIn } = await import(
+async function withEnv<T>(
+  updates: Record<string, string | undefined>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const previous: Record<string, string | undefined> = {};
+  for (const key of Object.keys(updates)) {
+    previous[key] = process.env[key];
+    const value = updates[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const key of Object.keys(updates)) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key]!;
+    }
+  }
+}
+
+const { createPrivateNote, mcpExpiresInToExpirySeconds, isMcpExpiresIn, previewPrivateNote } = await import(
   "../src/createNote.ts"
 );
 
@@ -169,6 +190,7 @@ describe("createPrivateNote encrypt path (default options)", () => {
   after(restoreFetch);
 
   it("returns a URL matching /note/{uuid}#{43-char fragment}", () => {
+    assert.equal(result.noteId, TEST_NOTE_ID);
     assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#[A-Za-z0-9_-]{43}$/);
   });
 
@@ -252,25 +274,58 @@ describe("createPrivateNote title prepend", () => {
 });
 
 describe("createPrivateNote file attach", () => {
-  it("requires a stored session before reading the file", async () => {
-    const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
-    const previousToken = process.env["PRIVATENOTE_SESSION"];
-    process.env["PRIVATENOTE_MCP_SESSION_PATH"] = join(tmpdir(), "pn-mcp-no-session.json");
-    delete process.env["PRIVATENOTE_SESSION"];
+  it("rejects a file path before the sign_in check", async () => {
+    const allowed = await mkdtemp(join(tmpdir(), "pn-mcp-allow-"));
+    const other = await mkdtemp(join(tmpdir(), "pn-mcp-other-"));
+    const filePath = join(other, "does-not-matter.bin");
+    await writeFile(filePath, "steal-me", "utf8");
+    await withEnv(
+      {
+        PRIVATENOTE_MCP_ALLOWED_ROOTS: allowed,
+        PRIVATENOTE_MCP_SESSION_PATH: join(allowed, "pn-mcp-no-session.json"),
+        PRIVATENOTE_SESSION: undefined,
+      },
+      async () => {
+        await assert.rejects(
+          () => createPrivateNote({ filePath }),
+          (err: unknown) => {
+            assert.ok(err instanceof Error);
+            assert.match(err.message, /not allowed/i);
+            assert.ok(!err.message.includes("steal-me"));
+            assert.ok(!/sign_in/i.test(err.message));
+            return true;
+          },
+        );
+      },
+    );
+    await rm(allowed, { recursive: true, force: true });
+    await rm(other, { recursive: true, force: true });
+  });
+
+  it("requires a stored session before reading an allowed file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-nosession-"));
+    const filePath = join(dir, "secret.bin");
+    await writeFile(filePath, "file-bytes", "utf8");
     try {
-      await assert.rejects(
-        () => createPrivateNote({ filePath: "/tmp/does-not-matter.bin" }),
-        (err: unknown) => {
-          assert.ok(err instanceof Error);
-          assert.match(err.message, /sign_in/i);
-          return true;
+      await withEnv(
+        {
+          PRIVATENOTE_MCP_ALLOWED_ROOTS: dir,
+          PRIVATENOTE_MCP_SESSION_PATH: join(dir, "pn-mcp-no-session.json"),
+          PRIVATENOTE_SESSION: undefined,
+        },
+        async () => {
+          await assert.rejects(
+            () => createPrivateNote({ filePath }),
+            (err: unknown) => {
+              assert.ok(err instanceof Error);
+              assert.match(err.message, /sign_in/i);
+              return true;
+            },
+          );
         },
       );
     } finally {
-      if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
-      else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
-      if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
-      else process.env["PRIVATENOTE_SESSION"] = previousToken;
+      await rm(dir, { recursive: true, force: true });
     }
   });
 
@@ -288,34 +343,35 @@ describe("createPrivateNote file attach", () => {
       }),
       "utf8",
     );
-    const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
-    const previousToken = process.env["PRIVATENOTE_SESSION"];
-    process.env["PRIVATENOTE_MCP_SESSION_PATH"] = sessionPath;
-    delete process.env["PRIVATENOTE_SESSION"];
     mockFetch();
     try {
-      const result = await createPrivateNote({ content: SECRET, filePath });
-      assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#/);
-      assert.equal(result.attachedFileName, "secret.txt");
-      const createCall = fetchCalls.find(
-        (call) => call.body && typeof call.body["content"] === "string" && call.body["id"] === TEST_NOTE_ID,
+      await withEnv(
+        {
+          PRIVATENOTE_MCP_ALLOWED_ROOTS: dir,
+          PRIVATENOTE_MCP_SESSION_PATH: sessionPath,
+          PRIVATENOTE_SESSION: undefined,
+        },
+        async () => {
+          const result = await createPrivateNote({ content: SECRET, filePath });
+          assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#/);
+          assert.equal(result.attachedFileName, "secret.txt");
+          const createCall = fetchCalls.find(
+            (call) => call.body && typeof call.body["content"] === "string" && call.body["id"] === TEST_NOTE_ID,
+          );
+          assert.ok(createCall?.body);
+          const serialized = JSON.stringify(createCall.body);
+          assert.ok(!serialized.includes("file-secret-xyz"));
+          assert.ok(!serialized.includes(SECRET));
+          assert.equal(createCall.body["keyDerivation"], "hkdf-root-v2");
+          assert.ok(Array.isArray(createCall.body["attachments"]));
+          assert.equal(typeof createCall.body["attachmentContentHash"], "string");
+          assert.ok(Array.isArray(createCall.body["attachmentContentHashes"]));
+          const filePut = fetchCalls.find((call) => call.url.includes("/file"));
+          assert.match(filePut?.authorization ?? "", /^Bearer /);
+        },
       );
-      assert.ok(createCall?.body);
-      const serialized = JSON.stringify(createCall.body);
-      assert.ok(!serialized.includes("file-secret-xyz"));
-      assert.ok(!serialized.includes(SECRET));
-      assert.equal(createCall.body["keyDerivation"], "hkdf-root-v2");
-      assert.ok(Array.isArray(createCall.body["attachments"]));
-      assert.equal(typeof createCall.body["attachmentContentHash"], "string");
-      assert.ok(Array.isArray(createCall.body["attachmentContentHashes"]));
-      const filePut = fetchCalls.find((call) => call.url.includes("/file"));
-      assert.match(filePut?.authorization ?? "", /^Bearer /);
     } finally {
       restoreFetch();
-      if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
-      else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
-      if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
-      else process.env["PRIVATENOTE_SESSION"] = previousToken;
       await rm(dir, { recursive: true, force: true });
     }
   });
@@ -326,13 +382,15 @@ describe("createPrivateNote file attach", () => {
     await writeFile(contentPath, SECRET, "utf8");
     mockFetch();
     try {
-      const result = await createPrivateNote({ contentFilePath: contentPath });
-      assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#/);
-      const createCall = fetchCalls.find(
-        (call) => call.body && typeof call.body["content"] === "string",
-      );
-      assert.ok(createCall?.body);
-      assert.ok(!JSON.stringify(createCall.body).includes(SECRET));
+      await withEnv({ PRIVATENOTE_MCP_ALLOWED_ROOTS: dir }, async () => {
+        const result = await createPrivateNote({ contentFilePath: contentPath });
+        assert.match(result.secureUrl, /\/note\/[0-9a-f-]{36}#/);
+        const createCall = fetchCalls.find(
+          (call) => call.body && typeof call.body["content"] === "string",
+        );
+        assert.ok(createCall?.body);
+        assert.ok(!JSON.stringify(createCall.body).includes(SECRET));
+      });
     } finally {
       restoreFetch();
       await rm(dir, { recursive: true, force: true });
@@ -355,30 +413,228 @@ describe("createPrivateNote file attach", () => {
       }),
       "utf8",
     );
+    mockFetch();
+    try {
+      await withEnv(
+        {
+          PRIVATENOTE_MCP_ALLOWED_ROOTS: dir,
+          PRIVATENOTE_MCP_SESSION_PATH: sessionPath,
+          PRIVATENOTE_SESSION: undefined,
+        },
+        async () => {
+          const result = await createPrivateNote({ filePaths: [a, b] });
+          assert.deepEqual(result.attachedFileNames, ["a.txt", "b.txt"]);
+          const reserve = fetchCalls.find((call) => call.url.includes("/api/notes/reserve"));
+          assert.equal((reserve?.body?.["attachments"] as unknown[] | undefined)?.length, 2);
+          assert.ok(fetchCalls.some((call) => call.url.endsWith("/file")));
+          assert.ok(fetchCalls.some((call) => call.url.includes("/attachments/1/file")));
+          const createCall = fetchCalls.find(
+            (call) => call.body && typeof call.body["content"] === "string" && Array.isArray(call.body["attachments"]),
+          );
+          assert.equal((createCall?.body?.["attachments"] as unknown[]).length, 2);
+          assert.equal((createCall?.body?.["attachmentContentHashes"] as unknown[]).length, 2);
+          assert.ok(!JSON.stringify(createCall?.body).includes("file-a-secret"));
+        },
+      );
+    } finally {
+      restoreFetch();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("createPrivateNote password wrap", () => {
+  const PASSPHRASE = "test-passphrase-for-argon2id-wrap";
+
+  it("wraps the root key with Argon2id and does not send the passphrase", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-pw-"));
+    const pwPath = join(dir, "pass.txt");
+    await writeFile(pwPath, `${PASSPHRASE}\n`, "utf8");
+    mockFetch();
+    try {
+      await withEnv({ PRIVATENOTE_MCP_ALLOWED_ROOTS: dir }, async () => {
+        const result = await createPrivateNote({
+          content: SECRET,
+          passwordFilePath: pwPath,
+        });
+        assert.equal(result.passwordProtected, true);
+        const fragment = result.secureUrl.split("#")[1] ?? "";
+        assert.ok(fragment.length > 43);
+        const createCall = fetchCalls.find(
+          (call) => call.body && typeof call.body["content"] === "string",
+        );
+        assert.ok(createCall?.body);
+        const body = createCall.body;
+        assert.equal(body["isPasswordProtected"], true);
+        assert.equal(body["keyDerivation"], "hkdf-root-v2");
+        assert.equal(typeof body["salt"], "string");
+        assert.equal(typeof body["encryptedKeyIv"], "string");
+        assert.equal(body["encryptedKey"], undefined);
+        const kdf = body["kdfParams"] as { profile?: string; algorithm?: string };
+        assert.equal(kdf.algorithm, "argon2id");
+        assert.equal(kdf.profile, "argon2id-m65536-p1");
+        const serialized = JSON.stringify(body);
+        assert.ok(!serialized.includes(PASSPHRASE));
+        assert.ok(!serialized.includes(SECRET));
+      });
+    } finally {
+      restoreFetch();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not leak the passphrase in errors", async () => {
+    await assert.rejects(
+      () =>
+        createPrivateNote({
+          content: SECRET,
+          passwordFilePath: "/no/such/password-file-xyz",
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof Error);
+        assert.ok(!err.message.includes(PASSPHRASE));
+        assert.ok(!err.message.includes(SECRET));
+        return true;
+      },
+    );
+  });
+});
+
+describe("createPrivateNote recipient verification", () => {
+  it("requires recipientEmail when requireRecipientVerification is true", async () => {
+    await assert.rejects(
+      () => createPrivateNote({ content: SECRET, requireRecipientVerification: true }),
+      /recipientEmail/,
+    );
+  });
+
+  it("requires sign_in before recipient verification", async () => {
+    const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+    const previousToken = process.env["PRIVATENOTE_SESSION"];
+    process.env["PRIVATENOTE_MCP_SESSION_PATH"] = join(tmpdir(), "pn-mcp-no-session.json");
+    delete process.env["PRIVATENOTE_SESSION"];
+    try {
+      await assert.rejects(
+        () =>
+          createPrivateNote({
+            content: SECRET,
+            requireRecipientVerification: true,
+            recipientEmail: "john@example.com",
+          }),
+        /sign_in/i,
+      );
+    } finally {
+      if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
+      else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
+      if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
+      else process.env["PRIVATENOTE_SESSION"] = previousToken;
+    }
+  });
+
+  it("posts recipientEmail and notifyOnOpen without plaintext", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-gate-"));
+    const sessionPath = join(dir, "session.json");
+    await writeFile(
+      sessionPath,
+      JSON.stringify({
+        accessToken: "plugin-session-token-value",
+        apiBaseUrl: "https://privatenote.ai",
+        storedAt: new Date().toISOString(),
+      }),
+      "utf8",
+    );
     const previousSessionPath = process.env["PRIVATENOTE_MCP_SESSION_PATH"];
     const previousToken = process.env["PRIVATENOTE_SESSION"];
     process.env["PRIVATENOTE_MCP_SESSION_PATH"] = sessionPath;
     delete process.env["PRIVATENOTE_SESSION"];
     mockFetch();
     try {
-      const result = await createPrivateNote({ filePaths: [a, b] });
-      assert.deepEqual(result.attachedFileNames, ["a.txt", "b.txt"]);
-      const reserve = fetchCalls.find((call) => call.url.includes("/api/notes/reserve"));
-      assert.equal((reserve?.body?.["attachments"] as unknown[] | undefined)?.length, 2);
-      assert.ok(fetchCalls.some((call) => call.url.endsWith("/file")));
-      assert.ok(fetchCalls.some((call) => call.url.includes("/attachments/1/file")));
+      const result = await createPrivateNote({
+        content: SECRET,
+        requireRecipientVerification: true,
+        recipientEmail: "john@example.com",
+        notifyOnOpen: true,
+        label: "contract-for-john",
+      });
+      assert.equal(result.noteId, TEST_NOTE_ID);
+      assert.equal(result.recipientVerification, true);
+      assert.equal(result.notifyOnOpen, true);
       const createCall = fetchCalls.find(
-        (call) => call.body && typeof call.body["content"] === "string" && Array.isArray(call.body["attachments"]),
+        (call) => call.body && typeof call.body["content"] === "string",
       );
-      assert.equal((createCall?.body?.["attachments"] as unknown[]).length, 2);
-      assert.equal((createCall?.body?.["attachmentContentHashes"] as unknown[]).length, 2);
-      assert.ok(!JSON.stringify(createCall?.body).includes("file-a-secret"));
+      assert.equal(createCall?.body?.["requireRecipientVerification"], true);
+      assert.equal(createCall?.body?.["recipientEmail"], "john@example.com");
+      assert.equal(createCall?.body?.["notifyOnOpen"], true);
+      assert.equal(createCall?.body?.["label"], "contract-for-john");
+      assert.equal(createCall?.body?.["revealBranding"], true);
+      assert.equal(result.accountBranding, true);
+      assert.ok(!JSON.stringify(createCall?.body).includes(SECRET));
     } finally {
       restoreFetch();
       if (previousSessionPath === undefined) delete process.env["PRIVATENOTE_MCP_SESSION_PATH"];
       else process.env["PRIVATENOTE_MCP_SESSION_PATH"] = previousSessionPath;
       if (previousToken === undefined) delete process.env["PRIVATENOTE_SESSION"];
       else process.env["PRIVATENOTE_SESSION"] = previousToken;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("createPrivateNote account branding", () => {
+  it("does not request reveal branding without a session", async () => {
+    mockFetch();
+    try {
+      await withEnv(
+        {
+          PRIVATENOTE_MCP_SESSION_PATH: join(tmpdir(), "pn-mcp-no-session.json"),
+          PRIVATENOTE_SESSION: undefined,
+        },
+        async () => {
+          const result = await createPrivateNote({ content: SECRET });
+          const createCall = fetchCalls.find(
+            (call) => call.body && typeof call.body["content"] === "string",
+          );
+          assert.equal(createCall?.body?.["revealBranding"], undefined);
+          assert.equal(result.accountBranding, undefined);
+        },
+      );
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("requests account branding when signed in", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pn-mcp-brand-"));
+    const sessionPath = join(dir, "session.json");
+    await writeFile(
+      sessionPath,
+      JSON.stringify({
+        accessToken: "plugin-session-token-value",
+        apiBaseUrl: "https://privatenote.ai",
+        storedAt: new Date().toISOString(),
+      }),
+      "utf8",
+    );
+    mockFetch();
+    try {
+      await withEnv(
+        {
+          PRIVATENOTE_MCP_SESSION_PATH: sessionPath,
+          PRIVATENOTE_SESSION: undefined,
+        },
+        async () => {
+          const result = await createPrivateNote({ content: SECRET });
+          const createCall = fetchCalls.find(
+            (call) => call.body && typeof call.body["content"] === "string",
+          );
+          assert.equal(createCall?.body?.["revealBranding"], true);
+          assert.equal(result.accountBranding, true);
+          const preview = await previewPrivateNote({ content: SECRET });
+          assert.equal(preview.accountBranding, true);
+        },
+      );
+    } finally {
+      restoreFetch();
       await rm(dir, { recursive: true, force: true });
     }
   });

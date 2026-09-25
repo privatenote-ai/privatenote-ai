@@ -30,6 +30,14 @@ export interface CreateNoteBody {
   attachments?: unknown[];
   attachmentContentHash?: string;
   attachmentContentHashes?: string[];
+  salt?: string;
+  encryptedKeyIv?: string;
+  kdfParams?: unknown;
+  requireRecipientVerification?: boolean;
+  recipientEmail?: string;
+  notifyOnOpen?: boolean;
+  label?: string;
+  revealBranding?: boolean;
 }
 
 export interface CreateNoteResult {
@@ -295,6 +303,8 @@ export type SentNoteListItem = {
   revokedAt: string | null;
   expiresAt: string | null;
   label: string | null;
+  openCount: number;
+  maxReads: number | null;
 };
 
 export async function listSentNotes(apiBaseUrl: string, limit = 25): Promise<SentNoteListItem[]> {
@@ -324,6 +334,8 @@ export async function listSentNotes(apiBaseUrl: string, limit = 25): Promise<Sen
       revokedAt: typeof rec.revokedAt === "string" ? rec.revokedAt : null,
       expiresAt: typeof rec.expiresAt === "string" ? rec.expiresAt : null,
       label: typeof rec.label === "string" ? rec.label : null,
+      openCount: typeof rec.openCount === "number" && rec.openCount >= 0 ? Math.floor(rec.openCount) : 0,
+      maxReads: typeof rec.maxReads === "number" && rec.maxReads > 0 ? Math.floor(rec.maxReads) : null,
     };
   }).filter((item) => item.noteId.length > 0);
 }
