@@ -5,6 +5,7 @@ import {
   Suspense,
   lazy,
   useEffect,
+  useLayoutEffect,
   type ComponentType,
   type ReactNode,
 } from "react";
@@ -18,6 +19,7 @@ import AccountBranding from "@/pages/account/AccountBranding";
 import { ThemePreferenceRoot } from "@/hooks/useThemePreference";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
+import { LaunchNestBadge } from "./components/LaunchNestBadge";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
 import { SUPPORTED_LANGUAGES, type SupportedLanguage } from "@/utils/translation";
 import {
@@ -28,6 +30,7 @@ import {
   isLocaleHomeRoute,
 } from "@shared/homeSeoLinks";
 import { marketingHreflangAlternatesForRoute } from "@shared/localizedMarketingHreflang";
+import { uiLanguageFromPathname } from "@shared/pathLanguage";
 import { setDocumentMeta } from "@/utils/documentMeta";
 import { resolveDocumentMeta } from "@/utils/resolveDocumentMeta";
 import { normalizeMarketingPathname } from "@shared/publicMarketingPaths";
@@ -61,7 +64,6 @@ const AuthSignUp = lazy(() => import("@/pages/AuthSignUp"));
 const AuthEmailChange = lazy(() => import("@/pages/AuthEmailChange"));
 const AuthTotp = lazy(() => import("@/pages/AuthTotp"));
 const AuthDevice = lazy(() => import("@/pages/AuthDevice"));
-const ExtensionConnected = lazy(() => import("@/pages/ExtensionConnected"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const AccountOverview = lazy(() => import("@/pages/account/AccountOverview"));
 const AccountActivity = lazy(() => import("@/pages/account/AccountActivity"));
@@ -273,7 +275,14 @@ function AccountPreferencesRoute() {
 
 function Router() {
   const [location] = useLocation();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+
+  useEffect(() => {
+    const pathLanguage = uiLanguageFromPathname(pathWithoutQueryOrHash(location));
+    if (pathLanguage && pathLanguage !== language) {
+      setLanguage(pathLanguage);
+    }
+  }, [location, language, setLanguage]);
 
   useEffect(() => {
     const path = pathWithoutQueryOrHash(location);
@@ -411,7 +420,6 @@ function Router() {
           <Route path="/auth/email-change" component={() => <LazyRoute component={AuthEmailChange} />} />
           <Route path="/auth/totp" component={() => <LazyRoute component={AuthTotp} />} />
           <Route path="/auth/device" component={() => <LazyRoute component={AuthDevice} />} />
-          <Route path="/extension/connected" component={() => <LazyRoute component={ExtensionConnected} />} />
           <Route path="/auth">
             <Redirect to="/auth/sign-in" />
           </Route>
@@ -426,10 +434,36 @@ function Router() {
           <Route component={() => <LazyRoute component={NotFound} />} />
         </Switch>
       </main>
-      {!isAuthRoute && !isNoteRoute && <Footer />}
+      {!isAuthRoute && !isNoteRoute && (
+        <>
+          <LaunchNestBadge />
+          <Footer />
+        </>
+      )}
       <NativePageAnalytics />
     </div>
   );
+}
+
+/** Drop the nav and composer shell once React and the entry CSS are both ready.
+ *  The hero title stays in #pn-home-prerender so its paint time remains LCP. */
+function HideHomeBootOverlay() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const reveal = () => root.classList.add("pn-app-ready");
+    if (root.classList.contains("pn-css-ready") || !root.classList.contains("pn-home-route")) {
+      reveal();
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      if (!root.classList.contains("pn-css-ready")) return;
+      observer.disconnect();
+      reveal();
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return null;
 }
 
 function App() {
@@ -439,6 +473,7 @@ function App() {
         <AuthProvider>
           <AccountEntitlementsProvider>
             <ThemePreferenceRoot />
+            <HideHomeBootOverlay />
             <Router />
             <DeferredToaster />
           </AccountEntitlementsProvider>

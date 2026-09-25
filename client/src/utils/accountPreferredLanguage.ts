@@ -1,3 +1,4 @@
+import { uiLanguageFromPathname } from "@shared/pathLanguage";
 import {
   SUPPORTED_LANGUAGES,
   normalizeLanguageCode,
@@ -21,6 +22,8 @@ export async function fetchAndApplyAccountPreferredLanguage(
     if (!data.ok || typeof data.preferredLanguage !== "string") return;
     const preferredLanguage = normalizeLanguageCode(data.preferredLanguage);
     if (!SUPPORTED_LANGUAGES.includes(preferredLanguage)) return;
+    // Marketing URLs are the language source of truth (`/privacy-tools` is English).
+    if (typeof window !== "undefined" && uiLanguageFromPathname(window.location.pathname)) return;
     apply(preferredLanguage);
     window.localStorage.setItem(STORAGE_KEY, preferredLanguage);
   } catch {

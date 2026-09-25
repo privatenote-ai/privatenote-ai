@@ -1,8 +1,8 @@
+import { uiLanguageFromPathname } from "@shared/pathLanguage";
 import { en } from "./translations/en";
 import {
   getUserLanguage,
   normalizeLanguageCode,
-  SUPPORTED_LANGUAGES,
   type SupportedLanguage,
   type Translations,
 } from "./translations/types";
@@ -37,10 +37,7 @@ const cache: Partial<Record<SupportedLanguage, Translations>> = { en };
 
 function pathLanguageFromWindow(): SupportedLanguage | null {
   if (typeof window === "undefined") return null;
-  const firstSegment = window.location.pathname.split("/").filter(Boolean)[0];
-  if (!firstSegment) return null;
-  const normalized = normalizeLanguageCode(firstSegment);
-  return SUPPORTED_LANGUAGES.includes(normalized) && normalized !== "en" ? normalized : null;
+  return uiLanguageFromPathname(window.location.pathname);
 }
 
 /** Start fetching a non-English locale as early as possible (path-based homes). */

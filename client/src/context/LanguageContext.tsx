@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { en, getTranslations, loadTranslations } from "@/utils/translation";
+import { getTranslations, loadTranslations } from "@/utils/translation";
+import { uiLanguageFromPathname } from "@shared/pathLanguage";
 import {
-  SUPPORTED_LANGUAGES,
   getUserLanguage,
   intlLocaleForLanguage,
   normalizeLanguageCode,
@@ -21,10 +21,7 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 function getPathLanguage(): SupportedLanguage | null {
   if (typeof window === "undefined") return null;
-  const firstSegment = window.location.pathname.split("/").filter(Boolean)[0];
-  if (!firstSegment) return null;
-  const normalized = normalizeLanguageCode(firstSegment);
-  return SUPPORTED_LANGUAGES.includes(normalized) && normalized !== "en" ? normalized : null;
+  return uiLanguageFromPathname(window.location.pathname);
 }
 
 function getInitialLanguage(): SupportedLanguage {
