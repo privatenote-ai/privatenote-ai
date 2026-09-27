@@ -1885,7 +1885,7 @@ export const nl: Translations = {
   devCliTerminalCaption:
     "Stuur een geheim naar de CLI — lokaal versleutelen, stdout print alleen een eenmalige URL.",
   devMcpTerminalCaption:
-    "Agents roepen create_private_note aan — het MCP-proces versleutelt lokaal en retourneert een deelbare URL.",
+    "Agents geven een bestandspad aan create_private_note. Na goedkeuring geeft confirm_private_note de URL terug.",
   devPlaygroundTitle: "Live proberen",
   devPlaygroundCliIntro:
     "Dezelfde flow als de CLI in de browser: lokaal versleutelen, ciphertext uploaden, URL met sleutel in het fragment printen.",
@@ -1986,7 +1986,7 @@ export const nl: Translations = {
   devRecipe2Tool: "Chrome",
   devRecipe3Title: "Agent stuurt een herstelcode",
   devRecipe3Body: "Laat een MCP-client create_private_note aanroepen met burn-after-reading wanneer de agent een veilige overdracht nodig heeft.",
-  devRecipe3Snippet: 'create_private_note({ burnAfterReading: true })',
+  devRecipe3Snippet: "create_private_note({ contentFilePath }) → confirm_private_note",
   devRecipe3Tool: "MCP",
   devRecipe4Title: "Token delen vanuit de editor",
   devRecipe4Body: "Markeer omgevingsvariabelen, API-sleutels of connection strings in VS Code of Cursor en geef door zonder van app te wisselen — de link komt op uw klembord.",

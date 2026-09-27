@@ -285,14 +285,15 @@ export default function Developers() {
                   ? {
                       title: "MCP",
                       lines: [
-                        { variant: "comment" as const, text: "// create_private_note" },
+                        { variant: "comment" as const, text: "// preview — path, not the secret" },
                         {
                           variant: "json" as const,
-                          text: '{ "content": "recovery-code-…", "expiresIn": "1h", "burnAfterReading": true }',
+                          text: 'create_private_note({ "contentFilePath": "/absolute/path/secret.txt" })',
                         },
+                        { variant: "comment" as const, text: "// after you approve" },
                         {
-                          variant: "output" as const,
-                          text: "https://privatenote.ai/note/a1b2c3d4#…",
+                          variant: "json" as const,
+                          text: 'confirm_private_note({ "confirmationId": "cnfg_…" })',
                         },
                       ],
                       caption: t.devMcpTerminalCaption,

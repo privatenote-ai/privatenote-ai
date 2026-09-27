@@ -2343,15 +2343,15 @@ export const en: Translations = {
   devCliTerminalCaption:
     "Pipe a secret into the CLI — encryption runs locally, stdout prints a one-time URL only.",
   devMcpTerminalCaption:
-    "Agents call create_private_note — the MCP process encrypts locally and returns a shareable URL.",
+    "Agents pass a file path to create_private_note. You approve a preview, then confirm_private_note returns the URL.",
   devPlaygroundTitle: "Try it live",
   devPlaygroundCliIntro:
     "Run the same flow as the CLI in your browser: encrypt locally, upload ciphertext, print a URL with the key in the fragment.",
   devPlaygroundMcpIntro:
-    "Simulate an MCP tool call — the playground encrypts in-page and returns the JSON shape agents receive from create_private_note.",
+    "This demo encrypts in the browser so you can open a real link. The MCP server does not take the secret as content: pass contentFilePath, approve the preview, then call confirm_private_note. The URL comes back only after confirm.",
   devPlaygroundDisclaimer:
     "Live demo — creates a real note on privatenote.ai. Use a throwaway secret, not production credentials.",
-  devPlaygroundContentLabel: "Secret to encrypt",
+  devPlaygroundContentLabel: "Throwaway text for this browser demo",
   devPlaygroundExpiresLabel: "Expiry",
   devPlaygroundBurnLabel: "Burn after reading",
   devPlaygroundRun: "Run",
@@ -2379,7 +2379,8 @@ export const en: Translations = {
     "Install the bundled plugin for MCP plus skills, or add privatenote-mcp to ~/.codex/config.toml. Use the same VS Code extension in the Codex IDE for secrets the agent never sees.",
   devPathMcpTitle: "MCP server",
   devPathMcpLabel: "Best for AI-assisted workflows",
-  devPathMcpText: "Give an MCP client a local tool that creates PrivateNote links when an agent needs to hand off a secret.",
+  devPathMcpText:
+    "Give an MCP client a preview-and-confirm flow that encrypts a local file after you approve the exact bytes.",
   devFitsLabel: "Where it fits",
   devFitsTitle: "A small tool for high-friction moments",
   devFitsP1:
@@ -2411,7 +2412,8 @@ export const en: Translations = {
   devMcpSubtitle: "Use when an agent needs a secure handoff tool.",
   devMcpBodyPrefix:
     "Add the MCP server to Codex, Cursor, Claude Desktop, Continue.dev, Zed, or any MCP client. The agent receives a",
-  devMcpBodySuffix: "tool, and the local MCP process creates the encrypted link.",
+  devMcpBodySuffix:
+    "preview tool. confirm_private_note creates the encrypted link after you approve the exact file.",
   devMcpConfigLabel: "Cursor / Claude Desktop",
   devMcpSelfHostedLabel: "Self-hosted instance",
   devMcpSelfHostedComment: "// add env block to any MCP config",
@@ -2455,8 +2457,9 @@ export const en: Translations = {
   devRecipe2Snippet: "Right-click → Create PrivateNote",
   devRecipe2Tool: "Chrome",
   devRecipe3Title: "Agent sends a recovery code",
-  devRecipe3Body: "Let an MCP client call create_private_note with burn-after-reading when the agent needs a secure handoff.",
-  devRecipe3Snippet: 'create_private_note({ burnAfterReading: true })',
+  devRecipe3Body:
+    "Let an MCP client pass a file path to create_private_note, wait for your approval, then call confirm_private_note.",
+  devRecipe3Snippet: "create_private_note({ contentFilePath }) → confirm_private_note",
   devRecipe3Tool: "MCP",
   devRecipe4Title: "Share a token from the editor",
   devRecipe4Body: "Highlight env vars, API keys, or connection strings in VS Code or Cursor and hand off without switching apps — the link lands on your clipboard.",

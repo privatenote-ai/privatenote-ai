@@ -165,13 +165,21 @@ export function DeveloperIntegrationPlayground({ mode }: DeveloperIntegrationPla
   }, [burnAfterReading, content, expiresIn]);
 
   const idleMcpRequest = useMemo(() => {
-    const payload = {
-      content: content.trim() || DEFAULT_SECRET,
+    const preview = {
+      contentFilePath: "/absolute/path/secret.txt",
       expiresIn,
       burnAfterReading,
     };
-    return `create_private_note(${JSON.stringify(payload, null, 2)})`;
-  }, [burnAfterReading, content, expiresIn]);
+    return [
+      "// 1. Preview — pass a path, not the secret. No URL yet.",
+      `create_private_note(${JSON.stringify(preview, null, 2)})`,
+      "",
+      "// 2. After you approve",
+      "confirm_private_note({",
+      '  "confirmationId": "cnfg_…"',
+      "})",
+    ].join("\n");
+  }, [burnAfterReading, expiresIn]);
 
   const terminalLines = useMemo((): TerminalLine[] => {
     if (mode === "cli") {
@@ -189,9 +197,11 @@ export function DeveloperIntegrationPlayground({ mode }: DeveloperIntegrationPla
         idleMcpRequest,
         JSON.stringify(
           {
+            status: "created",
             secureUrl: result.secureUrl,
             expiresAt: result.expiresAt,
             burnAfterReading: result.burnAfterReading,
+            sendAuthorized: false,
           },
           null,
           2,

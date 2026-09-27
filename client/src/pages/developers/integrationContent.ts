@@ -158,46 +158,76 @@ code --install-extension PrivateNote.privatenote-vscode`,
     status: "stable",
     metaTitle: "PrivateNote MCP server",
     metaDescription:
-      "Give AI agents a local create_private_note tool. Works with Cursor, Claude Desktop, Codex, Zed, and any MCP client.",
+      "Local MCP server for Cursor, Claude, and Codex. Pass a file path, approve the preview, then confirm_private_note. The model does not receive the file bytes.",
     heroTitle: "MCP server for AI agents",
-    heroSubtitle: "Let agents hand off secrets securely — encryption runs locally in the MCP process.",
+    heroSubtitle:
+      "The agent orchestrates. A local process encrypts the file after you approve it. Chat and email only carry the link.",
     hubPreview: MCP_CONFIG,
     whyTitle: "Who this is for",
     whyBody: [
-      "Use MCP when an AI assistant needs to create a PrivateNote link as part of a workflow — for example, sending an API key securely with burn-after-reading.",
-      "The MCP server exposes a create_private_note tool. The local process encrypts content and returns a shareable URL to the agent.",
+      "Use MCP when an assistant should deliver a file or credential that already lives on disk — a contract, a password file, a CSV — without reading it into the chat.",
+      "create_private_note prepares a preview from a local path. It does not return a URL. After you approve the exact bytes, options, and destination, confirm_private_note encrypts and returns secureUrl.",
+      "Creating a note is not permission to send it. sendAuthorized is true only if that preview named a channel and recipient. Otherwise the agent should give you the URL to paste.",
     ],
     quickStartTitle: "Install and configure",
+    quickStartNote: "Requires Node.js 18+. Restart the MCP client after saving so it loads the current tools.",
     quickStartCode: `# npm package (runs via npx)
 npx -y privatenote-mcp
 
 # Cursor — ~/.cursor/mcp.json
 ${MCP_CONFIG}
 
-# Claude Desktop — claude_desktop_config.json (same structure)`,
+# Claude Desktop — claude_desktop_config.json (same structure)
+# Codex — codex mcp add privatenote -- npx -y privatenote-mcp`,
     securityTitle: "Security architecture and privacy boundary",
     securityBody: [
-      "Encryption happens in the local MCP process before upload. The server stores ciphertext only.",
-      "Important: if you paste a secret into a cloud AI prompt, the model provider can see it before the MCP tool runs. For the strongest posture, use a local model or the VS Code extension for secrets the agent must never see.",
+      "Encryption runs in the local Node process after you confirm, not in the model. The API stores ciphertext. The decryption key stays in the URL fragment.",
+      "Pass contentFilePath, filePath, or passwordFilePath. content and password are last resorts, and only if the secret is already in the chat. A cloud model can see anything you paste before the tool runs.",
+      "Leave PRIVATENOTE_MCP_ALLOW_ONE_SHOT unset when the same host can send email, Slack, Discord, WhatsApp, or files. One-shot skips the preview.",
     ],
     securityBullets: [
-      "creationSource: mcp in analytics.",
-      "Optional PRIVATENOTE_API_BASE_URL for self-hosted instances.",
-      "Works with any MCP-compatible client.",
+      "confirm_private_note takes only confirmationId. The agent cannot change the path, expiry, or destination on confirm.",
+      "By default only files under the workspace can be read. PRIVATENOTE_MCP_ALLOWED_ROOTS adds folders. SSH keys, cloud credential directories, and the MCP session file stay blocked.",
+      "sign_in is required before file attach, list/revoke, recipient verification, and open notifications.",
     ],
-    refTitle: "Configuration reference",
+    refTitle: "Tool reference",
     refRows: [
-      { name: "create_private_note", description: "MCP tool — content, expiry, burn-after-reading" },
-      { name: "command", description: 'npx (or node path to local build)' },
-      { name: 'args', description: '["-y", "privatenote-mcp"]' },
-      { name: "PRIVATENOTE_API_BASE_URL", description: "Override API for self-hosted deployments" },
+      {
+        name: "create_private_note",
+        description:
+          "Preview only. Pass contentFilePath or filePaths, expiry, burn-after-reading, and an optional sendChannel plus sendRecipient.",
+      },
+      {
+        name: "confirm_private_note",
+        description: "Encrypts after approval. Argument is confirmationId only. Returns secureUrl.",
+      },
+      {
+        name: "sendAuthorized",
+        description:
+          "True only when the approved preview named an exact channel and recipient. Otherwise hand the URL back to the user.",
+      },
+      {
+        name: "sign_in / whoami / sign_out",
+        description: "Browser Approve. Session file is separate from the website cookie.",
+      },
+      {
+        name: "list_sent_notes / revoke_sent_note",
+        description: "Paid, signed-in. Events and unopened revoke — never the plaintext.",
+      },
+      {
+        name: "PRIVATENOTE_API_BASE_URL",
+        description: "Override API for self-hosted deployments. Pair with PRIVATENOTE_WEB_ORIGIN.",
+      },
     ],
     primaryCta: {
       label: "View on npm",
       href: "https://www.npmjs.com/package/privatenote-mcp",
       external: true,
     },
-    blogLink: { label: "PrivateNote for developers", slug: "privatenote-for-developers" },
+    blogLink: {
+      label: "Let your AI send secrets without giving your AI the secrets",
+      slug: "let-ai-send-secrets-without-seeing-them",
+    },
     npmPackage: "privatenote-mcp",
     playground: "mcp",
   },

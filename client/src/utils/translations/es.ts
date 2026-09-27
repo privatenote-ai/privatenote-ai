@@ -1894,7 +1894,7 @@ export const es: Translations = {
   devCliTerminalCaption:
     "Envíe un secreto a la CLI — cifrado local, stdout imprime solo una URL de un solo uso.",
   devMcpTerminalCaption:
-    "Los agentes llaman a create_private_note — el proceso MCP cifra localmente y devuelve una URL compartible.",
+    "Los agentes pasan una ruta de archivo a create_private_note. Tras aprobar la vista previa, confirm_private_note devuelve la URL.",
   devPlaygroundTitle: "Probar en vivo",
   devPlaygroundCliIntro:
     "El mismo flujo que la CLI en el navegador: cifrar localmente, subir ciphertext, imprimir una URL con la clave en el fragmento.",
@@ -1995,7 +1995,7 @@ export const es: Translations = {
   devRecipe2Tool: "Chrome",
   devRecipe3Title: "El agente envía un código de recuperación",
   devRecipe3Body: "Deje que un cliente MCP llame a create_private_note con burn-after-reading cuando el agente necesite una entrega segura.",
-  devRecipe3Snippet: 'create_private_note({ burnAfterReading: true })',
+  devRecipe3Snippet: "create_private_note({ contentFilePath }) → confirm_private_note",
   devRecipe3Tool: "MCP",
   devRecipe4Title: "Compartir un token desde el editor",
   devRecipe4Body: "Resalte variables de entorno, claves API o cadenas de conexión en VS Code o Cursor y entregue sin cambiar de app — el enlace queda en el portapapeles.",

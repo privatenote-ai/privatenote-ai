@@ -1644,7 +1644,7 @@ export const sr: Translations = {
   devCliTerminalCaption:
     "Prosledite tajnu u CLI — lokalno šifrovanje, stdout ispisuje samo jednokratni URL.",
   devMcpTerminalCaption:
-    "Agenti pozivaju create_private_note — MCP proces šifruje lokalno i vraća URL za deljenje.",
+    "Agenti predaju putanju datoteke alatu create_private_note. Nakon odobrenja confirm_private_note vraća URL.",
   devPlaygroundTitle: "Isprobajte uživo",
   devPlaygroundCliIntro:
     "Isti tok kao CLI u pregledaču: lokalno šifrujte, otpremite ciphertext, ispišite URL sa ključem u fragmentu.",
@@ -1745,7 +1745,7 @@ export const sr: Translations = {
   devRecipe2Tool: "Chrome",
   devRecipe3Title: "Agent šalje kod za oporavak",
   devRecipe3Body: "Neka MCP klijent pozove create_private_note sa burn-after-reading kada agentu treba sigurna predaja.",
-  devRecipe3Snippet: 'create_private_note({ burnAfterReading: true })',
+  devRecipe3Snippet: "create_private_note({ contentFilePath }) → confirm_private_note",
   devRecipe3Tool: "MCP",
   devRecipe4Title: "Podelite token iz editora",
   devRecipe4Body: "Označite env promenljive, API ključeve ili connection stringove u VS Code-u ili Cursor-u i prenesite bez menjanja aplikacije — link završi u clipboard-u.",
