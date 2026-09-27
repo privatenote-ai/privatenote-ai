@@ -1,0 +1,91 @@
+name = "privatenote-api-staging"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+routes = [{ pattern = "upload-staging.privatenote.ai", custom_domain = true }]
+
+[[kv_namespaces]]
+binding = "NOTES_KV"
+id = "1441616d60254d939cda9a710cca9a5a"
+
+[[kv_namespaces]]
+binding = "AUTH_KV"
+id = "51b1595542dd43719f736e07a1726548"
+
+[[kv_namespaces]]
+binding = "ANALYTICS_KV"
+id = "706bf3fd48744f5da5f7cdf54abc95de"
+
+[[r2_buckets]]
+binding = "NOTE_FILES_R2"
+bucket_name = "privatenote-files-staging-eu"
+
+[[d1_databases]]
+binding = "AUTH_DB"
+database_name = "privatenote-auth-staging-eu"
+database_id = "7b8c2949-afbd-48c9-babf-170f85edd7de"
+migrations_dir = "src/auth/d1-staging-migrations"
+
+[[durable_objects.bindings]]
+name = "SECURE_NOTES"
+class_name = "SecureNoteStorageSql"
+
+[[durable_objects.bindings]]
+name = "AUTH_TOKENS"
+class_name = "AuthTokenStore"
+
+[[migrations]]
+tag = "v1-staging-durable-objects"
+new_classes = ["AuthTokenStore"]
+new_sqlite_classes = ["SecureNoteStorageSql"]
+
+[ai]
+binding = "AI"
+experimental_remote = true
+
+[vars]
+AUTH_EMAIL_PROVIDER = "resend"
+AUTH_EMAIL_FROM = "PrivateNote Staging <no-reply@privatenote.ai>"
+BILLING_OWNER_EMAIL = "marjanskrobot@gmail.com"
+PUBLIC_WEB_APP_ORIGIN = "https://premium.privatenote.ai"
+# Staging QA: magic/send must not silently drop mail when Pages lacks Turnstile site key
+# or premium.privatenote.ai is missing from the Turnstile hostname allowlist.
+AUTH_RELAX_TURNSTILE = "1"
+STRIPE_GRACE_PERIOD_DAYS = "3"
+STRIPE_RECONCILIATION_LIMIT = "100"
+STRIPE_API_VERSION = "2026-07-29.dahlia"
+STRIPE_PRICE_PERSONAL_MONTHLY = "price_1TyXhf38iAwYhBTaYAnm3lZA"
+STRIPE_PRICE_PERSONAL_YEARLY = "price_1TyXhf38iAwYhBTaZ6UPU5XR"
+STRIPE_PRICE_BUSINESS_MONTHLY = "price_1TyXhg38iAwYhBTamy6MkGZo"
+STRIPE_PRICE_BUSINESS_YEARLY = "price_1TyXhg38iAwYhBTaLeB4pQHn"
+STRIPE_PRICE_PERSONAL_MONTHLY_EUR = "price_1TzFov38iAwYhBTaEoEFDQZN"
+STRIPE_PRICE_PERSONAL_YEARLY_EUR = "price_1TzFpb38iAwYhBTaeab1Qgs1"
+STRIPE_PRICE_BUSINESS_MONTHLY_EUR = "price_1TzFqn38iAwYhBTaKC7w91tQ"
+STRIPE_PRICE_BUSINESS_YEARLY_EUR = "price_1TzFr938iAwYhBTaW0rjzTot"
+STRIPE_PORTAL_CONFIGURATION_ID = "bpc_1TyZrU38iAwYhBTa0GD7Zk8F"
+# S3 API identity for browser → R2 presigned PUTs (large attachments ≥ ~90 MB).
+# Secrets: wrangler secret put R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY -c wrangler.staging.toml
+R2_ACCOUNT_ID = "4cf4e785755949c2f0a61d2f3b532b69"
+R2_BUCKET_NAME = "privatenote-files-staging-eu"
+
+[build]
+command = "npm run build:staging"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

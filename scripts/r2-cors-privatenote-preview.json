@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://premium.privatenote-ai.pages.dev",
+          "https://develop.privatenote-ai.pages.dev"
+        ],
+        "methods": ["GET", "HEAD"],
+        "headers": ["*"]
+      },
+      "exposeHeaders": [
+        "Content-Length",
+        "Content-Type",
+        "ETag",
+        "Accept-Ranges",
+        "Content-Range"
+      ],
+      "maxAgeSeconds": 86400
+    }
+  ]
+}

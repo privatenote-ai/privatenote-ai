@@ -1,10 +1,10 @@
 {
   "name": "privatenote-mcp",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Local MCP server — create end-to-end encrypted PrivateNote links from Cursor. Encryption happens on your machine; only ciphertext reaches the server.",
   "type": "module",
   "bin": {
-    "privatenote-mcp": "./dist/index.js"
+    "privatenote-mcp": "dist/index.js"
   },
   "files": [
     "dist/index.js",
@@ -14,10 +14,13 @@
     "build": "node build.mjs",
     "prepublishOnly": "node build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/createPrivateNote.test.ts"
+    "test": "tsx --test tests/allowedPaths.test.ts tests/boundFile.test.ts tests/redactSecrets.test.ts tests/createPrivateNote.test.ts tests/confirmPrivateNote.test.ts tests/signIn.test.ts tests/sentNotes.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "libsodium-wrappers": "^0.7.15",
+    "libsodium": "^0.7.15",
+    "@noble/hashes": "2.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

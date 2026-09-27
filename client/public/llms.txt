@@ -1,0 +1,105 @@
+# PrivateNote.ai
+
+> End-to-end encrypted notes, files, photos, and voice messages. Encryption happens in the browser (or a local CLI/MCP process) before upload. PrivateNote stores ciphertext only. The decryption key lives in the URL fragment and is never sent to the server.
+
+PrivateNote.ai is a secure-sharing product at https://privatenote.ai. Tagline: “Share secrets. Leave no trail.” Recipients open a unique link; they do not need an account. Notes can burn after reading and expire on a timer. Destroyed or expired notes cannot be recovered.
+
+This file is the LLM-oriented index for the site ([llms.txt spec](https://llmstxt.org/)). Prefer it over scraping the SPA. Pages here are HTML; there are no `.md` twins yet. A longer dump of FAQs and every English blog post is at [/llms-full.txt](https://privatenote.ai/llms-full.txt).
+
+Important facts for agents:
+
+- Share URL shape: `https://privatenote.ai/note/{id}#{decryption-key}`. Everything after `#` stays on the device; browsers do not send fragments to servers.
+- Do not paste production secrets, API keys, or seed phrases into a cloud AI prompt. Encrypt first with the [CLI](https://privatenote.ai/developers/cli), [MCP server](https://privatenote.ai/developers/mcp), or [VS Code / Cursor extension](https://privatenote.ai/developers/vscode), then share the resulting link.
+- Anyone with the full link (and password, if set) can open the note. Recipients can still copy, screenshot, download, or forward after access. Read-once and expiry reduce leftover copies; they do not stop a determined recipient.
+- AI on the site is opt-in. Regular notes do not send plaintext to a model. Hosted AI drafts are a separate, signed-in feature. On-device models (WebGPU) run in the browser when available.
+- Authentication data, encrypted notes, and operational records are stored in EU-jurisdiction infrastructure.
+- The hosted web app and API are not fully open source. Client encryption, shared crypto, CLI, MCP, Chrome, VS Code/Cursor, and Codex tooling are public at [github.com/privatenote-ai/privatenote-ai](https://github.com/privatenote-ai/privatenote-ai).
+- Site locales (prefix the path): `de`, `fr`, `es`, `it`, `nl`, `pt`, `sr`, `hr`. English URLs below are canonical.
+- `/note/*`, `/auth/*`, `/account/*`, `/magic`, and `/admin/*` are private app routes (noindex). Do not treat them as documentation.
+
+## Product
+
+- [Create a private note](https://privatenote.ai/): Browser composer. Write text, attach files, take a photo, or record voice/video. Encrypts locally, then gives you a shareable link.
+- [How it works](https://privatenote.ai/how-it-works): Client-side encryption, fragment keys, read-once notes, and optional on-device AI.
+- [Plans and pricing](https://privatenote.ai/premium): Free (no account required to send a basic note), Starter ($4 / €4 per month or $40 / €40 per year), Business ($12 / €12 per month or $120 / €120 per year). Stripe charges USD or EUR by region. Annual is two months free versus monthly. Business is one professional account, not team seats.
+- [Secure file transfer](https://privatenote.ai/secure-file-transfer): Encrypted attachments and folders. Sending files requires a free account; opening a link never does. Per-file limits: Free 25 MB, Starter 250 MB, Business 1 GB. Active encrypted payload buffer: Free 250 MB, Starter 5 GB, Business 50 GB.
+- [Password generator](https://privatenote.ai/password-generator): Client-side generator, then optional one-time encrypted share.
+- [Privacy tools](https://privatenote.ai/privacy-tools): Directory of privacy-respecting tools.
+- [Security resources](https://privatenote.ai/security-resources): Guides hub (VPN, password managers, and related topics).
+
+## Security model
+
+- [What is end-to-end encryption](https://privatenote.ai/blog/what-is-end-to-end-encryption): How E2EE differs from “encrypted in transit.”
+- [One-time secret links](https://privatenote.ai/blog/one-time-secret-links): Why burn-after-reading plus expiry beats leaving secrets in chat history.
+- [Privacy policy](https://privatenote.ai/privacy): What is stored (ciphertext and operational metadata, not plaintext). Limited abuse-prevention logs.
+- [Terms of use](https://privatenote.ai/terms): Including EU/EEA 14-day withdrawal for paid subscriptions via support@privatenote.ai.
+- [Vulnerability reporting](https://github.com/privatenote-ai/privatenote-ai/blob/main/SECURITY.md): Email security@privatenote.ai. Do not open public GitHub issues for undisclosed vulns.
+
+Crypto in short: browser Web Crypto AES-GCM for standard notes; Argon2id for password-protected notes; libsodium for file attachments (encrypted metadata including filename). Password-breach checks use Have I Been Pwned k-anonymity (hash prefix only). Text notes are capped at 50 KB on Free, 200 KB on Starter, and 500 KB on Business.
+
+Free notes expire in at most 3 days and are read-once. Starter allows up to 15 days and 1–3 opens. Business allows up to 30 days and 1–10 opens. Starter and Business add proof of access, recipient verification, delayed reveal, receipt acknowledgment, sent-notes dashboard, and revoke for unopened notes. Business adds reveal-page branding and view-only attachments.
+
+## Developers
+
+- [Developer hub](https://privatenote.ai/developers): CLI, MCP, VS Code/Cursor, Chrome, Codex. Encryption stays local in every integration.
+- [CLI](https://privatenote.ai/developers/cli): `npx privatenote-cli --expire 1h --output-url-only`. npm: [privatenote-cli](https://www.npmjs.com/package/privatenote-cli). Pipe stdin; do not echo share URLs into shell history. `--no-burn` needs a paid plan.
+- [MCP server](https://privatenote.ai/developers/mcp): Local `create_private_note` tool. npm: [privatenote-mcp](https://www.npmjs.com/package/privatenote-mcp). Cursor: `npx -y privatenote-mcp` in `~/.cursor/mcp.json`. Password-protected notes are not in MCP v1.
+- [VS Code / Cursor](https://privatenote.ai/developers/vscode): Send editor selection as an encrypted link. [Marketplace](https://marketplace.visualstudio.com/items?itemName=PrivateNote.privatenote-vscode).
+- [Chrome extension](https://privatenote.ai/developers/chrome): Create an encrypted note from any page. [Chrome Web Store](https://chromewebstore.google.com/detail/privatenote-encrypted-note-sharing/ijlfmagoflakmnecjembfcaoebfnnekm).
+- [OpenAI Codex plugin](https://privatenote.ai/developers/codex): `codex mcp add privatenote -- npx -y privatenote-mcp`.
+- [Public GitHub](https://github.com/privatenote-ai/privatenote-ai): Developer tools and shared crypto. Hosted backend is not in this repo.
+- [PrivateNote for developers](https://privatenote.ai/blog/privatenote-for-developers): When to use web vs CLI vs MCP vs editor extension.
+
+CLI / MCP environment: `PRIVATENOTE_API_BASE_URL`, optional `PRIVATENOTE_WEB_ORIGIN`, optional `PRIVATENOTE_ALLOWED_HOSTS`. HTTPS is required for remote APIs.
+
+## How-to guides
+
+- [How to make a private note](https://privatenote.ai/blog/how-to-make-a-private-note)
+- [Share a password securely](https://privatenote.ai/blog/how-to-share-a-password-securely)
+- [Share an API key securely](https://privatenote.ai/blog/how-to-share-api-key-securely)
+- [Share SSH keys securely](https://privatenote.ai/blog/how-to-share-ssh-keys-securely)
+- [Share photos securely](https://privatenote.ai/blog/how-to-share-photos-securely)
+- [Send sensitive documents](https://privatenote.ai/blog/send-sensitive-documents-securely)
+- [Secure client delivery for lawyers](https://privatenote.ai/blog/secure-client-delivery-for-lawyers)
+- [Encrypted voice message](https://privatenote.ai/blog/how-to-send-encrypted-voice-message)
+- [Crypto seed phrase as a one-time link](https://privatenote.ai/blog/crypto-seed-phrase-one-time-link)
+- [Secrets in CI/CD and GitHub](https://privatenote.ai/blog/secrets-in-cicd-env-github-leaks)
+- [Send a secret without an account](https://privatenote.ai/blog/send-secret-message-without-account)
+
+## Delivery controls (Starter and Business)
+
+- [Know when a secret link is opened](https://privatenote.ai/blog/know-when-secret-link-opened): Open notifications and proof of access.
+- [Recipient verification code](https://privatenote.ai/blog/recipient-verification-code-before-reveal): Extra gate before plaintext is shown.
+- [Revoke an unopened note](https://privatenote.ai/blog/revoke-unopened-note-proof-of-access)
+- [Delayed / scheduled reveal](https://privatenote.ai/blog/delayed-reveal-scheduled-secret-links)
+- [Click-to-reveal private notes](https://privatenote.ai/blog/click-to-reveal-private-notes)
+
+## Company
+
+- [About](https://privatenote.ai/about): Built by Marjan Skrobot, Ph.D.
+- [Contact](https://privatenote.ai/contact): contact@privatenote.ai
+- [Support / billing](mailto:support@privatenote.ai): support@privatenote.ai
+- [Security](mailto:security@privatenote.ai): security@privatenote.ai
+- [Sitemap](https://privatenote.ai/sitemap.xml)
+- [robots.txt](https://privatenote.ai/robots.txt)
+
+## Optional
+
+- [Full LLM dump](https://privatenote.ai/llms-full.txt): Expanded FAQ, plan limits, and every English blog post.
+- [Blog](https://privatenote.ai/blog)
+- [Blog: secrets category](https://privatenote.ai/blog/category/secrets)
+- [Blog: encryption](https://privatenote.ai/blog/category/encryption)
+- [Blog: developers](https://privatenote.ai/blog/category/developers)
+- [Blog: privacy](https://privatenote.ai/blog/category/privacy)
+- [Blog: AI](https://privatenote.ai/blog/category/ai)
+- [Why email is worst for secrets](https://privatenote.ai/blog/why-email-is-worst-for-secrets)
+- [Secrets never send in chat](https://privatenote.ai/blog/secrets-never-send-in-chat)
+- [Encrypted vs “secure” file sharing](https://privatenote.ai/blog/encrypted-vs-secure-file-sharing)
+- [Google Drive vs one-time encrypted links](https://privatenote.ai/blog/google-drive-vs-one-time-encrypted-links)
+- [Common secret-handling mistakes](https://privatenote.ai/blog/common-secret-handling-mistakes)
+- [Securing AI agents like employees](https://privatenote.ai/blog/securing-ai-agents-like-employees)
+- [Introduction to private AI](https://privatenote.ai/blog/introduction-to-private-ai)
+- [PrivateNote + Codex](https://privatenote.ai/blog/privatenote-codex)
+- [How we generate passwords](https://privatenote.ai/blog/how-we-generate-passwords)
+- [VPN guide](https://privatenote.ai/security-guides/vpn)
+- [Password manager guide](https://privatenote.ai/security-guides/password)

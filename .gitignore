@@ -1,8 +1,20 @@
 node_modules
 dist
+.env
+.env.local
+.env.production
+.dev.vars
 *.log
 .DS_Store
-*.zip
-*.vsix
-.env
-.env.*
+.wrangler
+.codex-history/
+.publish/
+prerender
+.prerender-html-cache
+
+# Large model files - downloaded from HuggingFace at runtime
+r2_upload/models/
+
+# iCloud Drive duplicate copies ("File 2.tsx")
+* 2.*
+* 3.*

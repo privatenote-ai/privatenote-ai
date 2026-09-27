@@ -1,0 +1,37 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">PrivateNote.ai — encrypted read-once notes</title>
+  <desc id="desc">Share link preview for PrivateNote.ai.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FBFF"/>
+      <stop offset="1" stop-color="#EEF4FF"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="150" x2="0" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="626" width="1200" height="4" fill="#0000FF" opacity="0.85"/>
+
+  <!-- Logo mark (~112px) -->
+  <g transform="translate(96 259) scale(0.219)">
+    <rect x="32" y="32" width="448" height="448" rx="112" fill="#0000FF"/>
+    <g transform="translate(0 -36)">
+      <path d="M112 184L256 312L400 184V400H112V184Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="7"/>
+      <path d="M112 184L256 312L400 184Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M112 184L256 312L400 184" stroke="#0000FF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- Wordmark + copy -->
+  <text x="236" y="302" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#0000FF">
+    <tspan font-size="64">privateNote</tspan><tspan font-size="38">.ai</tspan>
+  </text>
+
+  <text x="236" y="384" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="#0F172A">Encrypted notes that disappear</text>
+  <text x="236" y="442" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="#0F172A">after reading.</text>
+
+  <text x="236" y="508" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#475569">Client-side encryption · Read-once · No tracking</text>
+</svg>

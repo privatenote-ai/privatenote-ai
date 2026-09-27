@@ -1,0 +1,23 @@
+# Prerendered routes (/, /blog/..., /de/, etc.) are static HTML and win over redirects.
+#
+# Backstop for old nav links and crawler queues. The current auth entrypoint is explicit.
+/auth    /auth/sign-in   301
+
+# Legacy blog hero PNGs replaced by optimized JPEGs (see shared/legacyImageRedirects.ts).
+/images/blog-chat-control-is-back-hero.png  /images/blog-chat-control-is-back-hero.jpg  301
+/images/blog-secret-message-no-account-hero.png  /images/blog-secret-message-no-account-hero.jpg  301
+
+# Bare /note is not a public page (only /note/:id exists). Avoid duplicate homepage in Search Console.
+/note  /  301
+
+# Legacy /pricing → canonical pricing page at /premium.
+# Locale /:lang/pricing is handled in functions/_middleware.ts.
+/pricing  /premium  301
+
+# Explicit SPA shells (wrangler pages deploy may ignore splat redirects — see functions/magic.ts).
+/magic   /index.html   200
+
+# SPA fallback for client routes (/note/:id, /auth/*, /account/*, …).
+# Splat lines like /note/* are unreliable with `wrangler pages deploy` (workers-sdk#2671);
+# /note/:id is handled by functions/note/[[id]].ts. This catch-all covers the rest.
+/*    /index.html   200

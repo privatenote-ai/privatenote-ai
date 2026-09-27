@@ -9,10 +9,26 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "lib": ["ES2022", "DOM"],
-    "baseUrl": "../..",
+    "baseUrl": ".",
     "paths": {
-      "@shared/*": ["shared/*"]
+      "@shared/*": ["../../shared/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "../../shared/noteCrypto.ts", "../../shared/noteAad.ts", "../../shared/noteExpiry.ts", "../../shared/noteReadLimits.ts", "../../shared/noteSizeLimits.ts", "../../shared/urlFragmentKey.ts"]
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "../../shared/noteCrypto.ts",
+    "../../shared/noteAad.ts",
+    "../../shared/noteExpiry.ts",
+    "../../shared/noteReadLimits.ts",
+    "../../shared/noteSizeLimits.ts",
+    "../../shared/urlFragmentKey.ts",
+    "../../shared/noteRootKeys.ts",
+    "../../shared/noteReceiptAck.ts",
+    "../../shared/storedNotePayload.ts",
+    "../../shared/noteFileLimits.ts",
+    "../../shared/noteFileUploadAuth.ts",
+    "../../shared/planCatalog.ts",
+    "../../shared/kdfParamsV2.ts"
+  ]
 }

@@ -1,0 +1,54 @@
+---
+description: WORKING Safari single-PUT hop (encrypt.lu + CF HTTP/3 off). Chunking stays off.
+globs: client/src/lib/{queryClient,binaryUploadTransport,safariSafeChunkUpload,r2DirectUpload}.ts,client/src/utils/libsodiumFileAttachment.ts,client/src/components/note/CreateNote.tsx,shared/apiWorkerOrigin.ts,client/public/_headers,src/{index,httpSecurity,routes,r2Presign}.ts
+alwaysApply: false
+---
+
+# WORKING COPY — Safari attachment upload (single Blob PUT)
+
+**Status:** Verified working on staging after Cloudflare **HTTP/3 (QUIC) was turned Off** for the `privatenote.ai` zone. Do **not** reintroduce HTTP chunking for this path.
+
+## App recipe (shipped)
+
+| Requirement | Value |
+|---|---|
+| Staging page | `https://premium.privatenote.ai` |
+| Staging upload | `https://upload-staging.privatenote.ai` |
+| Prod page | `https://privatenote.ai` |
+| Prod upload | `https://upload.privatenote.ai` |
+| Transport | **XHR** `xhr.send(Blob)` (never Safari `fetch` for the binary PUT) |
+| Body | one Blob `{ type: "application/octet-stream" }` |
+| Method | PUT `/api/notes/:id/file` |
+| Auth | **`Authorization: Bearer {uploadToken}`** (primary); query `?uploadToken=` fallback |
+| Headers | Do **not** set `Content-Type` / `Content-Length` from JS for Blob PUTs |
+| Credentials | omit / `withCredentials` false |
+| Proxy | never Pages `/api` for the binary body |
+| Worker | Stream single-blob body to R2 (no full `arrayBuffer()` buffer) |
+| Large (≥ ~90 MB ciphertext) | Presigned PUT → `*.r2.cloudflarestorage.com` (bypasses CF CDN ~100 MB body limit; required for Premium 1 GB) |
+| Chunking | `SAFARI_CHUNKING_ENABLED = false` |
+
+## CORS (upload relay)
+
+Echo Origin, echo `Access-Control-Request-Headers`, Allow-Methods GET/POST/PUT/OPTIONS, Max-Age 86400, allow `Authorization` + `Content-Length`, **no** Allow-Credentials, **no** Set-Cookie.
+
+## REQUIRED Cloudflare fix (root cause of ~200 ms Safari status 0)
+
+**Symptom:** Safari ~30 MiB XHR PUT → `status: 0` / “network connection was lost” in ~150–300 ms; no Worker log. curl 31 MiB PUT to the same host succeeded. Bearer vs query both failed identically. OPTIONS/CORS were fine.
+
+**Cause:** Safari preferred **HTTP/3 (QUIC)** (`Alt-Svc: h3=":443"`). Large browser PUTs on that path aborted before the Worker. HTTP/2 was fine.
+
+**Fix (confirmed working):**
+
+1. Cloudflare Dashboard → zone **`privatenote.ai`**
+2. **Speed** → **Settings** (or Optimization) → **Protocol Optimization**
+3. **HTTP/3 (with QUIC)** → **Off**
+4. Retest in a Private Window (Safari caches `Alt-Svc`)
+
+**Preferred long-term (keep H3 for the rest of the site):** Response Header Transform Rule removing `Alt-Svc` for:
+
+- `upload-staging.privatenote.ai`
+- `upload.privatenote.ai`
+
+Match: `(http.host eq "upload-staging.privatenote.ai") or (http.host eq "upload.privatenote.ai")` → Remove header `Alt-Svc`.
+
+If large Safari PUTs regress with ~200 ms `status: 0` and no Worker log again, check HTTP/3 / `Alt-Svc` on the upload hosts first — not chunking, not Bearer.

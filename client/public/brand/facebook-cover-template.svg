@@ -1,0 +1,24 @@
+<svg width="1640" height="924" viewBox="0 0 1640 924" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="88" x2="0" y2="218" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1640" height="924" fill="#F8FBFF"/>
+  <circle cx="1430" cy="80" r="420" fill="#E0E7FF" opacity=".72"/>
+  <circle cx="170" cy="40" r="340" fill="#DBEAFE" opacity=".66"/>
+  <g transform="translate(122 142)">
+    <rect width="176" height="176" rx="44" fill="#0000FF"/>
+    <g transform="translate(0 -16)">
+      <path d="M39 75L88 119L137 75V149H39V75Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="3"/>
+      <path d="M39 75L88 119L137 75Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M39 75L88 119L137 75" stroke="#0000FF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="342" y="224" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="850" fill="#0000FF">privateNote</text>
+  <text x="794" y="183" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="850" fill="#0000FF">.ai</text>
+  <text x="126" y="496" font-family="Inter, Arial, sans-serif" font-size="88" font-weight="850" fill="#0F172A">End-to-end encrypted notes</text>
+  <text x="126" y="596" font-family="Inter, Arial, sans-serif" font-size="88" font-weight="850" fill="#0000FF">that disappear after reading.</text>
+  <text x="130" y="706" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500" fill="#475569">No accounts. No tracking. No plaintext on the server.</text>
+</svg>

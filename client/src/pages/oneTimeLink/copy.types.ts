@@ -1,0 +1,44 @@
+export type OneTimeLinkFaqItem = {
+  question: string;
+  answer: string;
+};
+
+export type OneTimeLinkCopy = {
+  heroTitle: string;
+  heroSubtitle: string;
+  whatHeading: string;
+  whatBody: string;
+  whatLearnMore: string;
+  stepsHeading: string;
+  step1Title: string;
+  step1Body: string;
+  step2Title: string;
+  step2Body: string;
+  step3Title: string;
+  step3Body: string;
+  useHeading: string;
+  usePasswordsTitle: string;
+  usePasswordsBody: string;
+  usePasswordsLink: string;
+  useApiTitle: string;
+  useApiBody: string;
+  useApiLink: string;
+  useMessagesTitle: string;
+  useMessagesBody: string;
+  useMessagesLink: string;
+  useFilesTitle: string;
+  useFilesBody: string;
+  useFilesLink: string;
+  persistHeading: string;
+  persistBody: string;
+  handoffHeading: string;
+  handoffBody: string;
+  handoffEncryptionLink: string;
+  handoffHowItWorksLink: string;
+  limitsHeading: string;
+  limitsBody: string;
+  faqHeading: string;
+  faqs: OneTimeLinkFaqItem[];
+  articleLearnMore: string;
+  backToCreate: string;
+};

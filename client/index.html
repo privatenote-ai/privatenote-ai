@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="describedby" href="/llms.txt" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="application-name" content="PrivateNote.ai" />
+  <meta name="msapplication-TileColor" content="#0000ff" />
+  <meta name="msapplication-TileImage" content="/brand/privateNote-logo-mark.png" />
+  <meta name="theme-color" content="#0000ff" />
+  <meta name="description" content="Send encrypted notes, photos, audio, video and files with a one-time link that disappears after opening. Recipients don't need an account." />
+  <meta property="og:site_name" content="PrivateNote.ai" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="Encrypted Notes, Photos & Files · PrivateNote.ai" />
+  <meta property="og:description" content="Send encrypted notes, photos, audio, video and files with a one-time link that disappears after opening. Recipients don't need an account." />
+  <meta property="og:image" content="https://privatenote.ai/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Encrypted Notes, Photos & Files · PrivateNote.ai" />
+  <meta name="twitter:description" content="Send encrypted notes, photos, audio, video and files with a one-time link that disappears after opening. Recipients don't need an account." />
+  <meta name="twitter:image" content="https://privatenote.ai/og-image.png" />
+  
+  <title>Encrypted Notes, Photos & Files · PrivateNote.ai</title>
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://privatenote.ai/#organization",
+          "name": "PrivateNote.ai",
+          "url": "https://privatenote.ai/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://privatenote.ai/brand/privateNote-logo-mark.png",
+            "width": 512,
+            "height": 512
+          },
+          "image": "https://privatenote.ai/og-image.png",
+          "description": "PrivateNote.ai creates browser-encrypted notes, photos, audio, video, and files that disappear after opening."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://privatenote.ai/#website",
+          "url": "https://privatenote.ai/",
+          "name": "PrivateNote.ai",
+          "publisher": {
+            "@id": "https://privatenote.ai/#organization"
+          },
+          "inLanguage": "en"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://privatenote.ai/#webapp",
+          "name": "PrivateNote.ai",
+          "url": "https://privatenote.ai/",
+          "applicationCategory": "SecurityApplication",
+          "operatingSystem": "Any",
+          "browserRequirements": "Requires JavaScript and Web Crypto API support",
+          "description": "Send encrypted notes, photos, audio, video and files with a one-time link. Encryption happens in the browser before upload, then the note disappears after opening.",
+          "publisher": {
+            "@id": "https://privatenote.ai/#organization"
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR"
+          }
+        }
+      ]
+    }
+  </script>
+
+  <!-- Critical CSS paints the hero before the Tailwind bundle. Production defers
+       that bundle on the homepage; #root stays out of flow until it applies so
+       the hero box does not move. -->
+  <style id="pn-critical">
+    @font-face{font-family:"Satoshi Fallback";src:local("Arial"),local("Helvetica Neue"),local("Helvetica");size-adjust:106%;ascent-override:92%;descent-override:22%;line-gap-override:0%}
+    @font-face{font-family:"Inter Fallback";src:local("Arial"),local("Helvetica Neue"),local("Helvetica");size-adjust:107%;ascent-override:90%;descent-override:22%;line-gap-override:0%}
+    body{margin:0;font-family:Inter,"Inter Fallback",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
+    @media (prefers-color-scheme:dark){html:not(.light) body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}}
+    html.dark body{background-color:hsl(222.2 84% 4.9%);color:hsl(210 40% 98%)}
+    html.light body{background-color:hsl(210 50% 98%);color:hsl(222.2 84% 4.9%)}
+    .page-title{margin:0;font-family:Satoshi,"Satoshi Fallback",Inter,system-ui,sans-serif;font-size:2.375rem;font-weight:700;letter-spacing:0;line-height:1.08;text-align:center;color:hsl(222.2 84% 4.9%)}
+    /* Min-height reserves the two-line homepage hero only. Other pages share .page-title. */
+    #pn-home-prerender .page-title,
+    html.pn-home-route #root .pn-home .page-title{min-height:5.26rem}
+    @media (min-width:640px){
+      .page-title{font-size:2.625rem}
+      #pn-home-prerender .page-title,
+      html.pn-home-route #root .pn-home .page-title{min-height:5.8rem}
+    }
+    @media (min-width:768px){
+      .page-title{font-size:3.5rem}
+      #pn-home-prerender .page-title,
+      html.pn-home-route #root .pn-home .page-title{min-height:7.82rem}
+    }
+    @media (min-width:768px) and (max-height:900px){
+      .page-title{font-size:3.25rem;line-height:1.08}
+      #pn-home-prerender .page-title,
+      html.pn-home-route #root .pn-home .page-title{min-height:7.27rem}
+    }
+    @media (prefers-color-scheme:dark){html:not(.light) .page-title{color:hsl(210 40% 98%)}}
+    html.dark .page-title{color:hsl(210 40% 98%)}
+    html.light .page-title{color:hsl(222.2 84% 4.9%)}
+  </style>
+  <style id="pn-home-hero-critical">
+    /* Covering overlay outside #root so the hero can paint before Tailwind.
+       .pn-app-ready drops the nav and composer shell only. The title stays, so
+       LCP is not retimed when React mounts. */
+    /* Reserve the classic-scrollbar gutter from the first paint. #root is empty and the
+       overlay is fixed, so the document is only viewport-tall and not yet scrollable;
+       without this, centred content sits ~7px right and snaps left when React mounts
+       and the real scrollbar appears. No-op where scrollbars overlay the content. */
+    html.pn-home-route{overflow-y:scroll;scrollbar-gutter:stable}
+    #pn-home-prerender{display:none}
+    html.pn-home-route #pn-home-prerender{
+      display:block;position:fixed;inset:0;z-index:100;overflow:hidden;pointer-events:none;
+      background-color:hsl(210 50% 98%)
+    }
+    /* Reveal the real page under the shell without dismissing the hero text.
+       The title stays the LCP element; only the nav and composer shell go away. */
+    html.pn-home-route.pn-app-ready #pn-home-prerender{
+      position:absolute;inset:auto;top:0;left:0;right:0;bottom:auto;height:auto;
+      overflow:visible;background:transparent;pointer-events:none
+    }
+    html.pn-home-route.pn-app-ready #pn-home-prerender .pn-stub-nav,
+    html.pn-home-route.pn-app-ready #pn-home-prerender .pn-home-editor-wrap{display:none}
+    html.pn-lcp-released #pn-home-prerender{display:none!important}
+    /* Unstyled #root must not push the hero. Shown again once the entry CSS applies. */
+    html.pn-home-route:not(.pn-css-ready) #root{
+      position:absolute;left:0;right:0;top:0;width:100%;visibility:hidden;pointer-events:none
+    }
+    /* One visible hero. The shell title is the paint; the React heading keeps the box. */
+    html.pn-home-route:not(.pn-lcp-released) #root [data-lcp-element],
+    html.pn-home-route:not(.pn-lcp-released) #root .pn-hero-sub{visibility:hidden}
+    @media (prefers-color-scheme:dark){
+      html.pn-home-route:not(.light) #pn-home-prerender{background-color:hsl(222.2 84% 4.9%)}
+    }
+    html.dark.pn-home-route #pn-home-prerender{background-color:hsl(222.2 84% 4.9%)}
+    html.light.pn-home-route #pn-home-prerender{background-color:hsl(210 50% 98%)}
+    html.pn-home-route.pn-app-ready #pn-home-prerender{background:transparent}
+    .pn-stub-nav{
+      position:absolute;top:0;left:0;right:0;height:4rem;padding:0 1rem;
+      border-bottom:1px solid hsl(214 95% 93%);background:hsl(210 50% 98% / .95)
+    }
+    @media (min-width:640px){.pn-stub-nav{padding:0 1.5rem}}
+    @media (min-width:1024px){.pn-stub-nav{padding:0 2rem}}
+    .pn-stub-nav-inner{
+      position:relative;max-width:56rem;margin:0 auto;height:4rem;
+      display:flex;align-items:center;justify-content:space-between;gap:.5rem
+    }
+    /* Real bar: 2.25rem account slot left, 2.5rem hamburger right — the logo is not dead centre. */
+    .pn-stub-nav-side{width:2.25rem;height:2.25rem;flex:none}
+    .pn-stub-nav-side + .pn-stub-logo + .pn-stub-nav-side{width:2.5rem;height:2.5rem}
+    .pn-stub-logo{display:flex;align-items:center;gap:.5rem;white-space:nowrap}
+    .pn-stub-mark{width:30px;height:30px;flex:none;display:block}
+    .pn-stub-logo-text{font-family:Satoshi,"Satoshi Fallback",Inter,system-ui,sans-serif;font-size:1.25rem;line-height:1.75rem;font-weight:700;letter-spacing:-.035em;color:hsl(240 100% 50%)}
+    @media (min-width:640px){.pn-stub-logo-text{font-size:1.5rem;line-height:2rem}}
+    .pn-stub-logo-text span{font-size:.75rem;line-height:1rem;vertical-align:super;margin-left:.125rem}
+    /* ≥xl the real Navbar pulls the logo outside the left edge of the 56rem column. */
+    @media (min-width:1280px){
+      .pn-stub-nav-side{display:none}
+      .pn-stub-logo{position:absolute;right:100%;top:50%;padding-right:1.5rem;transform:translate(-.5rem,-50%)}
+    }
+    @media (min-width:1536px){.pn-stub-logo{transform:translate(-.625rem,-50%)}}
+    /* Match App main pt-16 + Home outer + hero section padding (see Home.tsx). */
+    .pn-home-prerender{padding-top:8rem;padding-bottom:0}
+    @media (min-width:640px){.pn-home-prerender{padding-top:11rem}.pn-stub-logo{font-size:1.5rem}}
+    @media (min-width:768px) and (max-height:900px){.pn-home-prerender{padding-top:6.25rem}}
+    .pn-hero-wrap{position:relative;max-width:56rem;margin:0 auto;padding:0 1rem}
+    @media (min-width:640px){.pn-hero-wrap{padding:0 1.5rem}}
+    @media (min-width:1024px){.pn-hero-wrap{padding:0 2rem}}
+    .pn-hero-title{text-align:center}
+    .pn-hero-narrow{display:block}
+    .pn-hero-wide{display:none}
+    @media (min-width:768px){.pn-hero-narrow{display:none}.pn-hero-wide{display:block}}
+    .pn-hero-l1,.pn-hero-l2{display:block}
+    .pn-hero-l2{margin-top:.125rem;color:hsl(240 100% 50%)}
+    @media (min-width:768px){.pn-hero-l2{margin-top:.25rem}}
+    .pn-hero-sub{text-align:center;color:hsl(220 9% 46%)}
+    .pn-hero-narrow.pn-hero-sub{margin:1.25rem auto 0;max-width:56rem;font-size:1rem;line-height:1.375;min-height:1.375rem}
+    .pn-hero-wide.pn-hero-sub{margin:1.5rem auto 0;max-width:64rem;font-size:1.375rem;line-height:1.5;min-height:4.125rem}
+    /* The composer column is max-w-4xl with the page padding OUTSIDE it, so it is
+       wider than the hero text column above 960px (see Home.tsx). */
+    .pn-home-editor-wrap{margin-top:2rem;padding:0 1rem}
+    @media (min-width:640px){.pn-home-editor-wrap{margin-top:1.5rem;padding:0 1.5rem}}
+    @media (min-width:768px){.pn-home-editor-wrap{margin-top:2.5rem}}
+    @media (min-width:1024px){.pn-home-editor-wrap{margin-top:3rem;padding:0 2rem}}
+    @media (min-width:768px) and (max-height:900px){.pn-home-editor-wrap{margin-top:1.25rem}}
+    .pn-editor-col{max-width:56rem;margin:0 auto}
+    .pn-editor-form{padding-top:0}
+    @media (min-width:640px){.pn-editor-form{padding-top:1rem}}
+    @media (min-width:768px) and (max-height:900px){.pn-editor-form{padding-top:.5rem}}
+    .pn-editor-tabs-wrap{margin-bottom:.75rem}
+    @media (min-width:640px){.pn-editor-tabs-wrap{margin-bottom:1.5rem}}
+    @media (min-width:768px) and (max-height:900px){.pn-editor-tabs-wrap{margin-bottom:1rem}}
+    .pn-editor-tabs{display:flex;border-bottom:1px solid hsl(220 13% 91%)}
+    .pn-editor-tab{flex:1;padding:.5rem 1rem;text-align:center;font-size:.875rem;line-height:1.25rem;font-weight:500;color:hsl(240 100% 50%)}
+    @media (min-width:640px){.pn-editor-tab{padding-top:.75rem;padding-bottom:.75rem}}
+    .pn-editor-tab-inner{display:flex;align-items:center;justify-content:center;height:1.25rem}
+    .pn-editor-tab-inner svg{width:1rem;height:1rem;margin-right:.5rem;flex:none}
+    .pn-editor-tab-active{border-bottom:2px solid hsl(240 100% 50%);background:hsl(240 100% 50% / .1)}
+    .pn-editor-tab-wide{display:none}
+    @media (min-width:768px){.pn-editor-tab-narrow{display:none}.pn-editor-tab-wide{display:inline}}
+    /* Byte meter row: desktop only, above the textarea. */
+    .pn-editor-meter{display:none}
+    @media (min-width:768px){.pn-editor-meter{display:block;height:17px;margin-bottom:.5rem}}
+    .pn-editor-text-wrap{position:relative}
+    .pn-editor-text{
+      box-sizing:border-box;width:100%;min-height:13.375rem;border-radius:.5rem;
+      border:1px solid hsl(240 100% 50% / .6);background:#fff;padding:.75rem 1rem 3.5rem;
+      color:hsl(220 9% 64%);font-size:1rem;line-height:1.5
+    }
+    /* Mirrors ComposerCustomizeButton (bottom-5 left-3.5, 2.25rem hit area). The real
+       wrapper is 7px taller than its textarea (inline descender gap), so bottom is 20-7. */
+    .pn-editor-gear{
+      position:absolute;bottom:.8125rem;left:.875rem;width:2.25rem;height:2.25rem;
+      display:flex;align-items:center;justify-content:center;color:hsl(215 28% 25%)
+    }
+    .pn-editor-gear svg{width:1.25rem;height:1.25rem}
+    .pn-editor-actions{display:flex;flex-direction:column;gap:.5rem;margin-top:.9375rem}
+    @media (min-width:1024px){.pn-editor-actions{flex-direction:row;align-items:center;margin-top:.875rem}}
+    .pn-editor-tools{display:flex;width:100%;gap:.5rem}
+    @media (min-width:1024px){.pn-editor-tools{width:auto;flex:none}}
+    /* Icon-only below lg (labels appear at lg): 54px pills, 68px for Attach + caret. */
+    .pn-editor-tool{
+      flex:none;width:54px;height:2.625rem;border-radius:.5rem;border:1px solid hsl(240 100% 50% / .3);
+      display:flex;align-items:center;justify-content:center;overflow:hidden;
+      font-size:.875rem;font-weight:500;color:hsl(240 100% 50%)
+    }
+    .pn-editor-tools .pn-editor-tool:first-child{width:68px}
+    .pn-editor-tool svg{width:1.25rem;height:1.25rem;flex:none}
+    .pn-editor-tool-label{display:none}
+    .pn-editor-tool-caret{width:.875rem;height:.875rem;opacity:.7}
+    @media (min-width:1024px){
+      .pn-editor-tool{width:151px;gap:.375rem;background:hsl(240 100% 50% / .08)}
+      .pn-editor-tools .pn-editor-tool:first-child{width:127px}
+      .pn-editor-tool svg{width:1rem;height:1rem}
+      .pn-editor-tool-label{display:inline;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    }
+    .pn-editor-submit{
+      display:flex;align-items:center;justify-content:center;height:2.75rem;border-radius:.5rem;
+      background:hsl(240 100% 50%);color:#fff;font-size:.875rem;font-weight:500
+    }
+    .pn-editor-submit svg{width:1rem;height:1rem;margin-right:.375rem;flex:none}
+    @media (min-width:1024px){.pn-editor-submit{flex:1}}
+    @media (prefers-color-scheme:dark){
+      html:not(.light) .pn-stub-nav{border-bottom-color:hsl(217 33% 17%);background:hsl(222.2 84% 4.9% / .95)}
+      html:not(.light) .pn-stub-logo{color:hsl(213 94% 83%)}
+      html:not(.light) .pn-editor-tabs{border-bottom-color:hsl(215 14% 34%)}
+      html:not(.light) .pn-editor-text{background:hsl(222 47% 11%);border-color:hsl(240 100% 50% / .4);color:hsl(215 20% 65%)}
+      html:not(.light) .pn-editor-tool{border-color:hsl(213 94% 68% / .4)}
+      html:not(.light) .pn-hero-l1{color:hsl(210 40% 98%)}
+      html:not(.light) .pn-hero-sub{color:hsl(220 9% 65%)}
+    }
+    html.dark .pn-stub-nav{border-bottom-color:hsl(217 33% 17%);background:hsl(222.2 84% 4.9% / .95)}
+    html.dark .pn-stub-logo{color:hsl(213 94% 83%)}
+    html.dark .pn-editor-tabs{border-bottom-color:hsl(215 14% 34%)}
+    html.dark .pn-editor-text{background:hsl(222 47% 11%);border-color:hsl(240 100% 50% / .4);color:hsl(215 20% 65%)}
+    html.dark .pn-editor-tool{border-color:hsl(213 94% 68% / .4)}
+    html.dark .pn-hero-l1{color:hsl(210 40% 98%)}
+    html.dark .pn-hero-sub{color:hsl(220 9% 65%)}
+  </style>
+  <link rel="stylesheet" href="/src/index.css" />
+
+  <!-- Sets html.pn-home-route before first paint (must not be defer). -->
+  <script src="/home-route.js"></script>
+
+  <!-- Prefill guard: defer so it does not block HTML parsing; still runs before the
+       type=module bundle (document order). Moves #text= to sessionStorage and sets
+       html.light / html.dark from stored theme. Sync was slightly earlier for hash
+       stripping but cost ~render-blocking in Lighthouse. -->
+  <script defer src="/prefill-guard.js"></script>
+</head>
+<body>
+  <!-- LCP hero lives outside #root so createRoot() cannot retimestamp LCP. -->
+  <div id="pn-home-prerender" class="pn-home-prerender" aria-hidden="true">
+    <div class="pn-stub-nav">
+      <div class="pn-stub-nav-inner">
+        <span class="pn-stub-nav-side"></span>
+        <span class="pn-stub-logo">
+          <!-- Mirrors <Logo size={30} />: brand tile plus cream envelope. -->
+          <svg class="pn-stub-mark" width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="pn-stub-paper" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFFDF8" />
+                <stop offset="100%" stop-color="#EDE6D8" />
+              </linearGradient>
+            </defs>
+            <rect x="4" y="4" width="56" height="56" rx="14" fill="hsl(240 100% 50%)" />
+            <g transform="translate(0 -4.5)">
+              <path d="M14 23 L32 39 L50 23 V50 H14Z" fill="url(#pn-stub-paper)" stroke="#fff" stroke-opacity="0.45" stroke-width="0.85" />
+              <path d="M14 23 L32 39 L50 23Z" fill="url(#pn-stub-paper)" fill-opacity="0.97" />
+              <path d="M14 23 L32 39 L50 23" fill="none" stroke="hsl(240 100% 50%)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+            </g>
+          </svg>
+          <span class="pn-stub-logo-text">privateNote<span>.ai</span></span>
+        </span>
+        <span class="pn-stub-nav-side"></span>
+      </div>
+    </div>
+    <section class="pn-hero-wrap">
+      <div class="pn-hero-title">
+        <h1 class="page-title" data-lcp-element="true">
+          <span class="pn-hero-narrow">
+            <span class="pn-hero-l1" id="pn-hero-l1">Your Messages,</span>
+            <span class="pn-hero-l2" id="pn-hero-l2">Your Privacy</span>
+          </span>
+          <span class="pn-hero-wide">
+            <span class="pn-hero-l1" id="pn-hero-l1-wide">Your Messages,</span>
+            <span class="pn-hero-l2" id="pn-hero-l2-wide">Your Privacy</span>
+          </span>
+        </h1>
+        <p class="pn-hero-sub pn-hero-narrow" id="pn-hero-sub-narrow">Encrypted notes and files that disappear.</p>
+        <p class="pn-hero-sub pn-hero-wide" id="pn-hero-sub-wide">Share passwords, sensitive messages, and files via end-to-end encrypted links that disappear after opening. No recipient accounts. No ads. Zero profiling.</p>
+      </div>
+    </section>
+    <div class="pn-home-editor-wrap">
+      <div class="pn-editor-col">
+        <div class="pn-editor-form">
+          <div class="pn-editor-tabs-wrap">
+            <div class="pn-editor-tabs">
+              <div class="pn-editor-tab pn-editor-tab-active">
+                <span class="pn-editor-tab-inner">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span id="pn-editor-tab-write">Write</span>
+                </span>
+              </div>
+              <div class="pn-editor-tab">
+                <span class="pn-editor-tab-inner">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287z"/></svg>
+                  <span class="pn-editor-tab-narrow" id="pn-editor-tab-ai">Private AI</span>
+                  <span class="pn-editor-tab-wide" id="pn-editor-tab-ai-wide">Write with Private AI</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="pn-editor-meter"></div>
+          <div class="pn-editor-text-wrap">
+            <div class="pn-editor-text" id="pn-editor-placeholder">Type your confidential message here...</div>
+            <span class="pn-editor-gear">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+          </div>
+          <div class="pn-editor-actions">
+            <div class="pn-editor-tools">
+              <div class="pn-editor-tool">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <span class="pn-editor-tool-label" id="pn-editor-attach">Attach</span>
+                <svg class="pn-editor-tool-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+              <div class="pn-editor-tool">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                <span class="pn-editor-tool-label" id="pn-editor-record-audio">Record audio</span>
+              </div>
+              <div class="pn-editor-tool">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+                <span class="pn-editor-tool-label" id="pn-editor-record-video">Record video</span>
+              </div>
+            </div>
+            <div class="pn-editor-submit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span id="pn-editor-share">Share Private Note</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    if (!document.querySelector("link[data-pn-defer-css]")) {
+      document.documentElement.classList.add("pn-css-ready");
+    }
+  </script>
+  <div id="root"></div>
+  <noscript>
+    <nav aria-label="Primary site links">
+      <a href="/">Home</a>
+      <a href="/password-generator">Password Generator</a>
+      <a href="/how-it-works">How It Works</a>
+      <a href="/security-resources">Security Resources</a>
+      <a href="/privacy-tools">Privacy Tools</a>
+      <a href="/blog">Blog</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Use</a>
+    </nav>
+  </noscript>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+import { useState } from "react";
+import { CheckCircle2, ChevronDown, ChevronUp, Copy, Info, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/context/LanguageContext";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { PasskeyInfo } from "./types";
+
+type Props = {
+  email: string | null;
+  recoveryRemaining: number;
+  recoveryGeneratedAt: string | null;
+  recoveryCodes: string[] | null;
+  dateFormatter: Intl.DateTimeFormat;
+  totpEnabled: boolean;
+  passkeys: PasskeyInfo[];
+  registeringPasskey: boolean;
+  totpSettingUp: boolean;
+  totpDisabling: boolean;
+  generatingRecoveryCodes: boolean;
+  /** Shown after passkey step-up fails or is cancelled; user enters TOTP and taps Generate again. */
+  recoveryAuthenticatorFallbackOpen: boolean;
+  recoveryTotpCode: string;
+  onRecoveryTotpChange: (value: string) => void;
+  onDismissRecoveryAuthenticatorFallback: () => void;
+  onCopyEmail: () => void;
+  onOpenChangeEmail: () => void;
+  onTotpDisable: () => void;
+  onTotpSetup: () => void;
+  onAddPasskey: () => void;
+  onOpenManagePasskeys: () => void;
+  onGenerateRecoveryCodes: () => void;
+};
+
+export function AccountSecuritySection({
+  email,
+  recoveryRemaining,
+  recoveryGeneratedAt,
+  recoveryCodes,
+  dateFormatter,
+  totpEnabled,
+  passkeys,
+  registeringPasskey,
+  totpSettingUp,
+  totpDisabling,
+  generatingRecoveryCodes,
+  recoveryAuthenticatorFallbackOpen,
+  recoveryTotpCode,
+  onRecoveryTotpChange,
+  onDismissRecoveryAuthenticatorFallback,
+  onCopyEmail,
+  onOpenChangeEmail,
+  onTotpDisable,
+  onTotpSetup,
+  onAddPasskey,
+  onOpenManagePasskeys,
+  onGenerateRecoveryCodes,
+}: Props) {
+  const { t } = useLanguage();
+  const [passkeyHelpOpen, setPasskeyHelpOpen] = useState(false);
+  const [totpHelpOpen, setTotpHelpOpen] = useState(false);
+  const [recoveryHelpOpen, setRecoveryHelpOpen] = useState(false);
+  const hasPasskeys = passkeys.length > 0;
+  const hasRecoveryCodes = recoveryRemaining > 0;
+  const recoveryTotpReady = recoveryTotpCode.replace(/\D/g, "").length === 6;
+  const generateRecoveryBlockedByTotp =
+    recoveryAuthenticatorFallbackOpen && totpEnabled && !recoveryTotpReady;
+  const recoveryGeneratedLabel = recoveryGeneratedAt
+    ? dateFormatter.format(new Date(recoveryGeneratedAt))
+    : null;
+
+  return (
+    <div className="space-y-10">
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t.authSecProtectTitle || "Protect your account"}</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {t.authSecProtectSubtitle || "Manage how you sign in and protect your account."}
+          </p>
+        </div>
+        <div className="space-y-5">
+          <div>
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+                <div className="min-w-0 lg:self-center">
+                  <div className="flex items-start gap-2">
+                    <p className="text-base font-medium text-gray-900 dark:text-white">{t.authPasskey || "Passkeys"}</p>
+                    <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                      {t.authSecRecommended || "Recommended"}
+                    </span>
+                  </div>
+                </div>
+                <div className="min-w-0 lg:self-center">
+                  <p className={`text-sm font-medium ${hasPasskeys ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}`}>
+                    {hasPasskeys
+                      ? `${passkeys.length} ${t.authPasskey || "passkey"}${passkeys.length !== 1 ? "s" : ""} active`
+                      : (t.authSecNoPasskeys || "No passkeys added")}
+                  </p>
+                </div>
+                <div className="flex w-full lg:w-auto lg:justify-end lg:self-center">
+                  <Button
+                    variant={hasPasskeys ? "outline" : "default"}
+                    size="sm"
+                    onClick={hasPasskeys ? onOpenManagePasskeys : onAddPasskey}
+                    disabled={registeringPasskey}
+                    className="w-full sm:w-auto"
+                  >
+                    {registeringPasskey ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        {t.authSecAddingPasskey || "Adding..."}
+                      </>
+                    ) : hasPasskeys ? (
+                      t.authSecManagePasskeys || "Manage passkeys"
+                    ) : (
+                      t.authSecAddPasskey || "Add passkey"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <Collapsible open={passkeyHelpOpen} onOpenChange={setPasskeyHelpOpen}>
+              <div className="mt-3">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-blue-700 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-900/70 dark:focus-visible:ring-offset-gray-950"
+                  >
+                    {t.authSecWhyPasskeys || "Why use passkeys?"}
+                    {passkeyHelpOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+                    <p>{t.authSecPasskeyHelp1 || "Passkeys help protect your account against phishing and password reuse."}</p>
+                    <p className="mt-1">{t.authSecPasskeyHelp2 || "They also make sign-in faster because you can use your device’s built-in authentication."}</p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          </div>
+
+          <div>
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+                <div className="min-w-0 lg:self-center">
+                  <p className="text-base font-medium text-gray-900 dark:text-white">{t.authTwoStepVerification || "2-step verification"}</p>
+                </div>
+                <div className="min-w-0 lg:self-center">
+                  <p className={`text-sm font-medium ${totpEnabled ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}`}>
+                    {totpEnabled ? (t.authEnabled || "Enabled") : (t.authSecTotpNotEnabled || "Not enabled")}
+                  </p>
+                </div>
+                <div className="flex w-full lg:w-auto lg:justify-end lg:self-center">
+                  {totpEnabled ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onTotpDisable}
+                      disabled={totpDisabling}
+                      className="w-full sm:w-auto"
+                    >
+                      {totpDisabling ? (t.authSecTotpDisabling || "Disabling...") : (t.authSecTotpDisable || "Disable")}
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={onTotpSetup} disabled={totpSettingUp} className="w-full sm:w-auto">
+                      {totpSettingUp ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          {t.authSecTotpEnabling || "Enabling..."}
+                        </>
+                      ) : (
+                        t.authSecTotpEnable || "Enable"
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Collapsible open={totpHelpOpen} onOpenChange={setTotpHelpOpen}>
+              <div className="mt-3">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-blue-700 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-900/70 dark:focus-visible:ring-offset-gray-950"
+                  >
+                    {t.authSecWhyTotp || "Why use 2-step verification?"}
+                    {totpHelpOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+                    <p>{t.authSecTotpHelp1 || "A 6-digit authenticator code adds a second check when someone tries to sign in."}</p>
+                    <p className="mt-1">{t.authSecTotpHelp2 || "It also helps protect sensitive actions even if someone gains access to your email."}</p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t.authSecAccessTitle || "Account access"}</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {t.authSecAccessSubtitle || "Manage which email you use for account access and recovery."}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+            <div className="min-w-0 lg:self-center">
+              <p className="text-base font-medium text-gray-900 dark:text-white">{t.authPrefsEmailSectionTitle || "Email"}</p>
+            </div>
+            <div className="min-w-0 lg:self-center">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-white">{email ?? (t.authSecNoEmail || "No email set")}</p>
+                {email && (
+                  <button
+                    type="button"
+                    onClick={onCopyEmail}
+                    className="rounded p-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title={t.authSecCopyEmail || "Copy email"}
+                  >
+                    <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="lg:self-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onOpenChangeEmail}
+                disabled={!email}
+                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30 lg:w-auto"
+              >
+                {t.authSecChangeEmail || "Change email"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t.authSecRecoveryTitle || "Recovery"}</h2>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {t.authSecRecoverySubtitle || "Keep backup access ready in case you lose your usual sign-in method."}
+          </p>
+        </div>
+        <div>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800">
+            <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[220px_minmax(0,1fr)_auto] lg:items-center lg:gap-6">
+              <div className="min-w-0 lg:self-center">
+                <p className="text-base font-medium text-gray-900 dark:text-white">{t.authSecRecoveryCodes || "Recovery codes"}</p>
+              </div>
+              <div className="min-w-0 w-full lg:self-center">
+                <div className="mt-1 flex items-center gap-1.5">
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {hasRecoveryCodes
+                      ? `${recoveryRemaining} code${recoveryRemaining !== 1 ? "s" : ""} available`
+                      : (t.authSecNoRecoveryCodes || "No recovery codes available")}
+                  </p>
+                  {recoveryGeneratedLabel && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none" aria-label={t.authSecLastGeneratedAriaLabel || "Last generated date"}>
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {t.authSecLastGenerated || "Last generated"} {recoveryGeneratedLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+              <div className="lg:self-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onGenerateRecoveryCodes}
+                  disabled={generatingRecoveryCodes || generateRecoveryBlockedByTotp}
+                  title={
+                    generateRecoveryBlockedByTotp
+                      ? (t.authSecEnterCodeFirst || "Enter the 6-digit authenticator code in the box below first")
+                      : undefined
+                  }
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30 lg:w-auto"
+                >
+                  {generatingRecoveryCodes ? (t.authSecGenerating || "Generating...") : hasRecoveryCodes ? (t.authSecGenerateNewCodes || "Generate new codes") : (t.authSecGenerateRecoveryCodes || "Generate recovery codes")}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {recoveryAuthenticatorFallbackOpen && totpEnabled && (
+            <div
+              className={cn(
+                "mt-3 rounded-lg border px-4 py-3 transition-colors",
+                recoveryTotpReady
+                  ? "border-emerald-200 bg-emerald-50/95 dark:border-emerald-800/55 dark:bg-emerald-950/30"
+                  : "border-amber-200 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/30",
+              )}
+            >
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {hasPasskeys
+                  ? (t.authSecPasskeyUnavailable || "Passkey unavailable or you cancelled?")
+                  : (t.authSecCouldNotVerify || "We could not complete verification")}
+              </p>
+              {recoveryTotpReady ? (
+                <div className="mt-2 flex items-start gap-2 text-sm text-emerald-900 dark:text-emerald-100">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                  <p>
+                    <span className="font-medium">{t.authSecCodeReady || "Code ready."}</span> Use the{" "}
+                    <strong className="font-semibold">{t.authSecGenerateNewCodes || "Generate new codes"}</strong> {t.authSecCodeReadyInstruction?.replace("Use the Generate new codes button in the row above to finish.", "button in the row above to finish.") || "button in the row above to finish."}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                  {t.authSecEnterCodeHint || "Type the 6-digit code from your authenticator. The Generate new codes button above turns on when the code is complete."}
+                </p>
+              )}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input
+                  id="recovery-generate-totp"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder={t.authSecSixDigitPlaceholder || "6-digit code"}
+                  value={recoveryTotpCode}
+                  onChange={(e) => onRecoveryTotpChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  disabled={generatingRecoveryCodes}
+                  aria-describedby="recovery-generate-totp-hint"
+                  className={cn(
+                    "h-9 max-w-xs transition-[border-color,box-shadow]",
+                    recoveryTotpReady &&
+                      "border-emerald-500 ring-2 ring-emerald-500/35 focus-visible:ring-emerald-500/40 dark:border-emerald-500",
+                  )}
+                  aria-label="Authenticator code for recovery code generation"
+                />
+                <p id="recovery-generate-totp-hint" className="sr-only">
+                  {recoveryTotpReady
+                    ? "Six digits entered. Activate Generate new codes in the recovery codes row above."
+                    : "Enter six digits; then the generate button above will enable."}
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="self-start text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+                  onClick={onDismissRecoveryAuthenticatorFallback}
+                >
+                  {t.authSecDismiss || "Dismiss"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Collapsible open={recoveryHelpOpen} onOpenChange={setRecoveryHelpOpen}>
+            <div className="mt-3">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-blue-700 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200 dark:focus-visible:ring-blue-900/70 dark:focus-visible:ring-offset-gray-950"
+                >
+                  {t.authSecWhyRecovery || "Why use recovery codes?"}
+                  {recoveryHelpOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-100">
+                  <p>{t.authSecRecoveryHelp1 || "Recovery codes give you a backup way to access your account if you lose your device."}</p>
+                  <p className="mt-1">{t.authSecRecoveryHelp2 || "Store them somewhere safe because they can help you recover access when other methods are unavailable."}</p>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        </div>
+      </section>
+
+      {recoveryCodes && (
+        <div className="mt-4 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono text-gray-800 dark:text-gray-100">
+            {recoveryCodes.map((code) => (
+              <span key={code}>{code}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,39 @@
+<svg width="1080" height="1080" viewBox="0 0 1080 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="72" x2="0" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EDE6D8"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(885 80) rotate(118) scale(520 360)">
+      <stop stop-color="#E0E7FF"/>
+      <stop offset="1" stop-color="#E0E7FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(145 0) rotate(55) scale(520 350)">
+      <stop stop-color="#DBEAFE"/>
+      <stop offset="1" stop-color="#DBEAFE" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1080" height="1080" fill="#F8FBFF"/>
+  <rect width="1080" height="1080" fill="url(#glowA)"/>
+  <rect width="1080" height="1080" fill="url(#glowB)"/>
+  <g opacity=".22">
+    <path d="M0 160H1080M0 320H1080M0 480H1080M0 640H1080M0 800H1080M0 960H1080M160 0V1080M320 0V1080M480 0V1080M640 0V1080M800 0V1080M960 0V1080" stroke="#CBD5E1" stroke-width="1"/>
+  </g>
+  <g transform="translate(72 72)">
+    <rect width="128" height="128" rx="32" fill="#0000FF"/>
+    <g transform="translate(0 -12)">
+      <path d="M28 55L64 87L100 55V109H28V55Z" fill="url(#paper)" stroke="white" stroke-opacity=".45" stroke-width="2"/>
+      <path d="M28 55L64 87L100 55Z" fill="url(#paper)" fill-opacity=".97"/>
+      <path d="M28 55L64 87L100 55" stroke="#0000FF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <text x="232" y="126" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800" fill="#0000FF">privateNote</text>
+  <text x="478" y="104" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="800" fill="#0000FF">.ai</text>
+  <text x="80" y="402" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="850" fill="#0F172A">Share secrets.</text>
+  <text x="80" y="492" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="850" fill="#0000FF">Leave no trail.</text>
+  <text x="82" y="590" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500" fill="#475569">End-to-end encrypted notes that self-destruct after reading.</text>
+  <rect x="80" y="720" width="480" height="76" rx="18" fill="#0000FF"/>
+  <text x="120" y="770" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="750" fill="white">Write a private note</text>
+  <text x="80" y="936" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="650" fill="#0000FF">privatenote.ai</text>
+  <text x="80" y="976" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500" fill="#64748B">No accounts. No tracking. No plaintext on the server.</text>
+</svg>
